@@ -19,7 +19,7 @@ import (
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.1.1"
+	appVersion  = "v0.1.2"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func runOrchestrator() error {
 	defer server.Close()
 
 	port := server.Addr().(*net.TCPAddr).Port
-	joinCommand := fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), server.JoinToken())
+	joinCommand := formatPowerShellJoinCommand(fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), server.JoinToken()))
 	fmt.Println("Instancia codex-bridge creada en RAM.")
 	fmt.Println("Copia este comando al ejecutor Windows:")
 	fmt.Println(joinCommand)
@@ -75,7 +75,7 @@ func runOrchestrator() error {
 			if tokenErr != nil {
 				return "error: " + tokenErr.Error()
 			}
-			return fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), token)
+			return formatPowerShellJoinCommand(fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), token))
 		},
 	})
 	_, err = tea.NewProgram(&model).Run()
@@ -112,4 +112,23 @@ func printUsage() {
 	fmt.Println("codex-bridge join ...      une Windows usando el comando impreso por Mac")
 	fmt.Println("codex-bridge --version    muestra la versión")
 	fmt.Println("\nLa instancia, tokens, colas e historial solo viven en RAM.")
+}
+
+// formatPowerShellJoinCommand keeps every credential-bearing argument visible
+// in a narrow terminal while preserving a command that can be pasted directly
+// into PowerShell. A backtick immediately followed by a newline continues the
+// command; no token characters are lost to horizontal clipping.
+func formatPowerShellJoinCommand(command string) string {
+	fields := strings.Fields(command)
+	if len(fields) < 2 || (len(fields)-2)%2 != 0 {
+		return command
+	}
+	lines := []string{fields[0] + " " + fields[1]}
+	for i := 2; i < len(fields); i += 2 {
+		lines = append(lines, "  "+fields[i]+" "+fields[i+1])
+	}
+	for i := 0; i < len(lines)-1; i++ {
+		lines[i] += " `"
+	}
+	return strings.Join(lines, "\n")
 }

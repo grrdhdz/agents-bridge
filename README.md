@@ -4,6 +4,7 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
+La versión publicada actual es `v0.1.2`.
 
 ## Propiedades del MVP
 
@@ -79,6 +80,9 @@ En la Mac del orquestador:
 La aplicación detecta la IPv4 Tailscale, crea la instancia y muestra un
 comando `codex-bridge join ...` completo. Pega ese comando al agente Windows o
 transfiérelo por el canal que uses para coordinar los agentes.
+En la TUI y en la salida inicial se muestra en varias líneas con continuaciones
+de PowerShell para que el host, la instancia y el token completo no se recorten
+en terminales estrechas; pega todas las líneas juntas en PowerShell.
 
 En Windows:
 

@@ -335,7 +335,7 @@ func renderMessages(messages []protocol.Envelope, statuses map[string]string, lo
 func (m Model) View() tea.View {
 	header := fmt.Sprintf("CODEX-BRIDGE  %s  |  %s  |  %s", m.client.InstanceID(), m.localRole, m.state)
 	if m.joinCommand != "" && m.localRole == protocol.RoleOrchestrator {
-		header += "\nÚnete desde Windows: " + m.joinCommand
+		header += "\nÚnete desde Windows (PowerShell; pega estas líneas):\n" + m.joinCommand
 	}
 	footer := "Ctrl+Enter/Ctrl+S enviar · Enter nueva línea · PgUp/PgDn scroll · /status · /quit"
 	if m.error != "" {

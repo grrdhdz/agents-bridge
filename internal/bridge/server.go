@@ -18,12 +18,13 @@ import (
 )
 
 var (
-	ErrClosed          = errors.New("bridge instance is closed")
-	ErrAlreadyBound    = errors.New("role is already connected")
-	ErrWorkerConnected = errors.New("cannot rotate pairing while executor is connected")
-	ErrInvalidPairing  = errors.New("invalid or expired pairing token")
-	ErrBufferFull      = errors.New("instance memory limit reached")
-	ErrMessageConflict = errors.New("message_id already exists with different body")
+	ErrClosed           = errors.New("bridge instance is closed")
+	ErrAlreadyBound     = errors.New("role is already connected")
+	ErrWorkerConnected  = errors.New("cannot rotate pairing while executor is connected")
+	ErrInvalidPairing   = errors.New("invalid or expired pairing token")
+	ErrInstanceMismatch = errors.New("instance_id does not match this bridge instance")
+	ErrBufferFull       = errors.New("instance memory limit reached")
+	ErrMessageConflict  = errors.New("message_id already exists with different body")
 )
 
 type Options struct {
@@ -242,7 +243,7 @@ func (s *Server) register(p *peer, hello protocol.Frame) error {
 		return fmt.Errorf("invalid hello")
 	}
 	if hello.InstanceID != s.instanceID {
-		return ErrInvalidPairing
+		return ErrInstanceMismatch
 	}
 
 	s.mu.Lock()
@@ -549,6 +550,8 @@ func errorCode(err error) string {
 	switch {
 	case errors.Is(err, ErrInvalidPairing):
 		return "PAIRING_INVALID"
+	case errors.Is(err, ErrInstanceMismatch):
+		return "INSTANCE_MISMATCH"
 	case errors.Is(err, ErrAlreadyBound):
 		return "ROLE_ALREADY_BOUND"
 	case errors.Is(err, ErrWorkerConnected):

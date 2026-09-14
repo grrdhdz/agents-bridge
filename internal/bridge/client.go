@@ -120,7 +120,11 @@ func (c *Client) connect(ctx context.Context, token string) (protocol.Frame, err
 	}
 	if welcome.Type == protocol.FrameError {
 		_ = conn.Close()
-		return protocol.Frame{}, fmt.Errorf("server rejected connection: %s", welcome.Detail)
+		detail := welcome.Detail
+		if welcome.Code != "" {
+			detail = welcome.Code + ": " + detail
+		}
+		return protocol.Frame{}, fmt.Errorf("server rejected connection: %s", detail)
 	}
 	if welcome.Type != protocol.FrameWelcome || welcome.InstanceID != c.instanceID {
 		_ = conn.Close()

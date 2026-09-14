@@ -353,7 +353,7 @@ func TestServerRejectsCrossInstancePairing(t *testing.T) {
 	if err := dec.Decode(&frame); err != nil {
 		t.Fatal(err)
 	}
-	if frame.Code != "PAIRING_INVALID" {
+	if frame.Code != "INSTANCE_MISMATCH" {
 		t.Fatalf("expected pairing rejection, got %+v", frame)
 	}
 }
@@ -430,6 +430,40 @@ func TestClientQueueSurvivesNetworkGapInMemory(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for queued replay")
+	}
+}
+
+func TestProductionOrderKeepsJoinTokenForFirstWindowsClient(t *testing.T) {
+	s, err := NewServer("127.0.0.1", DefaultOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	// Production prints this token before the Mac owner client dials locally.
+	joinToken := s.JoinToken()
+	owner, _, err := Dial(context.Background(), s.Addr().String(), s.InstanceID(), protocol.RoleOrchestrator, s.OwnerToken())
+	if err != nil {
+		t.Fatalf("Mac owner handshake failed: %v", err)
+	}
+	defer owner.Close()
+	worker, _, err := Dial(context.Background(), s.Addr().String(), s.InstanceID(), protocol.RoleExecutor, joinToken)
+	if err != nil {
+		t.Fatalf("first Windows join rejected after local Mac dial: %v", err)
+	}
+	defer worker.Close()
+}
+
+func TestClientReportsInstanceMismatchSeparately(t *testing.T) {
+	s, err := NewServer("127.0.0.1", DefaultOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	_, _, err = Dial(context.Background(), s.Addr().String(), "different-instance", protocol.RoleExecutor, s.JoinToken())
+	if err == nil || !strings.Contains(err.Error(), "INSTANCE_MISMATCH") {
+		t.Fatalf("expected explicit instance mismatch, got %v", err)
 	}
 }
 

@@ -3,6 +3,8 @@
 El servidor y el orquestador viven en la Mac. Windows solo ejecuta el cliente
 con el comando de unión que imprime la Mac. Instala y conecta la aplicación
 Tailscale en ambos equipos; Windows no necesita el CLI de Tailscale.
+La Mac imprime el comando en varias líneas de PowerShell con backticks de
+continuación; pega todas las líneas para conservar el token completo.
 
 ## Opción reproducible: Go
 
