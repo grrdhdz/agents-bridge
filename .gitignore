@@ -1,0 +1,14 @@
+# Build outputs
+/codex-bridge
+/codex-bridge.exe
+/bin/
+/dist/
+/release/
+*.test
+coverage.out
+
+# Local tooling and operating-system files
+.DS_Store
+.idea/
+.vscode/
+*.swp
