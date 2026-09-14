@@ -72,7 +72,7 @@ func New(options Options) Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return tea.Batch(m.input.Focus(), waitForFrame(m.client), reconnectTick())
 }
 
@@ -91,7 +91,7 @@ func reconnectTick() tea.Cmd {
 	return tea.Tick(2*time.Second, func(time.Time) tea.Msg { return reconnectTickMsg{} })
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case frameMsg:
 		cmds := []tea.Cmd{waitForFrame(m.client)}

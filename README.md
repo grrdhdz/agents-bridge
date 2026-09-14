@@ -38,6 +38,8 @@ go build -o codex-bridge ./cmd/codex-bridge
 GOOS=windows GOARCH=amd64 go build -o codex-bridge.exe ./cmd/codex-bridge
 ```
 
+Comprueba la versión del binario con `codex-bridge --version`.
+
 ## Instalación Windows
 
 La opción reproducible desde código fuente es instalar el paquete del módulo:

@@ -10,6 +10,7 @@ Requiere Go 1.27 o posterior:
 
 ```powershell
 go install github.com/grrdhdz/codex-agents-bridge/cmd/codex-bridge@latest
+codex-bridge.exe --version
 codex-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
 ```
 

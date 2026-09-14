@@ -17,12 +17,18 @@ import (
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
 )
 
-const commandName = "codex-bridge"
+const (
+	commandName = "codex-bridge"
+	appVersion  = "v0.1.1"
+)
 
 func main() {
 	var err error
 	if len(os.Args) > 1 && os.Args[1] == "join" {
 		err = runJoin(os.Args[2:])
+	} else if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
+		fmt.Println(appVersion)
+		return
 	} else if len(os.Args) > 1 && (os.Args[1] == "help" || os.Args[1] == "--help" || os.Args[1] == "-h") {
 		printUsage()
 		return
@@ -72,7 +78,7 @@ func runOrchestrator() error {
 			return fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), token)
 		},
 	})
-	_, err = tea.NewProgram(model).Run()
+	_, err = tea.NewProgram(&model).Run()
 	return err
 }
 
@@ -97,12 +103,13 @@ func runJoin(args []string) error {
 	}
 	defer client.Close()
 	model := tui.New(tui.Options{Client: client, LocalRole: protocol.RoleExecutor})
-	_, err = tea.NewProgram(model).Run()
+	_, err = tea.NewProgram(&model).Run()
 	return err
 }
 
 func printUsage() {
 	fmt.Println("codex-bridge              crea una instancia efímera y TUI de orquestador en Mac")
 	fmt.Println("codex-bridge join ...      une Windows usando el comando impreso por Mac")
+	fmt.Println("codex-bridge --version    muestra la versión")
 	fmt.Println("\nLa instancia, tokens, colas e historial solo viven en RAM.")
 }

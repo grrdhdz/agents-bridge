@@ -5,8 +5,33 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
+
+func TestModelStartsFocusedAndAcceptsImmediateInput(t *testing.T) {
+	model := New(Options{})
+	model.Init()
+
+	updated, _ := model.Update(tea.KeyPressMsg{Text: "x", Code: 'x'})
+	got, ok := updated.(*Model)
+	if !ok {
+		t.Fatalf("expected pointer model after update, got %T", updated)
+	}
+	if !got.input.Focused() {
+		t.Fatal("textarea should be focused after Init")
+	}
+	if got.input.Value() != "x" {
+		t.Fatalf("expected immediate key input to be accepted, got %q", got.input.Value())
+	}
+
+	updated, _ = got.Update(tea.PasteMsg{Content: " línea 1\nlínea 2"})
+	got = updated.(*Model)
+	if got.input.Value() != "x línea 1\nlínea 2" {
+		t.Fatalf("multiline paste was not preserved: %q", got.input.Value())
+	}
+}
 
 func TestRenderMessagesUsesRelativeSenderAndPreservesBody(t *testing.T) {
 	local, err := protocol.NewEnvelope("instance-a", "local", 1, "mac-orchestrator", protocol.RoleOrchestrator, "Mac\nreporte exacto", time.Now())
