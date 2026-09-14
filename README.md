@@ -4,7 +4,7 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión publicada actual es `v0.1.2`.
+La versión publicada actual es `v0.1.3`.
 
 ## Propiedades del MVP
 
@@ -77,12 +77,12 @@ En la Mac del orquestador:
 ./codex-bridge
 ```
 
-La aplicación detecta la IPv4 Tailscale, crea la instancia y muestra un
-comando `codex-bridge join ...` completo. Pega ese comando al agente Windows o
-transfiérelo por el canal que uses para coordinar los agentes.
-En la TUI y en la salida inicial se muestra en varias líneas con continuaciones
-de PowerShell para que el host, la instancia y el token completo no se recorten
-en terminales estrechas; pega todas las líneas juntas en PowerShell.
+La aplicación detecta la IPv4 Tailscale, crea la instancia y copia
+automáticamente el comando completo `codex-bridge join ...` al portapapeles de
+la Mac. Pégalo en Codex o PowerShell para el agente Windows. La salida inicial
+de la terminal conserva el comando completo como fallback seguro si la copia
+falla; no se muestra el token en la vista normal de la TUI. Pulsa `F5` para
+volver a copiarlo. `/pair` genera y copia del mismo modo un comando nuevo.
 
 En Windows:
 
@@ -98,9 +98,13 @@ generar un nuevo token desde Mac con `/pair`.
 
 - `Ctrl+Enter` o `Ctrl+S`: enviar el texto pegado (ambos son atajos de envío).
 - `Enter`: insertar una nueva línea; el pegado multilínea se conserva.
-- `PgUp` / `PgDn`, `Home` / `End`: desplazarse por el historial RAM.
+- `PgUp` / `PgDn`, `Home` / `End`, rueda del mouse o gesto vertical del
+  trackpad: desplazarse por el historial RAM; los párrafos largos se ajustan al
+  ancho disponible.
 - `/status`: estado de conexión y tamaño de la cola temporal.
-- `/pair`: solo en Mac, invalida el token anterior y muestra uno nuevo.
+- `F5`: solo tiene efecto de copia en la TUI de Mac; vuelve a copiar el comando
+  completo de unión sin mostrar sus credenciales.
+- `/pair`: solo en Mac, invalida el token anterior, genera y copia uno nuevo.
 - `/stop`: solo en Mac, cierra la instancia y elimina todo su estado.
 - `/quit` o `Ctrl+C`: cierra la instancia Mac o el cliente Windows.
 

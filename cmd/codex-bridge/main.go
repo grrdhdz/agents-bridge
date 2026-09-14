@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
+	"github.com/grrdhdz/codex-agents-bridge/internal/clipboard"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tailscale"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
@@ -19,7 +20,7 @@ import (
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.1.2"
+	appVersion  = "v0.1.3"
 )
 
 func main() {
@@ -69,13 +70,17 @@ func runOrchestrator() error {
 		Client:      client,
 		LocalRole:   protocol.RoleOrchestrator,
 		JoinCommand: joinCommand,
+		CopyCommand: clipboard.Copy,
 		OnStop:      server.Close,
 		OnPair: func() string {
 			token, tokenErr := server.RegeneratePairingToken()
 			if tokenErr != nil {
 				return "error: " + tokenErr.Error()
 			}
-			return formatPowerShellJoinCommand(fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), token))
+			command := formatPowerShellJoinCommand(fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), token))
+			fmt.Println("Nuevo comando de unión (fallback completo de terminal):")
+			fmt.Println(command)
+			return command
 		},
 	})
 	_, err = tea.NewProgram(&model).Run()

@@ -6,6 +6,10 @@ Tailscale en ambos equipos; Windows no necesita el CLI de Tailscale.
 La Mac imprime el comando en varias líneas de PowerShell con backticks de
 continuación; pega todas las líneas para conservar el token completo.
 
+En ambas TUI, `PgUp`/`PgDn`, `Home`/`End`, la rueda y el gesto vertical del
+trackpad desplazan el historial. La Mac también permite `F5` para volver a
+copiar el comando de unión; Windows no muestra ese control.
+
 ## Opción reproducible: Go
 
 Requiere Go 1.27 o posterior:

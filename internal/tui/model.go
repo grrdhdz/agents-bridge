@@ -20,6 +20,7 @@ type Options struct {
 	Client      *bridge.Client
 	LocalRole   protocol.Role
 	JoinCommand string
+	CopyCommand func(string) error
 	OnStop      func()
 	OnPair      func() string
 }
@@ -31,6 +32,7 @@ type Model struct {
 	client      *bridge.Client
 	localRole   protocol.Role
 	joinCommand string
+	copyCommand func(string) error
 	onStop      func()
 	onPair      func() string
 
@@ -42,6 +44,7 @@ type Model struct {
 	statuses map[string]string
 	state    string
 	error    string
+	copyInfo string
 	width    int
 	height   int
 }
@@ -56,10 +59,13 @@ func New(options Options) Model {
 	input.ShowLineNumbers = false
 
 	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(18))
+	vp.SoftWrap = true
+	vp.MouseWheelEnabled = true
 	return Model{
 		client:      options.Client,
 		localRole:   options.LocalRole,
 		joinCommand: options.JoinCommand,
+		copyCommand: options.CopyCommand,
 		onStop:      options.OnStop,
 		onPair:      options.OnPair,
 		input:       input,
@@ -73,7 +79,25 @@ func New(options Options) Model {
 }
 
 func (m *Model) Init() tea.Cmd {
+	if m.localRole == protocol.RoleOrchestrator && m.joinCommand != "" {
+		m.copyJoinCommand()
+	}
 	return tea.Batch(m.input.Focus(), waitForFrame(m.client), reconnectTick())
+}
+
+func (m *Model) copyJoinCommand() {
+	if m.localRole != protocol.RoleOrchestrator || m.joinCommand == "" {
+		return
+	}
+	if m.copyCommand == nil {
+		m.copyInfo = "No se pudo copiar automáticamente; pega el comando completo de la salida de la terminal. F5 reintenta."
+		return
+	}
+	if err := m.copyCommand(m.joinCommand); err != nil {
+		m.copyInfo = fmt.Sprintf("No se pudo copiar automáticamente (%v); usa el fallback completo de la salida de la terminal. F5 reintenta.", err)
+		return
+	}
+	m.copyInfo = "Comando Windows copiado. Pégalo en Codex o PowerShell; F5 vuelve a copiar."
 }
 
 func waitForFrame(client *bridge.Client) tea.Cmd {
@@ -115,6 +139,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.resize()
 		return m, nil
+	case tea.MouseWheelMsg:
+		var viewportCmd tea.Cmd
+		m.viewport, viewportCmd = m.viewport.Update(msg)
+		return m, viewportCmd
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "ctrl+q":
@@ -125,6 +153,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.state == "closed" {
 				return m, tea.Quit
 			}
+			return m, nil
+		case "f5":
+			m.copyJoinCommand()
 			return m, nil
 		case "pgup":
 			m.viewport.PageUp()
@@ -164,7 +195,19 @@ func (m *Model) resize() {
 	}
 	m.input.SetHeight(inputHeight)
 	m.viewport.SetWidth(m.width)
-	m.viewport.SetHeight(m.height - inputHeight - 5)
+	headerLines := 1
+	if m.localRole == protocol.RoleOrchestrator && m.joinCommand != "" {
+		headerLines++
+	}
+	footerLines := 1
+	if m.error != "" {
+		footerLines++
+	}
+	viewportHeight := m.height - inputHeight - headerLines - footerLines - 2
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+	m.viewport.SetHeight(viewportHeight)
 	m.refreshViewport(false)
 }
 
@@ -272,7 +315,9 @@ func (m *Model) command(command string) {
 			return
 		}
 		m.joinCommand = command
-		m.error = "nuevo comando de unión generado; cópialo al ejecutor"
+		m.copyJoinCommand()
+		m.error = "nuevo comando generado; ya fue copiado para Codex/PowerShell"
+		m.resize()
 	case "/stop":
 		if m.localRole != protocol.RoleOrchestrator || m.onStop == nil {
 			m.error = "STOP_FORBIDDEN: solo Mac puede cerrar la instancia"
@@ -335,11 +380,19 @@ func renderMessages(messages []protocol.Envelope, statuses map[string]string, lo
 func (m Model) View() tea.View {
 	header := fmt.Sprintf("CODEX-BRIDGE  %s  |  %s  |  %s", m.client.InstanceID(), m.localRole, m.state)
 	if m.joinCommand != "" && m.localRole == protocol.RoleOrchestrator {
-		header += "\nÚnete desde Windows (PowerShell; pega estas líneas):\n" + m.joinCommand
+		if m.copyInfo == "" {
+			m.copyInfo = "Comando Windows listo; F5 lo copia al portapapeles."
+		}
+		header += "\n" + m.copyInfo
 	}
-	footer := "Ctrl+Enter/Ctrl+S enviar · Enter nueva línea · PgUp/PgDn scroll · /status · /quit"
+	footer := "Ctrl+Enter/Ctrl+S enviar · Enter nueva línea · PgUp/PgDn/Home/End + rueda/trackpad scroll · /status · /quit"
+	if m.localRole == protocol.RoleOrchestrator && m.joinCommand != "" {
+		footer += " · F5 copiar"
+	}
 	if m.error != "" {
 		footer += "\n" + m.error
 	}
-	return tea.NewView(header + "\n\n" + m.viewport.View() + "\n\n" + footer + "\n" + m.input.View())
+	view := tea.NewView(header + "\n\n" + m.viewport.View() + "\n\n" + footer + "\n" + m.input.View())
+	view.MouseMode = tea.MouseModeCellMotion
+	return view
 }
