@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
 	"github.com/grrdhdz/codex-agents-bridge/internal/clipboard"
+	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tailscale"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
@@ -20,12 +23,23 @@ import (
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.1.3"
+	appVersion  = "v0.2.0"
 )
 
 func main() {
 	var err error
-	if len(os.Args) > 1 && os.Args[1] == "join" {
+	if len(os.Args) > 1 && os.Args[1] == "ctl" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		cwd, _ := os.Getwd()
+		code := runCtl(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr, cwd: cwd})
+		stop()
+		os.Exit(code)
+	} else if len(os.Args) > 1 && os.Args[1] == "local" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		cwd, _ := os.Getwd()
+		err = runLocal(ctx, os.Stdout, "", cwd)
+		stop()
+	} else if len(os.Args) > 1 && os.Args[1] == "join" {
 		err = runJoin(os.Args[2:])
 	} else if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
 		fmt.Println(appVersion)
@@ -65,6 +79,11 @@ func runOrchestrator() error {
 		return fmt.Errorf("conectar TUI local: %w", err)
 	}
 	defer client.Close()
+	if endpoint, ctlErr := control.Start(client, protocol.RoleOrchestrator, ""); ctlErr != nil {
+		fmt.Println("ctl no disponible:", ctlErr)
+	} else {
+		defer endpoint.Close()
+	}
 
 	model := tui.New(tui.Options{
 		Client:      client,
@@ -107,6 +126,11 @@ func runJoin(args []string) error {
 		return err
 	}
 	defer client.Close()
+	if endpoint, ctlErr := control.Start(client, protocol.RoleExecutor, ""); ctlErr != nil {
+		fmt.Fprintln(os.Stderr, "ctl no disponible:", ctlErr)
+	} else {
+		defer endpoint.Close()
+	}
 	model := tui.New(tui.Options{Client: client, LocalRole: protocol.RoleExecutor})
 	_, err = tea.NewProgram(&model).Run()
 	return err
@@ -115,6 +139,8 @@ func runJoin(args []string) error {
 func printUsage() {
 	fmt.Println("codex-bridge              crea una instancia efímera y TUI de orquestador en Mac")
 	fmt.Println("codex-bridge join ...      une Windows usando el comando impreso por Mac")
+	fmt.Println("codex-bridge local        instancia local sin TUI ni Tailscale para dos agentes")
+	fmt.Println("codex-bridge ctl list|read|watch|send|wait [--role orchestrator|executor] ...")
 	fmt.Println("codex-bridge --version    muestra la versión")
 	fmt.Println("\nLa instancia, tokens, colas e historial solo viven en RAM.")
 }

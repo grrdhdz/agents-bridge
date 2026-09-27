@@ -36,13 +36,23 @@ type Client struct {
 	clientSeq     uint64
 	lastServerSeq uint64
 	confirmedSeq  map[uint64]bool
-	closed        bool
-	pending       map[string]protocol.Envelope
-	pendingOrder  []string
-	pendingBytes  int
-	closedCh      chan struct{}
+	// ackedPending tracks remote (message_id -> server_seq) pairs this client
+	// already sent an ACK for but has not yet seen ack_confirmed. The server
+	// replays an unconfirmed remote message on every reconnect; if the
+	// connection drops between our ACK and the server's confirmation, the
+	// EventHub dedupes the replayed FrameMessage and no new "received" event
+	// fires, so nothing would re-ACK it without this.
+	ackedPending map[string]uint64
+	closed       bool
+	pending      map[string]protocol.Envelope
+	pendingOrder []string
+	pendingBytes int
+	closedCh     chan struct{}
+	// publishMu makes the message_id idempotency check and its registration
+	// one step, so concurrent retries cannot fork one report into two.
+	publishMu sync.Mutex
 
-	events chan protocol.Frame
+	hub *EventHub
 }
 
 func Dial(ctx context.Context, endpoint, instanceID string, role protocol.Role, token string) (*Client, protocol.Frame, error) {
@@ -52,10 +62,11 @@ func Dial(ctx context.Context, endpoint, instanceID string, role protocol.Role, 
 		role:         role,
 		senderID:     protocol.ExpectedSenderID(role),
 		initialToken: token,
-		events:       make(chan protocol.Frame, protocol.MaxHistoryMessages+clientMaxQueueMessages+32),
 		pending:      make(map[string]protocol.Envelope),
 		confirmedSeq: make(map[uint64]bool),
+		ackedPending: make(map[string]uint64),
 		closedCh:     make(chan struct{}),
+		hub:          NewEventHub(DefaultEventHubOptions()),
 	}
 	welcome, err := c.connect(ctx, token)
 	if err != nil {
@@ -64,10 +75,20 @@ func Dial(ctx context.Context, endpoint, instanceID string, role protocol.Role, 
 	return c, welcome, nil
 }
 
-func (c *Client) Events() <-chan protocol.Frame { return c.events }
+// EventHub is the single multiplexed event source shared by the TUI and local
+// control subscribers. A subscriber never steals frames from another consumer.
+func (c *Client) EventHub() *EventHub { return c.hub }
+
+func (c *Client) Subscribe(afterEventSeq uint64) (*Subscription, error) {
+	return c.hub.Subscribe(afterEventSeq)
+}
+
+func (c *Client) ReadEvents(afterEventSeq uint64, limit int) ([]Event, uint64, bool, error) {
+	return c.hub.Read(afterEventSeq, limit)
+}
 
 // Done closes when the client is explicitly closed, allowing UI consumers to
-// stop waiting without leaving a goroutine blocked on Events.
+// stop waiting without leaving a goroutine blocked on a subscription.
 func (c *Client) Done() <-chan struct{} { return c.closedCh }
 
 func (c *Client) Role() protocol.Role { return c.role }
@@ -182,8 +203,19 @@ func (c *Client) readLoop(scanner *bufio.Scanner, conn net.Conn) {
 			// are rendered locally without sending an ACK to the server.
 			c.confirmServerSeq(frame.Envelope.ServerSeq)
 		}
+		if frame.Type == protocol.FrameMessage && frame.Envelope != nil && frame.Envelope.SenderRole != c.role {
+			// A replayed remote message we already ACKed (its ack_confirmed was
+			// lost with the previous connection) gets re-ACKed automatically, so
+			// the sender still reaches "delivered" without a second manual Ack.
+			c.resendAckIfPending(conn, *frame.Envelope)
+		}
 		if (frame.Type == protocol.FrameAccepted || frame.Type == protocol.FrameAckConfirmed) && frame.ServerSeq > 0 {
 			c.confirmServerSeq(frame.ServerSeq)
+		}
+		if frame.Type == protocol.FrameAckConfirmed {
+			c.mu.Lock()
+			delete(c.ackedPending, frame.MessageID)
+			c.mu.Unlock()
 		}
 		if frame.Type == protocol.FrameAccepted {
 			c.clearPending(frame.MessageID)
@@ -245,18 +277,10 @@ func (c *Client) heartbeatLoop(conn net.Conn) {
 	}
 }
 
+// emit never blocks the TCP reader: the EventHub fans out through bounded,
+// per-subscriber queues instead of one shared channel.
 func (c *Client) emit(frame protocol.Frame) {
-	if frame.Type == protocol.FrameTransportError {
-		select {
-		case c.events <- frame:
-		default:
-		}
-		return
-	}
-	select {
-	case c.events <- frame:
-	case <-c.closedCh:
-	}
+	c.hub.PublishFrame(frame)
 }
 
 func (c *Client) Reconnect(ctx context.Context) error {
@@ -279,6 +303,28 @@ func (c *Client) Reconnect(ctx context.Context) error {
 }
 
 func (c *Client) Publish(body string) (protocol.Envelope, error) {
+	messageID, err := randomToken(16)
+	if err != nil {
+		return protocol.Envelope{}, err
+	}
+	return c.PublishWithID(messageID, body)
+}
+
+// PublishWithID is the idempotent local-control publishing path. Reusing a
+// message_id with the same body returns the original envelope; changing the
+// body is rejected so retries cannot silently fork a report.
+func (c *Client) PublishWithID(messageID, body string) (protocol.Envelope, error) {
+	if messageID == "" {
+		return protocol.Envelope{}, errors.New("message_id is required")
+	}
+	c.publishMu.Lock()
+	defer c.publishMu.Unlock()
+	if existing, ok := c.hub.Envelope(messageID); ok {
+		if existing.Body == body {
+			return existing, nil
+		}
+		return protocol.Envelope{}, errors.New("message_id already exists with different body")
+	}
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -288,10 +334,6 @@ func (c *Client) Publish(body string) (protocol.Envelope, error) {
 	seq := c.clientSeq
 	conn := c.conn
 	c.mu.Unlock()
-	messageID, err := randomToken(16)
-	if err != nil {
-		return protocol.Envelope{}, err
-	}
 	e, err := protocol.NewEnvelope(c.instanceID, messageID, seq, c.senderID, c.role, body, time.Now())
 	if err != nil {
 		return protocol.Envelope{}, err
@@ -305,6 +347,8 @@ func (c *Client) Publish(body string) (protocol.Envelope, error) {
 	c.pendingOrder = append(c.pendingOrder, e.MessageID)
 	c.pendingBytes += len([]byte(body))
 	c.mu.Unlock()
+	c.hub.RememberEnvelope(e)
+	c.hub.PublishFrame(protocol.Frame{Type: protocol.FrameMessage, InstanceID: c.instanceID, Envelope: &e})
 	if conn != nil {
 		_ = c.write(protocol.Frame{Type: protocol.FramePublish, InstanceID: c.instanceID, Envelope: &e})
 	}
@@ -352,7 +396,26 @@ func (c *Client) QueueStats() (messages int, bytes int) {
 }
 
 func (c *Client) Ack(messageID string, serverSeq uint64) error {
+	c.mu.Lock()
+	if c.ackedPending == nil {
+		c.ackedPending = make(map[string]uint64)
+	}
+	c.ackedPending[messageID] = serverSeq
+	c.mu.Unlock()
 	return c.write(protocol.Frame{Type: protocol.FrameAck, InstanceID: c.instanceID, MessageID: messageID, ServerSeq: serverSeq})
+}
+
+// resendAckIfPending re-sends the ACK for a remote message this client
+// already acknowledged but has not yet seen confirmed, matching it strictly
+// on (message_id, server_seq) so an unrelated message never gets ACKed.
+func (c *Client) resendAckIfPending(conn net.Conn, e protocol.Envelope) {
+	c.mu.Lock()
+	seq, pending := c.ackedPending[e.MessageID]
+	c.mu.Unlock()
+	if !pending || seq != e.ServerSeq {
+		return
+	}
+	_ = c.writeOnConn(conn, protocol.Frame{Type: protocol.FrameAck, InstanceID: c.instanceID, MessageID: e.MessageID, ServerSeq: seq})
 }
 
 func (c *Client) write(frame protocol.Frame) error {
@@ -396,4 +459,5 @@ func (c *Client) Close() {
 	if conn != nil {
 		_ = conn.Close()
 	}
+	c.hub.Close()
 }

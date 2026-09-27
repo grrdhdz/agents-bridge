@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -415,21 +416,11 @@ func TestClientQueueSurvivesNetworkGapInMemory(t *testing.T) {
 	}
 	defer worker.Close()
 	_ = welcome
-	select {
-	case frame := <-worker.Events():
-		if frame.Type != protocol.FrameWelcome {
-			t.Fatalf("expected welcome, got %+v", frame)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for welcome")
+	if frame := nextClientEvent(t, worker); frame.Type != protocol.FrameWelcome {
+		t.Fatalf("expected welcome, got %+v", frame)
 	}
-	select {
-	case frame := <-worker.Events():
-		if frame.Type != protocol.FrameMessage || frame.Envelope.Body != "queued before peer joins" {
-			t.Fatalf("expected queued replay, got %+v", frame)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for queued replay")
+	if frame := nextClientEvent(t, worker); frame.Type != protocol.FrameMessage || frame.Envelope.Body != "queued before peer joins" {
+		t.Fatalf("expected queued replay, got %+v", frame)
 	}
 }
 
@@ -467,14 +458,34 @@ func TestClientReportsInstanceMismatchSeparately(t *testing.T) {
 	}
 }
 
+var testSubscriptions sync.Map // *Client -> *Subscription
+
+// nextClientEvent returns the next frame the server sent to c, read from the
+// client's EventHub. Locally queued own messages (server_seq 0) are skipped
+// because they never crossed the wire.
 func nextClientEvent(t *testing.T, c *Client) protocol.Frame {
 	t.Helper()
-	select {
-	case frame := <-c.Events():
-		return frame
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for client event")
-		return protocol.Frame{}
+	value, ok := testSubscriptions.Load(c)
+	if !ok {
+		sub, err := c.Subscribe(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(sub.Close)
+		value, _ = testSubscriptions.LoadOrStore(c, sub)
+	}
+	sub := value.(*Subscription)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	for {
+		event, err := sub.Next(ctx)
+		if err != nil {
+			t.Fatalf("timed out waiting for client event: %v", err)
+		}
+		if event.Kind == EventMessage && event.Envelope != nil && event.Envelope.SenderRole == c.Role() && event.ServerSeq == 0 {
+			continue
+		}
+		return event.Frame
 	}
 }
 

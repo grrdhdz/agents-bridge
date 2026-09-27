@@ -3,6 +3,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -25,7 +26,7 @@ type Options struct {
 	OnPair      func() string
 }
 
-type frameMsg struct{ frame protocol.Frame }
+type eventMsg struct{ event bridge.Event }
 type reconnectTickMsg struct{}
 
 type Model struct {
@@ -35,6 +36,7 @@ type Model struct {
 	copyCommand func(string) error
 	onStop      func()
 	onPair      func() string
+	events      *bridge.Subscription
 
 	input    textarea.Model
 	viewport viewport.Model
@@ -82,7 +84,15 @@ func (m *Model) Init() tea.Cmd {
 	if m.localRole == protocol.RoleOrchestrator && m.joinCommand != "" {
 		m.copyJoinCommand()
 	}
-	return tea.Batch(m.input.Focus(), waitForFrame(m.client), reconnectTick())
+	cmds := []tea.Cmd{m.input.Focus(), reconnectTick()}
+	if m.client != nil {
+		sub, err := m.client.Subscribe(0)
+		if err == nil {
+			m.events = sub
+			cmds = append(cmds, waitForEvent(sub))
+		}
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m *Model) copyJoinCommand() {
@@ -100,14 +110,20 @@ func (m *Model) copyJoinCommand() {
 	m.copyInfo = "Comando Windows copiado. Pégalo en Codex o PowerShell; F5 vuelve a copiar."
 }
 
-func waitForFrame(client *bridge.Client) tea.Cmd {
+func waitForEvent(sub *bridge.Subscription) tea.Cmd {
 	return func() tea.Msg {
-		select {
-		case frame := <-client.Events():
-			return frameMsg{frame: frame}
-		case <-client.Done():
-			return frameMsg{frame: protocol.Frame{Type: protocol.FrameClose, State: protocol.StateClosed, Detail: "cliente cerrado"}}
+		if sub == nil {
+			return nil
 		}
+		event, err := sub.Next(context.Background())
+		if err != nil {
+			frameType := protocol.FrameTransportError
+			if errors.Is(err, bridge.ErrClosed) {
+				frameType = protocol.FrameClose
+			}
+			return eventMsg{event: bridge.Event{Kind: bridge.EventLifecycle, State: "closed", Detail: err.Error(), Frame: protocol.Frame{Type: frameType, Detail: err.Error()}}}
+		}
+		return eventMsg{event: event}
 	}
 }
 
@@ -117,13 +133,15 @@ func reconnectTick() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case frameMsg:
-		cmds := []tea.Cmd{waitForFrame(m.client)}
-		m.handleFrame(msg.frame)
-		if m.state == "closed" {
+	case eventMsg:
+		if m.events == nil {
+			return m, nil
+		}
+		m.handleFrame(msg.event.Frame)
+		if msg.event.Frame.Type == protocol.FrameClose || m.state == "closed" {
 			return m, tea.Quit
 		}
-		return m, tea.Batch(cmds...)
+		return m, waitForEvent(m.events)
 	case reconnectTickMsg:
 		if m.state != "closed" && !m.client.Connected() {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -222,7 +240,13 @@ func (m *Model) handleFrame(frame protocol.Frame) {
 		}
 		isOwn := frame.Envelope.SenderRole == m.localRole
 		if m.appendMessage(*frame.Envelope) || isOwn {
-			if isOwn {
+			if isOwn && frame.Envelope.ServerSeq == 0 {
+				// A local publish (TUI or ctl) is echoed by the EventHub before the
+				// server accepts it; it stays queued until FrameAccepted arrives.
+				if _, known := m.statuses[frame.Envelope.MessageID]; !known {
+					m.statuses[frame.Envelope.MessageID] = "queued-ram"
+				}
+			} else if isOwn {
 				m.statuses[frame.Envelope.MessageID] = "accepted"
 			} else {
 				m.statuses[frame.Envelope.MessageID] = "received"

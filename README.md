@@ -4,7 +4,8 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión publicada actual es `v0.1.3`.
+La versión publicada actual es `v0.1.3`; `v0.2.0` (en desarrollo) añade el modo
+local entre agentes del mismo equipo y el control no gráfico `ctl`.
 
 ## Propiedades del MVP
 
@@ -111,6 +112,40 @@ generar un nuevo token desde Mac con `/pair`.
 Los mensajes propios aparecen a la derecha y los remotos a la izquierda. La
 orientación se calcula con `sender_role`; no se almacenan mensajes distintos
 por equipo.
+
+## Modo local entre agentes (v0.2.0)
+
+Para dos agentes en el mismo equipo (por ejemplo Claude Code como orquestador y
+un agente de la app Codex como ejecutor) no hace falta Tailscale, TUI ni
+emparejamiento:
+
+```sh
+codex-bridge local
+```
+
+El proceso escucha solo en `127.0.0.1`, aloja ambos roles e imprime una línea
+`{"type":"ready","instance_id":...}` sin secretos. Se cierra con `Ctrl+C` o
+`SIGTERM` y borra todo su estado.
+
+Cada agente usa `ctl` con su rol:
+
+```sh
+printf 'TAREA\n...\n' | codex-bridge ctl send --role orchestrator --body-file -
+codex-bridge ctl wait --role executor --timeout 5m --format text
+codex-bridge ctl read --role orchestrator --after-event-seq 0
+codex-bridge ctl watch --role executor
+codex-bridge ctl list
+```
+
+`ctl wait` devuelve el siguiente mensaje del otro rol y lo confirma (el emisor
+lo ve `delivered`) solo después de entregarlo; si el comando se corta antes, el
+mensaje se vuelve a entregar. Los modos con TUI también publican su descriptor,
+así que `ctl` funciona igual en Mac y Windows.
+
+El flujo completo para agentes está en la skill
+[`.agents/skills/codex-bridge`](.agents/skills/codex-bridge/SKILL.md) y el
+diseño en
+[`docs/superpowers/specs/2026-09-27-local-agents-design.md`](docs/superpowers/specs/2026-09-27-local-agents-design.md).
 
 ## Protocolo y límites
 
