@@ -39,8 +39,12 @@ printf 'TAREA\nDescripción…\n' | codex-bridge ctl send --role orchestrator --
 1. Arranca el puente en segundo plano y guarda el `instance_id` de la línea
    `{"type":"ready",...}`:
    `codex-bridge local`
-2. Pide al usuario que active al ejecutor con: "usa la skill codex-bridge como
-   ejecutor".
+2. Pide al usuario el deeplink del chat del ejecutor en la app de Codex
+   (en la app: copiar enlace del chat) y ábrelo con el prompt ya escrito:
+   `codex-bridge codex open --thread '<deeplink>'`. Avisa al usuario de que
+   debe pulsar Enter en Codex; el comando no envía el mensaje por sí solo.
+   Si el usuario no tiene ese deeplink a mano, pídele que active al ejecutor
+   manualmente con: "usa la skill codex-bridge como ejecutor".
 3. Envía `TAREA` con `ctl send --role orchestrator`.
 4. Espera la respuesta sin bloquear tu sesión: ejecuta en segundo plano
    `codex-bridge ctl wait --role orchestrator --timeout 30m --format text` y

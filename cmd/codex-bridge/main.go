@@ -39,6 +39,11 @@ func main() {
 		cwd, _ := os.Getwd()
 		err = runLocal(ctx, os.Stdout, "", cwd)
 		stop()
+	} else if len(os.Args) > 1 && os.Args[1] == "codex" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		code := runCodex(ctx, os.Args[2:], codexEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr, codexHome: resolveCodexHome()})
+		stop()
+		os.Exit(code)
 	} else if len(os.Args) > 1 && os.Args[1] == "join" {
 		err = runJoin(os.Args[2:])
 	} else if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
@@ -141,6 +146,8 @@ func printUsage() {
 	fmt.Println("codex-bridge join ...      une Windows usando el comando impreso por Mac")
 	fmt.Println("codex-bridge local        instancia local sin TUI ni Tailscale para dos agentes")
 	fmt.Println("codex-bridge ctl list|read|watch|send|wait [--role orchestrator|executor] ...")
+	fmt.Println("codex-bridge codex open --thread <deeplink|id> [--prompt-file FILE|-]")
+	fmt.Println("                          abre el chat del ejecutor en la app de Codex con el prompt escrito")
 	fmt.Println("codex-bridge --version    muestra la versión")
 	fmt.Println("\nLa instancia, tokens, colas e historial solo viven en RAM.")
 }

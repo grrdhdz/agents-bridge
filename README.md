@@ -142,6 +142,13 @@ lo ve `delivered`) solo después de entregarlo; si el comando se corta antes, el
 mensaje se vuelve a entregar. Los modos con TUI también publican su descriptor,
 así que `ctl` funciona igual en Mac y Windows.
 
+Cuando el ejecutor es un agente de la app de Codex, el orquestador puede abrir
+su chat con el prompt ya escrito (el usuario pulsa Enter):
+
+```sh
+codex-bridge codex open --thread 'codex://threads/<id>' --prompt-file -
+```
+
 El flujo completo para agentes está en la skill
 [`.agents/skills/codex-bridge`](.agents/skills/codex-bridge/SKILL.md) y el
 diseño en

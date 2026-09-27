@@ -34,9 +34,9 @@ const (
 
 func exitCodeFor(code string) int {
 	switch code {
-	case "INVALID_JSON", "INVALID_REQUEST_ID", "INVALID_METHOD", "MESSAGE_INVALID", "INSTANCE_AMBIGUOUS", "USAGE":
+	case "INVALID_JSON", "INVALID_REQUEST_ID", "INVALID_METHOD", "MESSAGE_INVALID", "INSTANCE_AMBIGUOUS", "USAGE", "THREAD_INVALID":
 		return exitUsage
-	case "INSTANCE_NOT_FOUND", "INSTANCE_CLOSED":
+	case "INSTANCE_NOT_FOUND", "INSTANCE_CLOSED", "THREAD_NOT_FOUND":
 		return exitNotFound
 	case "UNAUTHORIZED":
 		return exitUnauthorized
@@ -74,7 +74,13 @@ func failure(code, format string, args ...any) *ctlFailure {
 // runCtl executes one ctl operation. Successful records go to stdout as JSONL
 // (or text for wait --format text); every error is one JSONL record on stderr.
 func runCtl(ctx context.Context, args []string, env ctlEnv) int {
-	err := dispatchCtl(ctx, args, env)
+	return reportFailure(dispatchCtl(ctx, args, env), env.stderr)
+}
+
+// reportFailure turns a dispatch error into the shared JSONL-on-stderr error
+// record and matching exit code (or exitOK when err is nil). Both ctl and
+// codex operations share this so their error reporting never drifts apart.
+func reportFailure(err error, stderr io.Writer) int {
 	if err == nil {
 		return exitOK
 	}
@@ -83,7 +89,7 @@ func runCtl(ctx context.Context, args []string, env ctlEnv) int {
 		f = &ctlFailure{code: "INTERNAL", message: err.Error()}
 	}
 	record, _ := json.Marshal(map[string]any{"v": 1, "type": "error", "ok": false, "code": f.code, "message": f.message})
-	fmt.Fprintln(env.stderr, string(record))
+	fmt.Fprintln(stderr, string(record))
 	return exitCodeFor(f.code)
 }
 
