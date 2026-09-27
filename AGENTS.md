@@ -78,6 +78,16 @@ symlink a `.agents/skills` para que Claude Code las cargue.
 - `codex-bridge` (en este repo) — cómo dos agentes se comunican por el puente
   local como orquestador o ejecutor.
 
+## Procesos y búsquedas
+
+- Nunca busques en todo el disco (`find /`, `bfs /`, `grep -r /`, etc.).
+  Limita las búsquedas al repositorio o a rutas concretas, por ejemplo el caché
+  de módulos de Go: `$(go env GOMODCACHE)`. Para ubicar el código de una
+  dependencia usa `go list -m -f '{{.Dir}}' <módulo>`.
+- No dejes procesos en segundo plano al terminar una tarea: cierra lo que
+  lances (puentes con `codex-bridge stop --instance-id`, esperas `ctl wait`,
+  servidores de prueba).
+
 ## Flujo de trabajo
 
 - Cambios pequeños y bien especificados: implementar directamente con pruebas.
