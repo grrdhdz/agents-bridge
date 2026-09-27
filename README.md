@@ -127,13 +127,15 @@ El proceso escucha solo en `127.0.0.1`, aloja ambos roles e imprime una línea
 `{"type":"ready","instance_id":...}` sin secretos. Se cierra con `Ctrl+C` o
 `SIGTERM` y borra todo su estado.
 
-Cada agente usa `ctl` con su rol:
+Cada agente usa `ctl` con su `instance_id` (de la línea `ready`) y su rol; el
+usuario puede tener varios puentes a la vez, así que `--instance-id` es
+obligatorio en todo comando salvo `ctl list`:
 
 ```sh
-printf 'TAREA\n...\n' | codex-bridge ctl send --role orchestrator --body-file -
-codex-bridge ctl wait --role executor --timeout 5m --format text
-codex-bridge ctl read --role orchestrator --after-event-seq 0
-codex-bridge ctl watch --role executor
+printf 'TAREA\n...\n' | codex-bridge ctl send --instance-id <id> --role orchestrator --body-file -
+codex-bridge ctl wait --instance-id <id> --role executor --timeout 5m --format text
+codex-bridge ctl read --instance-id <id> --role orchestrator --after-event-seq 0
+codex-bridge ctl watch --instance-id <id> --role executor
 codex-bridge ctl list
 ```
 
@@ -146,7 +148,7 @@ Cuando el ejecutor es un agente de la app de Codex, el orquestador puede abrir
 su chat con el prompt ya escrito (el usuario pulsa Enter):
 
 ```sh
-codex-bridge codex open --thread 'codex://threads/<id>' --prompt-file -
+codex-bridge codex open --thread 'codex://threads/<id>' --instance-id <id> --prompt-file -
 ```
 
 El flujo completo para agentes está en la skill

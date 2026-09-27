@@ -238,3 +238,80 @@ Verificación manual de extremo a extremo: Claude arranca `local`, envía
     internal/tui/model.go               solo EventHub; ACK al mostrar
     .agents/skills/codex-bridge/SKILL.md
     README.md                           modo local y ctl
+
+## 13. Enmienda (2026-09-27): instance_id obligatorio
+
+Motivación: el usuario puede tener varios puentes a la vez, uno por proyecto,
+cada uno con su propio chat de Codex. El `instance_id` debe acompañar siempre
+a comandos, mensajes y activación; nunca se deduce de la instancia actual ni
+del directorio de trabajo. Esta enmienda deja sin efecto el §5 (Selección de
+instancia) en la parte que usaba `cwd` como filtro, y sustituye ese apartado
+por lo siguiente.
+
+**Selección de instancia (reemplaza el §5).** `SelectDescriptor` ya no recibe
+ni usa `cwd`; filtra únicamente por `instance_id` (obligatorio en el llamador)
+y, si se indica, por `--role`:
+
+1. Con cero descriptores para ese `instance_id` (con el rol pedido, si lo
+   hay): `INSTANCE_NOT_FOUND` (salida 3).
+2. Con exactamente uno: se usa.
+3. Con más de uno (mismo `instance_id`, sin `--role`, y ambos roles
+   publicados): `INSTANCE_AMBIGUOUS` (salida 2).
+
+`ctlEnv` pierde el campo `cwd` y `main.go` deja de llamar a `os.Getwd()` para
+`ctl` (lo sigue haciendo para `local`, que solo usa `cwd` como metadato
+informativo del descriptor, no para seleccionarlo).
+
+1. **`ctl` exige `--instance-id`.** `read`, `watch`, `send` y `wait` fallan
+   con `USAGE` (salida 2) y el mensaje `--instance-id is required` si se
+   omite, antes de intentar ninguna selección. `ctl list` no cambia: sigue sin
+   necesitarlo, porque lista todas las instancias vivas del usuario.
+
+2. **Endpoint inalcanzable es un caso distinto de instancia cerrada.** En
+   `request()` (`cmd/codex-bridge/ctl.go`), si `control.Do` falla y el
+   contexto no está cancelado, el error ya no es `INSTANCE_NOT_FOUND`: es un
+   código nuevo, `CONTROL_UNREACHABLE` (salida 8), con un mensaje que indica
+   que puede deberse a un sandbox sin acceso a loopback (p. ej. Codex en
+   `workspace-write`) y que el comando debe repetirse fuera de él. Esto separa
+   dos situaciones que antes compartían salida 3: el descriptor ya no existe
+   (`INSTANCE_NOT_FOUND`/`INSTANCE_CLOSED`, el puente terminó de verdad) frente
+   a un descriptor que sigue vivo pero el proceso actual no puede alcanzar su
+   `control_url` loopback (`CONTROL_UNREACHABLE`, reintentar fuera del
+   sandbox).
+
+3. **Cabecera de `ctl wait --format text` incluye la instancia.** Para no
+   confundir la salida de dos puentes distintos en una misma terminal o log:
+
+       --- codex-bridge instance=<instance_id> message_id=<id> from=<rol> event_seq=<n>
+       <cuerpo>
+
+   y para timeout:
+
+       --- codex-bridge instance=<instance_id> timeout
+
+4. **`codex open` exige `--instance-id`.** Falla con `USAGE` (salida 2) si se
+   omite. Con `--instance-id` presente, valida con
+   `control.SelectDescriptor(root, id, protocol.RoleExecutor)` que existe una
+   instancia viva con rol ejecutor bajo ese id; si no, `INSTANCE_NOT_FOUND`
+   (salida 3) — igual que si el ejecutor nunca se hubiera levantado.
+   `codexEnv` gana un campo `root` (el mismo mecanismo de override de
+   directorio de descriptores que ya usan `ctlEnv` y `runLocal`; cadena vacía
+   en producción). El prompt escrito en el deeplink es siempre la línea
+   `usa la skill codex-bridge como ejecutor con --instance-id <id>`; con
+   `--prompt-file`, su contenido se añade después de una línea en blanco. El
+   límite de 8 KiB (`maxCodexOpenPromptBytes`) se aplica al prompt combinado,
+   no solo al archivo.
+
+Pruebas añadidas (TDD, cada una se confirmó en rojo contra el código sin la
+enmienda antes de implementarla): selección sin `cwd`
+(`internal/control/control_test.go`); `--instance-id` ausente en `read`,
+`watch`, `send` y `wait` (`cmd/codex-bridge/local_test.go`);
+`CONTROL_UNREACHABLE` con un descriptor vivo cuyo `control_url` apunta a un
+puerto loopback cerrado; cabecera de texto con `instance=<id>` en mensaje y en
+timeout; `codex open` sin `--instance-id` (uso), con instancia inexistente
+(`INSTANCE_NOT_FOUND`) y con prompt que contiene el `instance_id`
+(`cmd/codex-bridge/codex_test.go`).
+
+Verificación: `gofmt -l .` vacío, `go vet ./...`, `go test -race -count=1
+./...`, y builds darwin/arm64 y `GOOS=windows GOARCH=amd64` sobre
+`./cmd/codex-bridge`.

@@ -16,12 +16,16 @@ import (
 	"runtime"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/grrdhdz/codex-agents-bridge/internal/control"
+	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
 
-// defaultCodexOpenPrompt is written into the Codex message box when the
-// caller does not supply --prompt-file: it points the executor at the same
-// skill this bridge already documents.
-const defaultCodexOpenPrompt = "usa la skill codex-bridge como ejecutor"
+// codexOpenPromptPrefix is always written into the Codex message box, with
+// the target instance_id appended: it points the executor at the same skill
+// this bridge already documents, and ties its activation to one instance so
+// the executor never has to guess or switch instances on its own.
+const codexOpenPromptPrefix = "usa la skill codex-bridge como ejecutor con --instance-id "
 
 // maxCodexOpenPromptBytes bounds --prompt-file input so a runaway file
 // cannot end up as an oversized deeplink.
@@ -29,12 +33,15 @@ const maxCodexOpenPromptBytes = 8 * 1024
 
 var threadUUIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
-// codexEnv carries process I/O, CODEX_HOME and the URL opener so tests can
-// run codex without touching the real Codex app.
+// codexEnv carries process I/O, CODEX_HOME, the descriptor root and the URL
+// opener so tests can run codex without touching the real Codex app or the
+// production descriptor directory. root is the descriptor root override
+// (empty in production, a private test directory otherwise).
 type codexEnv struct {
 	stdin          io.Reader
 	stdout, stderr io.Writer
 	codexHome      string
+	root           string
 	opener         func(string) error
 }
 
@@ -56,6 +63,7 @@ func dispatchCodex(_ context.Context, args []string, env codexEnv) error {
 	flags := flag.NewFlagSet("codex-bridge codex open", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	thread := flags.String("thread", "", "codex://threads/<id> deeplink, or the bare thread id")
+	instanceID := flags.String("instance-id", "", "codex-bridge instance_id the executor must activate against")
 	promptFile := flags.String("prompt-file", "", "UTF-8 prompt file, or - for stdin")
 	if err := flags.Parse(args); err != nil {
 		return failure("USAGE", "%v", err)
@@ -65,6 +73,9 @@ func dispatchCodex(_ context.Context, args []string, env codexEnv) error {
 	}
 	if strings.TrimSpace(*thread) == "" {
 		return failure("USAGE", "open requires --thread")
+	}
+	if strings.TrimSpace(*instanceID) == "" {
+		return failure("USAGE", "--instance-id is required")
 	}
 
 	id, err := parseThreadRef(*thread)
@@ -80,7 +91,16 @@ func dispatchCodex(_ context.Context, args []string, env codexEnv) error {
 		return failure("THREAD_NOT_FOUND", "thread %s not found in session_index.jsonl", id)
 	}
 
-	prompt, err := readCodexOpenPrompt(env, *promptFile)
+	if _, err := control.SelectDescriptor(env.root, *instanceID, protocol.RoleExecutor); err != nil {
+		switch err.Error() {
+		case "INSTANCE_NOT_FOUND", "INSTANCE_AMBIGUOUS":
+			return failure("INSTANCE_NOT_FOUND", "no live executor instance %s: %v", *instanceID, err)
+		default:
+			return failure("INTERNAL", "%v", err)
+		}
+	}
+
+	prompt, err := readCodexOpenPrompt(env, *instanceID, *promptFile)
 	if err != nil {
 		return err
 	}
@@ -169,12 +189,15 @@ func threadExists(codexHome, id string) (bool, error) {
 	return false, nil
 }
 
-// readCodexOpenPrompt resolves the prompt text: the default when no
-// --prompt-file is given, or the trimmed, size-bounded, UTF-8 contents of
-// the given file (or stdin for "-").
-func readCodexOpenPrompt(env codexEnv, promptFile string) (string, error) {
+// readCodexOpenPrompt always starts with codexOpenPromptPrefix+instanceID, so
+// the executor's activation always carries the target instance. With no
+// --prompt-file, that line is the whole prompt; otherwise the file's
+// trimmed, UTF-8 contents are appended after a blank line. The 8 KiB limit
+// applies to the combined prompt.
+func readCodexOpenPrompt(env codexEnv, instanceID, promptFile string) (string, error) {
+	base := codexOpenPromptPrefix + instanceID
 	if promptFile == "" {
-		return defaultCodexOpenPrompt, nil
+		return base, nil
 	}
 	var raw []byte
 	var err error
@@ -189,12 +212,13 @@ func readCodexOpenPrompt(env codexEnv, promptFile string) (string, error) {
 	if !utf8.Valid(raw) {
 		return "", failure("USAGE", "prompt must be valid UTF-8")
 	}
-	if len(raw) > maxCodexOpenPromptBytes {
-		return "", failure("USAGE", "prompt exceeds %d bytes", maxCodexOpenPromptBytes)
-	}
-	prompt := strings.TrimSpace(string(raw))
-	if prompt == "" {
+	extra := strings.TrimSpace(string(raw))
+	if extra == "" {
 		return "", failure("USAGE", "prompt is empty")
+	}
+	prompt := base + "\n\n" + extra
+	if len(prompt) > maxCodexOpenPromptBytes {
+		return "", failure("USAGE", "prompt exceeds %d bytes", maxCodexOpenPromptBytes)
 	}
 	return prompt, nil
 }

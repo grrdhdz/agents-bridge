@@ -46,7 +46,7 @@ func exitCodeFor(code string) int {
 		return exitConflict
 	case "CONTROL_BACKPRESSURE", "CURSOR_EXPIRED":
 		return exitBackpressure
-	case "TRANSPORT_ERROR":
+	case "TRANSPORT_ERROR", "CONTROL_UNREACHABLE":
 		return exitTransport
 	default:
 		return exitInternal
@@ -54,11 +54,13 @@ func exitCodeFor(code string) int {
 }
 
 // ctlEnv carries process I/O and the descriptor root so tests can run ctl
-// in-process against a private runtime directory.
+// in-process against a private runtime directory. There is no cwd: an
+// instance is always addressed by --instance-id, never inferred from the
+// working directory.
 type ctlEnv struct {
 	stdin          io.Reader
 	stdout, stderr io.Writer
-	root, cwd      string
+	root           string
 }
 
 type ctlFailure struct {
@@ -126,7 +128,10 @@ func dispatchCtl(ctx context.Context, args []string, env ctlEnv) error {
 	default:
 		return failure("USAGE", "unknown ctl operation %q", operation)
 	}
-	descriptor, err := control.SelectDescriptor(env.root, *instanceID, role, env.cwd)
+	if strings.TrimSpace(*instanceID) == "" {
+		return failure("USAGE", "--instance-id is required")
+	}
+	descriptor, err := control.SelectDescriptor(env.root, *instanceID, role)
 	if err != nil {
 		switch err.Error() {
 		case "INSTANCE_NOT_FOUND", "INSTANCE_AMBIGUOUS":
@@ -175,7 +180,7 @@ func request(ctx context.Context, d control.Descriptor, method, path string, bod
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, failure("INSTANCE_NOT_FOUND", "control endpoint unreachable")
+		return nil, failure("CONTROL_UNREACHABLE", "control endpoint unreachable on loopback; if this runs inside a sandbox without network (e.g. Codex workspace-write), run codex-bridge ctl outside the sandbox")
 	}
 	return response, nil
 }
@@ -292,22 +297,23 @@ func ctlWait(ctx context.Context, env ctlEnv, d control.Descriptor, timeout time
 		return err
 	}
 	var record struct {
-		Status   string             `json:"status"`
-		EventSeq uint64             `json:"event_seq"`
-		Message  *protocol.Envelope `json:"message"`
+		InstanceID string             `json:"instance_id"`
+		Status     string             `json:"status"`
+		EventSeq   uint64             `json:"event_seq"`
+		Message    *protocol.Envelope `json:"message"`
 	}
 	if err := json.Unmarshal(data, &record); err != nil {
 		return failure("INTERNAL", "decode wait response: %v", err)
 	}
 	if record.Status != "message" || record.Message == nil {
-		_, err = fmt.Fprintln(env.stdout, "--- codex-bridge timeout")
+		_, err = fmt.Fprintf(env.stdout, "--- codex-bridge instance=%s timeout\n", record.InstanceID)
 		return err
 	}
 	body := record.Message.Body
 	if !strings.HasSuffix(body, "\n") {
 		body += "\n"
 	}
-	_, err = fmt.Fprintf(env.stdout, "--- codex-bridge message_id=%s from=%s event_seq=%d\n%s", record.Message.MessageID, roleAlias(record.Message.SenderRole), record.EventSeq, body)
+	_, err = fmt.Fprintf(env.stdout, "--- codex-bridge instance=%s message_id=%s from=%s event_seq=%d\n%s", record.InstanceID, record.Message.MessageID, roleAlias(record.Message.SenderRole), record.EventSeq, body)
 	return err
 }
 

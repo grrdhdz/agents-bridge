@@ -30,8 +30,7 @@ func main() {
 	var err error
 	if len(os.Args) > 1 && os.Args[1] == "ctl" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		cwd, _ := os.Getwd()
-		code := runCtl(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr, cwd: cwd})
+		code := runCtl(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr})
 		stop()
 		os.Exit(code)
 	} else if len(os.Args) > 1 && os.Args[1] == "local" {
@@ -145,8 +144,9 @@ func printUsage() {
 	fmt.Println("codex-bridge              crea una instancia efímera y TUI de orquestador en Mac")
 	fmt.Println("codex-bridge join ...      une Windows usando el comando impreso por Mac")
 	fmt.Println("codex-bridge local        instancia local sin TUI ni Tailscale para dos agentes")
-	fmt.Println("codex-bridge ctl list|read|watch|send|wait [--role orchestrator|executor] ...")
-	fmt.Println("codex-bridge codex open --thread <deeplink|id> [--prompt-file FILE|-]")
+	fmt.Println("codex-bridge ctl list")
+	fmt.Println("codex-bridge ctl read|watch|send|wait --instance-id ID [--role orchestrator|executor] ...")
+	fmt.Println("codex-bridge codex open --thread <deeplink|id> --instance-id ID [--prompt-file FILE|-]")
 	fmt.Println("                          abre el chat del ejecutor en la app de Codex con el prompt escrito")
 	fmt.Println("codex-bridge --version    muestra la versión")
 	fmt.Println("\nLa instancia, tokens, colas e historial solo viven en RAM.")

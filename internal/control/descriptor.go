@@ -317,23 +317,23 @@ func ListDescriptors(root string) ([]Descriptor, error) {
 	return listDescriptors(root)
 }
 
-// SelectDescriptor filters by instance_id, then role, and falls back to cwd
-// equality only when no instance_id was given. A local instance publishes one
-// descriptor per role with the same cwd, so callers there must pass a role.
-func SelectDescriptor(root, instanceID string, role protocol.Role, cwd string) (Descriptor, error) {
+// SelectDescriptor filters the current user's live descriptors by
+// instance_id, required, and by role when given. It never falls back to cwd:
+// an instance_id always accompanies commands, messages and activation, and is
+// never inferred from the working directory. A local instance publishes one
+// descriptor per role under the same instance_id, so with no role and more
+// than one descriptor for that instance, the selection is ambiguous.
+func SelectDescriptor(root, instanceID string, role protocol.Role) (Descriptor, error) {
 	descriptors, err := ListDescriptors(root)
 	if err != nil {
 		return Descriptor{}, err
 	}
 	matches := make([]Descriptor, 0, 1)
 	for _, descriptor := range descriptors {
-		if instanceID != "" && descriptor.InstanceID != instanceID {
+		if descriptor.InstanceID != instanceID {
 			continue
 		}
 		if role != "" && descriptor.LocalRole != role {
-			continue
-		}
-		if instanceID == "" && descriptor.CWD != cwd {
 			continue
 		}
 		matches = append(matches, descriptor)

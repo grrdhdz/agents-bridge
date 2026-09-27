@@ -187,7 +187,9 @@ func TestDescriptorSelectionAndStaleCleanup(t *testing.T) {
 	if err := writeDescriptor(filepath.Join(root, "active.json"), active); err != nil {
 		t.Fatal(err)
 	}
-	selected, err := SelectDescriptor(root, "active", "", "/different")
+	// Selection never falls back to cwd: instance_id alone must be enough,
+	// regardless of the descriptor's own cwd.
+	selected, err := SelectDescriptor(root, "active", "")
 	if err != nil || selected.InstanceID != "active" {
 		t.Fatalf("explicit instance selection failed: %+v %v", selected, err)
 	}
@@ -229,19 +231,21 @@ func TestDescriptorsForBothRolesCoexistAndSelectByRole(t *testing.T) {
 	if len(descriptors) != 2 {
 		t.Fatalf("expected one descriptor per role, got %d", len(descriptors))
 	}
-	if _, err := SelectDescriptor(root, "", "", cwd); err == nil || err.Error() != "INSTANCE_AMBIGUOUS" {
-		t.Fatalf("same cwd without role must be ambiguous, got %v", err)
+	// Both descriptors share instance_id and cwd; without --role the
+	// selection is ambiguous purely on instance_id, never on cwd.
+	if _, err := SelectDescriptor(root, server.InstanceID(), ""); err == nil || err.Error() != "INSTANCE_AMBIGUOUS" {
+		t.Fatalf("same instance_id without role must be ambiguous, got %v", err)
 	}
-	selected, err := SelectDescriptor(root, "", protocol.RoleExecutor, cwd)
+	selected, err := SelectDescriptor(root, server.InstanceID(), protocol.RoleExecutor)
 	if err != nil || selected.LocalRole != protocol.RoleExecutor {
 		t.Fatalf("role selection failed: %+v %v", selected, err)
 	}
-	selected, err = SelectDescriptor(root, server.InstanceID(), protocol.RoleOrchestrator, "/elsewhere")
+	selected, err = SelectDescriptor(root, server.InstanceID(), protocol.RoleOrchestrator)
 	if err != nil || selected.LocalRole != protocol.RoleOrchestrator {
 		t.Fatalf("instance+role selection failed: %+v %v", selected, err)
 	}
 	workerEndpoint.Close()
-	if _, err := SelectDescriptor(root, "", protocol.RoleExecutor, cwd); err == nil || err.Error() != "INSTANCE_NOT_FOUND" {
+	if _, err := SelectDescriptor(root, server.InstanceID(), protocol.RoleExecutor); err == nil || err.Error() != "INSTANCE_NOT_FOUND" {
 		t.Fatalf("closed role endpoint should disappear, got %v", err)
 	}
 }
