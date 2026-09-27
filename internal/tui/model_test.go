@@ -163,7 +163,11 @@ func TestPairRegenerationRecopiesNewCommandAndCopyFailureHasFallback(t *testing.
 	if !strings.Contains(view, "No se pudo copiar") || !strings.Contains(view, "fallback") {
 		t.Fatalf("copy failure should provide an actionable fallback: %q", view)
 	}
-	if strings.Contains(view, "--token") || strings.Contains(view, "old") {
+	// Checking for "old" alone is flaky: the header renders the client's
+	// random instance_id, which can itself contain "old" as a substring
+	// (e.g. "vkbhc74oldpuec5..."). Check for the token flag and the full
+	// command instead, which only the leaked credential would produce.
+	if strings.Contains(view, "--token") || strings.Contains(view, oldCommand) {
 		t.Fatalf("copy failure view exposed credentials: %q", view)
 	}
 }

@@ -310,10 +310,18 @@ func (c *Client) Publish(body string) (protocol.Envelope, error) {
 	return c.PublishWithID(messageID, body)
 }
 
-// PublishWithID is the idempotent local-control publishing path. Reusing a
-// message_id with the same body returns the original envelope; changing the
-// body is rejected so retries cannot silently fork a report.
+// PublishWithID is the idempotent local-control publishing path, tagged with
+// the original TUI copy/paste source. Reusing a message_id with the same
+// body returns the original envelope; changing the body is rejected so
+// retries cannot silently fork a report.
 func (c *Client) PublishWithID(messageID, body string) (protocol.Envelope, error) {
+	return c.PublishWithIDSource(messageID, body, protocol.SourceManualCodexCopy)
+}
+
+// PublishWithIDSource is PublishWithID with an explicit source (§6.1), used
+// by the control endpoint's /v1/send so ctl and the observing TUI tag their
+// messages correctly (agent-control vs human-operator).
+func (c *Client) PublishWithIDSource(messageID, body, source string) (protocol.Envelope, error) {
 	if messageID == "" {
 		return protocol.Envelope{}, errors.New("message_id is required")
 	}
@@ -334,7 +342,7 @@ func (c *Client) PublishWithID(messageID, body string) (protocol.Envelope, error
 	seq := c.clientSeq
 	conn := c.conn
 	c.mu.Unlock()
-	e, err := protocol.NewEnvelope(c.instanceID, messageID, seq, c.senderID, c.role, body, time.Now())
+	e, err := protocol.NewEnvelopeWithSource(c.instanceID, messageID, seq, c.senderID, c.role, body, source, time.Now())
 	if err != nil {
 		return protocol.Envelope{}, err
 	}

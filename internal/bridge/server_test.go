@@ -635,3 +635,41 @@ func TestNewPairingReplaysCompleteHistoryAndKeepsCursorContiguous(t *testing.T) 
 		t.Fatalf("cursor should advance to latest sequence after remote ACK, got %d", newWorker.LastServerSeq())
 	}
 }
+
+func TestWorkerConnectedReflectsExecutorPresenceNotOwnClient(t *testing.T) {
+	s, err := NewServer("127.0.0.1", DefaultOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if s.WorkerConnected() {
+		t.Fatal("WorkerConnected should be false before anyone joins")
+	}
+	owner, _, err := Dial(context.Background(), s.Addr().String(), s.InstanceID(), protocol.RoleOrchestrator, s.OwnerToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	// The orchestrator's own connection must never make WorkerConnected true:
+	// on the Mac side, PeerConnected in tailscale-host mode needs to know
+	// whether the remote Windows executor joined, not whether the local
+	// client (itself) is connected.
+	if s.WorkerConnected() {
+		t.Fatal("WorkerConnected should stay false with only the orchestrator connected")
+	}
+	worker, _, err := Dial(context.Background(), s.Addr().String(), s.InstanceID(), protocol.RoleExecutor, s.JoinToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.WorkerConnected() {
+		t.Fatal("WorkerConnected should be true once the executor joins")
+	}
+	worker.Close()
+	deadline := time.Now().Add(2 * time.Second)
+	for s.WorkerConnected() && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if s.WorkerConnected() {
+		t.Fatal("WorkerConnected should become false after the executor disconnects")
+	}
+}

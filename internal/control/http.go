@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -81,6 +82,7 @@ func (e *Endpoint) registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/watch", e.handleWatch)
 	mux.HandleFunc("/v1/send", e.handleSend)
 	mux.HandleFunc("/v1/wait", e.handleWait)
+	mux.HandleFunc("/v1/stop", e.handleStop)
 }
 
 func (e *Endpoint) authorize(w http.ResponseWriter, r *http.Request) (string, bool) {
@@ -164,8 +166,34 @@ func (e *Endpoint) handleHealth(w http.ResponseWriter, r *http.Request) {
 		LatestServerSeq: e.client.LastServerSeq(),
 		OldestEventSeq:  e.client.EventHub().OldestEventSeq(),
 		QueuedEventSeq:  e.client.EventHub().LatestEventSeq(),
-		PeerConnected:   e.client.Connected(),
+		PeerConnected:   e.isPeerConnected(),
 	})
+}
+
+// handleStop implements POST /v1/stop (§4.2). Only a CanStop endpoint accepts
+// it; the response is written and flushed before Stop runs asynchronously, so
+// the caller always sees the 202 even if Stop tears down this very endpoint.
+func (e *Endpoint) handleStop(w http.ResponseWriter, r *http.Request) {
+	requestID, ok := e.authorize(w, r)
+	if !ok {
+		return
+	}
+	if r.Method != http.MethodPost {
+		writeError(w, requestID, "INVALID_METHOD", "stop requires POST", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
+		return
+	}
+	if !e.canStop || e.stop == nil {
+		writeError(w, requestID, "FORBIDDEN", "this role cannot stop the bridge", false, http.StatusForbidden, e.descriptor.InstanceID, 0)
+		return
+	}
+	if err := writeJSON(w, http.StatusAccepted, responseEnvelope{V: 1, Type: "response", RequestID: requestID, OK: true, Operation: "stop", Status: "stopping", InstanceID: e.descriptor.InstanceID}); err != nil {
+		return
+	}
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+	stop := e.stop
+	go stop()
 }
 
 func parseCursor(r *http.Request) (uint64, int, error) {
@@ -244,6 +272,19 @@ func (e *Endpoint) handleWatch(w http.ResponseWriter, r *http.Request) {
 		writeError(w, requestID, "INVALID_JSON", err.Error(), false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
 		return
 	}
+	// §8/§10.3: at most maxConcurrentWatch watchers per endpoint; the next one
+	// gets CONTROL_BACKPRESSURE instead of an unbounded number of goroutines
+	// and subscriptions.
+	if e.watchCount.Add(1) > maxConcurrentWatch {
+		e.watchCount.Add(-1)
+		writeError(w, requestID, "CONTROL_BACKPRESSURE", "too many concurrent watchers for this endpoint", true, http.StatusTooManyRequests, e.descriptor.InstanceID, 0)
+		return
+	}
+	defer e.watchCount.Add(-1)
+	if e.descriptor.LocalRole == protocol.RoleOrchestrator {
+		e.activity.Enter()
+		defer e.activity.Leave()
+	}
 	sub, err := e.client.Subscribe(after)
 	if err != nil {
 		e.writeBridgeError(w, requestID, err)
@@ -281,6 +322,21 @@ type sendRequest struct {
 	V         int    `json:"v"`
 	MessageID string `json:"message_id"`
 	Body      string `json:"body"`
+	// Source is optional (§6.1): "agent-control" (the default, used by ctl
+	// send) or "human-operator" (the observing TUI). Any other value is
+	// rejected so a typo cannot silently mislabel a message's origin.
+	Source string `json:"source,omitempty"`
+}
+
+func resolveSendSource(raw string) (string, bool) {
+	switch raw {
+	case "":
+		return protocol.SourceAgentControl, true
+	case protocol.SourceAgentControl, protocol.SourceHumanOperator:
+		return raw, true
+	default:
+		return "", false
+	}
 }
 
 func (e *Endpoint) handleSend(w http.ResponseWriter, r *http.Request) {
@@ -308,7 +364,12 @@ func (e *Endpoint) handleSend(w http.ResponseWriter, r *http.Request) {
 		writeError(w, requestID, "MESSAGE_INVALID", "v=1 and message_id are required", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
 		return
 	}
-	envelope, err := e.client.PublishWithID(request.MessageID, request.Body)
+	source, ok := resolveSendSource(request.Source)
+	if !ok {
+		writeError(w, requestID, "MESSAGE_INVALID", fmt.Sprintf("unsupported source %q", request.Source), false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
+		return
+	}
+	envelope, err := e.client.PublishWithIDSource(request.MessageID, request.Body, source)
 	if err != nil {
 		e.writeBridgeError(w, requestID, err)
 		return
@@ -356,6 +417,13 @@ func (e *Endpoint) handleWait(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer e.waitMu.Unlock()
+	// Only the orchestrator side's presence counts toward activity (§5.1): if
+	// the orchestrator vanishes, an executor's own wait must not keep a
+	// --idle-timeout instance alive forever.
+	if e.descriptor.LocalRole == protocol.RoleOrchestrator {
+		e.activity.Enter()
+		defer e.activity.Leave()
+	}
 	e.waiting.Store(true)
 	defer e.waiting.Store(false)
 

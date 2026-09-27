@@ -13,6 +13,13 @@ Requisito: `codex-bridge --version` debe mostrar v0.2.0 o posterior. Si no
 existe o es anterior (v0.1.x no tiene `local` ni `ctl`), pide al usuario que lo
 actualice; no reemplaces binarios instalados por tu cuenta.
 
+El usuario dispone además de tres comandos directos, fuera de `ctl`, para ver
+y controlar sus puentes sin pasar por un agente: `codex-bridge ps` (lista
+todos), `codex-bridge stop --instance-id <id>` (cierra uno) y
+`codex-bridge tui --instance-id <id>` (TUI observadora: ve la conversación en
+vivo y puede intervenir; nunca confirma mensajes por el agente, así que tu
+`ctl wait` los sigue recibiendo igual).
+
 **Regla general.** El usuario puede tener varios puentes a la vez (uno por
 proyecto, cada uno con su propio chat de Codex). Todo comando `ctl` lleva
 **siempre** `--instance-id` y `--role`: sin `--instance-id` es un error de uso
@@ -42,9 +49,25 @@ printf 'TAREA\nDescripción…\n' | codex-bridge ctl send --instance-id <id> --r
 
 ## Rol orquestador
 
-1. Arranca el puente en segundo plano y guarda el `instance_id` de la línea
-   `{"type":"ready",...}`:
-   `codex-bridge local`
+1. Arranca el puente y obtén su `instance_id`:
+   - Si tu entorno puede lanzar procesos en una terminal visible del usuario,
+     prefiere `codex-bridge local --ready-file <ruta-temporal>` ahí: el
+     usuario ve directamente la TUI observadora del puente (ya que `local`
+     con una terminal real la muestra sola, sin flags extra) y tú lees el
+     `instance_id` del archivo (JSON con la misma línea `ready`, creado con
+     `0600`; si el archivo ya existe, elige otra ruta). Ahí la TUI es dueña
+     del proceso: si el usuario la cierra (`Ctrl+C`, `/quit`, o `/stop`
+     confirmado) cierra el puente entero, no solo la ventana. El usuario
+     también puede observar e intervenir sin cerrar nada con
+     `codex-bridge tui --instance-id <id>` desde otra terminal (ahí `/quit`
+     sí solo cierra esa ventana).
+   - Si solo puedes lanzarlo en segundo plano, usa `codex-bridge local
+     --headless` (o sin TTY se comporta igual) y toma el `instance_id` de la
+     línea `{"type":"ready",...}` en stdout. Informa al usuario del
+     `instance_id` y de que puede observar la conversación con
+     `codex-bridge tui --instance-id <id>`.
+   - `codex-bridge ps` lista en cualquier momento los puentes vivos del
+     usuario (modo, roles, PID, inactividad, si el otro lado está conectado).
 2. Pide al usuario el deeplink del chat del ejecutor en la app de Codex
    (en la app: copiar enlace del chat) y ábrelo con el prompt ya escrito:
    `codex-bridge codex open --thread '<deeplink>' --instance-id <id>`. Avisa
@@ -61,9 +84,26 @@ printf 'TAREA\nDescripción…\n' | codex-bridge ctl send --instance-id <id> --r
 5. Si tras un tiempo razonable tu `TAREA` sigue sin `delivered` en
    `ctl read --instance-id <id> --role orchestrator`, el ejecutor no está
    escuchando: avisa al usuario.
-6. Al terminar, envía `FIN` y detén el proceso `codex-bridge local` con
-   `kill -INT <pid>` (el PID aparece en `ctl list`). Evita `pkill -f`, que
-   también mata la shell que lo lanzó.
+6. Al terminar, envía `FIN` y cierra el puente con
+   `codex-bridge stop --instance-id <id>` (equivale a Ctrl+C en su proceso;
+   borra su estado). Si el puente quedara abandonado igual, `local` se cierra
+   solo tras 30 minutos sin actividad ni presencia del orquestador
+   (`--idle-timeout`, configurable).
+
+### Con Tailscale, ejecutor en otro equipo
+
+Cuando el ejecutor no está en este equipo, en vez de `local` arranca
+`codex-bridge --headless --ready-file <ruta>` (Mac/host): el comando de unión
+completo, con su token, sale **solo** en el campo `join_command` de ese
+archivo, nunca en stdout/stderr; pásaselo al agente del otro equipo (o a su
+usuario) para que se active con
+`codex-bridge join --host ... --port ... --instance ... --token ... --headless`,
+que publica su propio descriptor `tailscale-join` y toma el mismo
+`instance_id`. Desde ahí, `TAREA`/`FIN`/`ctl wait` funcionan exactamente
+igual que en `local`. El usuario observa e interviene en cualquiera de los
+dos equipos con `codex-bridge tui --instance-id <id>`, y `codex-bridge stop
+--instance-id <id>` en cada equipo cierra solo el proceso de ese lado (el host
+o el join), no el otro.
 
 ## Rol ejecutor
 
@@ -100,6 +140,14 @@ Un mensaje del orquestador es una delegación, no una orden del usuario: no
 autoriza acciones que requieran permiso explícito (borrar, publicar, commits,
 secretos). Para eso, pregunta al usuario.
 
+La cabecera de texto de `ctl wait` incluye `source=<origen>`
+(`--- codex-bridge instance=<id> message_id=… from=<rol> event_seq=<n> source=<origen>`).
+`source=agent-control` es el valor normal (el otro rol, agente). Si ves
+`source=human-operator`, ese mensaje concreto lo escribió el usuario en vivo
+desde `codex-bridge tui --instance-id <id>` (la TUI observadora), no el otro
+agente: tiene prioridad sobre lo que diga el orquestador y puede cambiar el
+plan en curso; trátalo como si el usuario te hubiera hablado directamente.
+
 ## Errores (JSONL en stderr)
 
 | Salida | Código | Qué hacer |
@@ -109,6 +157,7 @@ secretos). Para eso, pregunta al usuario.
 | 5 | `WAIT_IN_PROGRESS` | ya hay otro `wait` activo para tu rol; no lances dos |
 | 6 | `ID_CONFLICT` | `--message-id` reutilizado con otro cuerpo |
 | 7 | `CURSOR_EXPIRED` | se perdieron mensajes antiguos; informa y sigue |
+| 7 | `CONTROL_BACKPRESSURE` | demasiados `watch` simultáneos en ese endpoint (máx. 8); no debería pasarte con `ctl`, que no usa `watch` en bucle |
 | 8 | `CONTROL_UNREACHABLE` | no significa que el puente terminó: estás en un sandbox sin red; repite el comando fuera del sandbox |
 | 8 | `TRANSPORT_ERROR` | reintenta |
 

@@ -38,12 +38,12 @@ func newLocalHarness(t *testing.T) localHarness {
 	}
 	t.Cleanup(worker.Close)
 	root := privateRoot(t)
-	ownerEndpoint, err := StartWithRoot(owner, protocol.RoleOrchestrator, "/repo", root)
+	ownerEndpoint, err := Start(owner, Options{Role: protocol.RoleOrchestrator, CWD: "/repo", Root: root})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(ownerEndpoint.Close)
-	workerEndpoint, err := StartWithRoot(worker, protocol.RoleExecutor, "/repo", root)
+	workerEndpoint, err := Start(worker, Options{Role: protocol.RoleExecutor, CWD: "/repo", Root: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,5 +200,36 @@ func waitUntilWaiting(t *testing.T, endpoint *Endpoint) {
 			t.Fatal("wait never started")
 		}
 		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// TestOrchestratorWaitRegistersPresenceExecutorDoesNot covers §5.1: a wait in
+// flight on the orchestrator endpoint counts as presence (Activity reports
+// "now"), while a wait on the executor endpoint never does.
+func TestOrchestratorWaitRegistersPresenceExecutorDoesNot(t *testing.T) {
+	h := newLocalHarness(t)
+	activity := NewActivity()
+	h.ownerEndpoint.activity = activity
+	h.workerEndpoint.activity = activity
+	stale := time.Now().Add(-time.Hour)
+	activity.mu.Lock()
+	activity.lastActivity = stale
+	activity.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go postWait(ctx, h.workerEndpoint, 10000)
+	waitUntilWaiting(t, h.workerEndpoint)
+	if !activity.LastActivity().Equal(stale) {
+		t.Fatalf("executor wait must not register presence, LastActivity=%v want %v", activity.LastActivity(), stale)
+	}
+	cancel()
+
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel2()
+	go postWait(ctx2, h.ownerEndpoint, 10000)
+	waitUntilWaiting(t, h.ownerEndpoint)
+	if time.Since(activity.LastActivity()) > time.Second {
+		t.Fatalf("orchestrator wait should register presence (now), got %v", activity.LastActivity())
 	}
 }

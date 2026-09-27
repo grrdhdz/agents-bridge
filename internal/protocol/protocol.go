@@ -96,7 +96,26 @@ type Envelope struct {
 	AcceptedAt      time.Time `json:"accepted_at"`
 }
 
+// Known values of Envelope.Source (§6.1). The set is intentionally open: the
+// server never validates it, so a future source needs no protocol change.
+// ctl and control.Do reject anything outside this set before it reaches the
+// wire, since only these are ever produced by this codebase today.
+const (
+	SourceManualCodexCopy = "manual-codex-copy"
+	SourceAgentControl    = "agent-control"
+	SourceHumanOperator   = "human-operator"
+)
+
+// NewEnvelope builds an envelope from the original TUI copy/paste flow,
+// where the human retypes Codex's message by hand.
 func NewEnvelope(instanceID, messageID string, clientSeq uint64, senderID string, senderRole Role, body string, now time.Time) (Envelope, error) {
+	return NewEnvelopeWithSource(instanceID, messageID, clientSeq, senderID, senderRole, body, SourceManualCodexCopy, now)
+}
+
+// NewEnvelopeWithSource is NewEnvelope with an explicit source (§6.1): who or
+// what produced this message, for the observing TUI and the skill to tell an
+// agent's own message from a human operator's intervention.
+func NewEnvelopeWithSource(instanceID, messageID string, clientSeq uint64, senderID string, senderRole Role, body, source string, now time.Time) (Envelope, error) {
 	e := Envelope{
 		ProtocolVersion: Version,
 		InstanceID:      instanceID,
@@ -106,7 +125,7 @@ func NewEnvelope(instanceID, messageID string, clientSeq uint64, senderID string
 		SenderRole:      senderRole,
 		Kind:            "chat",
 		Body:            body,
-		Source:          "manual-codex-copy",
+		Source:          source,
 		CreatedAt:       now.UTC(),
 	}
 	e.BodySHA256 = HashBody(body)

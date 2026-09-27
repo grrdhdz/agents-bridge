@@ -23,6 +23,17 @@ import (
 
 const DescriptorVersion = 1
 
+// Mode identifies the kind of process publishing a descriptor (§3). It is
+// informational only: ps groups and labels instances by it, and cleanup and
+// selection never depend on it, so an old descriptor without it still works.
+type Mode string
+
+const (
+	ModeLocal         Mode = "local"
+	ModeTailscaleHost Mode = "tailscale-host"
+	ModeTailscaleJoin Mode = "tailscale-join"
+)
+
 type Descriptor struct {
 	DescriptorVersion int           `json:"descriptor_version"`
 	InstanceID        string        `json:"instance_id"`
@@ -34,6 +45,12 @@ type Descriptor struct {
 	StartedAt         time.Time     `json:"started_at"`
 	HeartbeatAt       time.Time     `json:"heartbeat_at"`
 	ExpiresAt         time.Time     `json:"expires_at"`
+	Mode              Mode          `json:"mode,omitempty"`
+	// LastActivityAt is a pointer so a legacy descriptor without it, or one
+	// from a role that reports no Activity, serializes as an absent field
+	// instead of the zero time — ps (and any other reader) can then tell
+	// "never recorded" apart from "recorded at the zero instant".
+	LastActivityAt *time.Time `json:"last_activity_at,omitempty"`
 
 	// path is where the descriptor was read from; it is never serialized.
 	path string
@@ -57,30 +74,69 @@ type Endpoint struct {
 	done           chan struct{}
 	descriptorMu   sync.RWMutex
 
+	canStop       bool
+	stop          func()
+	peerConnected func() bool
+	activity      *Activity
+
 	// waitMu admits one /v1/wait per endpoint and guards consumed, the RAM
 	// cursor of the last peer message this role received through wait.
 	waitMu   sync.Mutex
 	waiting  atomic.Bool
 	consumed uint64
+
+	// watchCount admits at most maxConcurrentWatch concurrent /v1/watch
+	// subscribers per endpoint (§8, §10.3).
+	watchCount atomic.Int32
 }
 
+// maxConcurrentWatch caps /v1/watch subscribers per endpoint; the next one
+// gets CONTROL_BACKPRESSURE (429, exit 7) instead of growing without bound.
+const maxConcurrentWatch = 8
+
 func listenLoopback() (net.Listener, error) { return net.Listen("tcp", "127.0.0.1:0") }
+
+// Options configures one control endpoint. It replaces the loose parameters
+// Start used to take, since a process now needs to describe more about
+// itself: its mode (§3), whether its role is allowed to stop the bridge
+// (§4.2), how to report peer_connected correctly per mode (§4.1), and the
+// shared Activity it contributes to and reads from (§5.1).
+type Options struct {
+	// Role is the local role this endpoint serves. It defaults to the
+	// client's own role when left empty.
+	Role protocol.Role
+	// Mode identifies the surrounding process for the descriptor (§3).
+	Mode Mode
+	// CWD defaults to os.Getwd() when empty.
+	CWD string
+	// Root overrides the platform descriptor directory; empty uses it.
+	Root string
+	// CanStop authorizes POST /v1/stop for this endpoint (§4.2).
+	CanStop bool
+	// Stop is invoked asynchronously after a stop request is accepted. It is
+	// required when CanStop is true.
+	Stop func()
+	// PeerConnected reports whether the other side of this bridge is
+	// connected, computed correctly for this endpoint's mode (§4.1). Falls
+	// back to the client's own Connected() when nil.
+	PeerConnected func() bool
+	// Activity is the shared activity tracker for this instance (§5.1). It
+	// may be nil, in which case idle tracking and presence are no-ops.
+	Activity *Activity
+}
 
 // Start creates one loopback control endpoint and its protected ephemeral
 // descriptor. The caller owns client.Close; Endpoint.Close only tears down the
 // local control surface and descriptor.
-func Start(client *bridge.Client, role protocol.Role, cwd string) (*Endpoint, error) {
-	return startWithRoot(client, role, cwd, "")
-}
-
-func StartWithRoot(client *bridge.Client, role protocol.Role, cwd, root string) (*Endpoint, error) {
-	return startWithRoot(client, role, cwd, root)
-}
-
-func startWithRoot(client *bridge.Client, role protocol.Role, cwd, root string) (*Endpoint, error) {
+func Start(client *bridge.Client, opts Options) (*Endpoint, error) {
 	if client == nil {
 		return nil, errors.New("control endpoint requires a client")
 	}
+	role := opts.Role
+	if role == "" {
+		role = client.Role()
+	}
+	cwd := opts.CWD
 	if cwd == "" {
 		cwd, _ = os.Getwd()
 	}
@@ -92,7 +148,7 @@ func startWithRoot(client *bridge.Client, role protocol.Role, cwd, root string) 
 	if err != nil {
 		return nil, fmt.Errorf("listen control endpoint: %w", err)
 	}
-	dir, err := descriptorDir(root)
+	dir, err := descriptorDir(opts.Root)
 	if err != nil {
 		_ = listener.Close()
 		return nil, err
@@ -109,6 +165,8 @@ func startWithRoot(client *bridge.Client, role protocol.Role, cwd, root string) 
 		StartedAt:         now,
 		HeartbeatAt:       now,
 		ExpiresAt:         now.Add(15 * time.Second),
+		Mode:              opts.Mode,
+		LastActivityAt:    &now,
 	}
 	e := &Endpoint{
 		client:         client,
@@ -118,6 +176,10 @@ func startWithRoot(client *bridge.Client, role protocol.Role, cwd, root string) 
 		descriptorPath: filepath.Join(dir, descriptorFileName(descriptor.InstanceID, role)),
 		capability:     capability,
 		done:           make(chan struct{}),
+		canStop:        opts.CanStop,
+		stop:           opts.Stop,
+		peerConnected:  opts.PeerConnected,
+		activity:       opts.Activity,
 	}
 	mux := http.NewServeMux()
 	e.registerHandlers(mux)
@@ -196,6 +258,16 @@ func writeDescriptor(path string, descriptor Descriptor) error {
 
 func (e *Endpoint) Descriptor() Descriptor { return e.descriptor }
 
+// isPeerConnected reports whether the other role is connected, using the
+// mode-correct callback from Options when given (§4.1), falling back to the
+// client's own connection state otherwise.
+func (e *Endpoint) isPeerConnected() bool {
+	if e.peerConnected != nil {
+		return e.peerConnected()
+	}
+	return e.client.Connected()
+}
+
 func (e *Endpoint) Close() {
 	e.closeOnce.Do(func() {
 		close(e.done)
@@ -226,6 +298,10 @@ func (e *Endpoint) heartbeat() {
 		e.descriptorMu.Lock()
 		e.descriptor.HeartbeatAt = time.Now().UTC()
 		e.descriptor.ExpiresAt = e.descriptor.HeartbeatAt.Add(15 * time.Second)
+		if e.activity != nil {
+			t := e.activity.LastActivity().UTC()
+			e.descriptor.LastActivityAt = &t
+		}
 		descriptor := e.descriptor
 		e.descriptorMu.Unlock()
 		if err := writeDescriptor(e.descriptorPath, descriptor); err != nil {

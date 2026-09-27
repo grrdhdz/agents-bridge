@@ -172,6 +172,17 @@ func (s *Server) RegeneratePairingToken() (string, error) {
 
 func (s *Server) Addr() net.Addr { return s.listener.Addr() }
 
+// WorkerConnected reports whether an executor is currently connected to this
+// server. In tailscale-host mode the orchestrator's own client.Connected()
+// only reflects its local loopback connection to this same server, never
+// whether the remote executor joined (§4.1); this is the correct signal for
+// that endpoint's PeerConnected.
+func (s *Server) WorkerConnected() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.worker != nil
+}
+
 func (s *Server) Done() <-chan struct{} { return s.done }
 
 func (s *Server) Stats() (messages int, bytes int, closed bool) {

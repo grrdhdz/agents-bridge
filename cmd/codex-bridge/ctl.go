@@ -313,7 +313,7 @@ func ctlWait(ctx context.Context, env ctlEnv, d control.Descriptor, timeout time
 	if !strings.HasSuffix(body, "\n") {
 		body += "\n"
 	}
-	_, err = fmt.Fprintf(env.stdout, "--- codex-bridge instance=%s message_id=%s from=%s event_seq=%d\n%s", record.InstanceID, record.Message.MessageID, roleAlias(record.Message.SenderRole), record.EventSeq, body)
+	_, err = fmt.Fprintf(env.stdout, "--- codex-bridge instance=%s message_id=%s from=%s event_seq=%d source=%s\n%s", record.InstanceID, record.Message.MessageID, roleAlias(record.Message.SenderRole), record.EventSeq, record.Message.Source, body)
 	return err
 }
 

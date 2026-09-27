@@ -52,7 +52,7 @@ func startExecutorDescriptor(t *testing.T) (root, instanceID string) {
 	}
 	t.Cleanup(client.Close)
 	root = filepath.Join(t.TempDir(), "instances")
-	endpoint, err := control.StartWithRoot(client, protocol.RoleExecutor, "/repo", root)
+	endpoint, err := control.Start(client, control.Options{Role: protocol.RoleExecutor, CWD: "/repo", Root: root})
 	if err != nil {
 		t.Fatal(err)
 	}

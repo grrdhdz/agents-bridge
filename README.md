@@ -95,6 +95,44 @@ El token se consume una sola vez. Después del emparejamiento el cliente usa un
 token de reconexión que solo vive en memoria. Si Windows se cierra, hay que
 generar un nuevo token desde Mac con `/pair`.
 
+## Tailscale sin TUI (`--headless`)
+
+Cuando el orquestador o el ejecutor no son personas frente a una terminal sino
+agentes (por ejemplo un agente remoto en Windows actuando como ejecutor), cada
+lado puede arrancar sin TUI y hablar solo por `ctl`:
+
+En la Mac (orquestador/host):
+
+```sh
+codex-bridge --headless --ready-file /ruta/ready.json
+```
+
+`--headless` en el host exige `--ready-file` (si falta, es un error de uso,
+salida 2): el comando de unión completo —con su token de un solo uso— se
+escribe **solo** en el campo `join_command` de ese archivo (`0600`, creación
+exclusiva), nunca en stdout ni stderr. El archivo también trae la línea
+`ready` habitual (`{"type":"ready","instance_id":...,"mode":"tailscale-host",
+"join_command":"..."}`). `--idle-timeout` sigue con valor por defecto `0`
+(desactivado) en este modo: el puente humano Mac↔Windows no debe cerrarse solo
+por inactividad.
+
+En el otro equipo, un agente ejecutor se une igual sin TUI:
+
+```sh
+codex-bridge join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token> --headless
+```
+
+(los cuatro flags salen de `join_command`, tal cual, o un humano se los pasa a
+mano). Publica su propio descriptor `tailscale-join`, imprime la línea `ready`
+en stdout (y en `--ready-file` si se indica) y solo reconecta en segundo
+plano; un agente en ese equipo usa
+`codex-bridge ctl --instance-id <id> --role executor ...` normalmente.
+
+En cualquiera de los dos equipos, el usuario observa e interviene en la
+conversación con `codex-bridge tui --instance-id <id>` (ver más abajo) sin
+tocar el flujo de los agentes; y `codex-bridge stop --instance-id <id>` cierra
+el proceso local de ese equipo (el host o el join), no el otro lado.
+
 ## Controles de la TUI
 
 - `Ctrl+Enter` o `Ctrl+S`: enviar el texto pegado (ambos son atajos de envío).
@@ -123,9 +161,30 @@ emparejamiento:
 codex-bridge local
 ```
 
-El proceso escucha solo en `127.0.0.1`, aloja ambos roles e imprime una línea
-`{"type":"ready","instance_id":...}` sin secretos. Se cierra con `Ctrl+C` o
-`SIGTERM` y borra todo su estado.
+El proceso escucha solo en `127.0.0.1` y aloja ambos roles. Si su stdout es
+una terminal real y no se pasa `--headless`, muestra directamente su propia
+TUI observadora (igual que `codex-bridge tui`, ver abajo, pero sobre su
+propio endpoint de orquestador) en vez de quedarse en silencio; aquí la TUI
+**es** el proceso: cerrarla con `Ctrl+C`, `/quit` o un `/stop` confirmado
+cierra el puente entero (a diferencia de una `codex-bridge tui` separada,
+donde `/quit` solo cierra esa ventana y dejar el puente vivo). En ese modo no
+se imprime la línea `ready` en stdout —usa `--ready-file` para conocer el
+`instance_id` desde otro lado—. Con `--headless`, o si stdout no es una
+terminal (el caso normal cuando un agente lo lanza), imprime la línea
+`{"type":"ready","instance_id":...}` sin secretos y queda en segundo plano.
+
+Cualquiera de los dos modos se cierra con `Ctrl+C`, `SIGTERM`,
+`codex-bridge stop` (ver abajo) o tras `--idle-timeout` (por defecto `30m`;
+`0` lo desactiva) sin actividad, y borra todo su estado. Actividad es
+cualquier mensaje publicado o recibido, o un `ctl wait`/`watch` en curso del
+lado orquestador (la propia TUI, embebida o separada, cuenta así, porque usa
+`watch`); el `wait` del ejecutor no cuenta, para que un puente sin
+orquestador no quede vivo para siempre.
+
+`--ready-file RUTA` escribe la línea `ready` en ese archivo (permisos
+`0600`, creación exclusiva: falla si ya existe) además de, o en lugar de,
+stdout según el modo; útil para que quien lanzó `local` en la terminal del
+usuario conozca el `instance_id` sin buscarlo con `ps`.
 
 Cada agente usa `ctl` con su `instance_id` (de la línea `ready`) y su rol; el
 usuario puede tener varios puentes a la vez, así que `--instance-id` es
@@ -150,6 +209,40 @@ su chat con el prompt ya escrito (el usuario pulsa Enter):
 ```sh
 codex-bridge codex open --thread 'codex://threads/<id>' --instance-id <id> --prompt-file -
 ```
+
+Para ver y cerrar los puentes del usuario, sin depender de `ctl`:
+
+```sh
+codex-bridge ps                       # tabla: instancia, modo, roles, pid, inicio, inactividad, peer, mensajes
+codex-bridge ps --format jsonl
+codex-bridge stop --instance-id <id>  # cierre limpio, equivalente a Ctrl+C en ese proceso
+```
+
+`ps` agrupa por `instance_id` (un puente `local` aporta una sola fila con
+ambos roles) y nunca muestra `control_url`, `capability` ni `cwd`. `stop`
+elige automáticamente el endpoint que puede cerrar ese puente (el
+orquestador en `local`; el rol del ejecutor no puede cerrarlo y responde
+`FORBIDDEN`); si la instancia no existe, sale con código 3, y si su puerto no
+responde, con código 8 e imprime el PID por si hace falta un `kill` manual.
+
+Para ver la conversación en vivo e intervenir sin ser un agente:
+
+```sh
+codex-bridge tui --instance-id <id>
+```
+
+Se conecta por el plano de control (nunca por el protocolo TCP), así que
+funciona igual para `local`, el host Mac y `join`: usa el descriptor del
+orquestador si vive en este equipo, o si no el del ejecutor. Muestra el
+historial completo y los mensajes en vivo de ambos roles, con hora y origen
+(`agente` para `agent-control`, `humano` para `human-operator` o
+`manual-codex-copy`); lo que el usuario escribe (Ctrl+Enter/Ctrl+S) se envía
+con `source=human-operator`, visible también en la cabecera de texto de
+`ctl wait` para que el agente sepa que ese mensaje viene del usuario y tiene
+prioridad. Esta TUI **nunca confirma mensajes**: usa `watch`, así que el
+`ctl wait` del agente los sigue recibiendo igual, la haya visto o no.
+`/stop` pide una segunda confirmación (escribirlo de nuevo) antes de llamar a
+`stop`; `/quit` o `Ctrl+C` cierran solo la TUI, el puente sigue vivo.
 
 El flujo completo para agentes está en la skill
 [`.agents/skills/codex-bridge`](.agents/skills/codex-bridge/SKILL.md) y el
