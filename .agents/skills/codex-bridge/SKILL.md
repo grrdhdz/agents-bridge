@@ -49,7 +49,8 @@ printf 'TAREA\nDescripción…\n' | codex-bridge ctl send --instance-id <id> --r
 
 En Windows PowerShell 5.1 configura antes UTF-8 sin BOM en la sesión; si no,
 las tildes y la `ñ` llegan como `?` (PowerShell las pierde antes de que
-`codex-bridge` las reciba). `ctl send` ya quita BOM y CRLF por su cuenta:
+`codex-bridge` las reciba). Desde v0.2.1, `ctl send` ya quita BOM y CRLF por
+su cuenta:
 
 ```powershell
 $utf8 = New-Object Text.UTF8Encoding $false

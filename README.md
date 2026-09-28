@@ -4,8 +4,9 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión publicada actual es `v0.2.0`, que añade el modo
-local entre agentes del mismo equipo y el control no gráfico `ctl`.
+La versión publicada actual es `v0.2.1`: corrige en Windows lo encontrado al
+verificar `v0.2.0`, que añadió el modo local entre agentes del mismo equipo y
+el control no gráfico `ctl`.
 
 ## Propiedades del MVP
 
