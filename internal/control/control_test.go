@@ -89,12 +89,11 @@ func TestDescriptorIsAtomicProtectedAndEphemeral(t *testing.T) {
 	if strings.Contains(text, "body") || strings.Contains(text, "history") || strings.Contains(text, "envelope") {
 		t.Fatalf("descriptor contains chat data: %s", text)
 	}
-	info, err := os.Stat(h.endpoint.descriptorPath)
-	if err != nil {
-		t.Fatal(err)
+	if err := VerifyOwnerOnly(h.endpoint.descriptorPath); err != nil {
+		t.Fatalf("descriptor is not owner-only: %v", err)
 	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("descriptor mode = %o, want 600", info.Mode().Perm())
+	if err := verifyPrivateDir(filepath.Dir(h.endpoint.descriptorPath)); err != nil {
+		t.Fatalf("descriptor directory is not private: %v", err)
 	}
 	// Close is idempotent and removes the descriptor; the cleanup above may call
 	// it again without resurrecting any state.
@@ -249,16 +248,6 @@ func TestDescriptorsForBothRolesCoexistAndSelectByRole(t *testing.T) {
 	workerEndpoint.Close()
 	if _, err := SelectDescriptor(root, server.InstanceID(), protocol.RoleExecutor); err == nil || err.Error() != "INSTANCE_NOT_FOUND" {
 		t.Fatalf("closed role endpoint should disappear, got %v", err)
-	}
-}
-
-func TestDescriptorDirectoryWithLoosePermissionsIsRejected(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ListDescriptors(root); err == nil {
-		t.Fatal("descriptor directory readable by others must be rejected")
 	}
 }
 

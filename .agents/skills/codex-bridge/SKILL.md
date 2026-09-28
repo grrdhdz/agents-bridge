@@ -47,6 +47,16 @@ Envía el cuerpo por stdin, nunca como argumento:
 printf 'TAREA\nDescripción…\n' | codex-bridge ctl send --instance-id <id> --role orchestrator --body-file -
 ```
 
+En Windows PowerShell 5.1 configura antes UTF-8 sin BOM en la sesión; si no,
+las tildes y la `ñ` llegan como `?` (PowerShell las pierde antes de que
+`codex-bridge` las reciba). `ctl send` ya quita BOM y CRLF por su cuenta:
+
+```powershell
+$utf8 = New-Object Text.UTF8Encoding $false
+$OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8
+"TAREA`nDescripción…" | codex-bridge ctl send --instance-id <id> --role orchestrator --body-file -
+```
+
 ## Rol orquestador
 
 1. Arranca el puente y obtén su `instance_id`:
@@ -54,13 +64,16 @@ printf 'TAREA\nDescripción…\n' | codex-bridge ctl send --instance-id <id> --r
      prefiere `codex-bridge local --ready-file <ruta-temporal>` ahí: el
      usuario ve directamente la TUI observadora del puente (ya que `local`
      con una terminal real la muestra sola, sin flags extra) y tú lees el
-     `instance_id` del archivo (JSON con la misma línea `ready`, creado con
-     `0600`; si el archivo ya existe, elige otra ruta). Ahí la TUI es dueña
-     del proceso: si el usuario la cierra (`Ctrl+C`, `/quit`, o `/stop`
-     confirmado) cierra el puente entero, no solo la ventana. El usuario
-     también puede observar e intervenir sin cerrar nada con
-     `codex-bridge tui --instance-id <id>` desde otra terminal (ahí `/quit`
-     sí solo cierra esa ventana).
+     `instance_id` del archivo (JSON con la misma línea `ready`, creado solo
+     legible por el usuario; si el archivo ya existe, elige otra ruta). El
+     archivo solo aparece cuando el puente está listo y ya completo: espera a
+     que exista y léelo. Ahí
+     la TUI es dueña del proceso (se titula `CODEX-BRIDGE LOCAL`): si el
+     usuario la cierra (`Ctrl+C`, `/quit`, o `/stop` confirmado) cierra el
+     puente entero, no solo la ventana. El usuario también puede observar e
+     intervenir sin cerrar nada con `codex-bridge tui --instance-id <id>`
+     desde otra terminal (se titula `CODEX-BRIDGE OBSERVADOR`; ahí `/quit`
+     solo cierra esa ventana).
    - Si solo puedes lanzarlo en segundo plano, usa `codex-bridge local
      --headless` (o sin TTY se comporta igual) y toma el `instance_id` de la
      línea `{"type":"ready",...}` en stdout. Informa al usuario del

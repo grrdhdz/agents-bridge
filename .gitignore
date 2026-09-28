@@ -13,3 +13,7 @@ coverage.out
 .vscode/
 *.swp
 .claude/settings.local.json
+
+# Builds locales de desarrollo
+/codex-bridge-dev
+/codex-bridge-dev.exe

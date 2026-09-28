@@ -1,0 +1,4 @@
+# Fuentes y docs siempre en LF, aunque Git en Windows tenga core.autocrlf=true:
+# gofmt exige LF y lo marca todo como mal formateado si el checkout usa CRLF.
+* text=auto eol=lf
+*.exe binary

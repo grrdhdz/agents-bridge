@@ -212,7 +212,7 @@ func descriptorDir(override string) (string, error) {
 			return "", err
 		}
 	}
-	if err := os.MkdirAll(root, 0o700); err != nil {
+	if err := makePrivateDir(root); err != nil {
 		return "", fmt.Errorf("create descriptor directory: %w", err)
 	}
 	// MkdirAll leaves an existing directory untouched, so a pre-created or
@@ -228,19 +228,22 @@ func writeDescriptor(path string, descriptor Descriptor) error {
 	if err != nil {
 		return err
 	}
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".descriptor-*.tmp")
+	suffix, err := randomCapability()
 	if err != nil {
 		return err
 	}
-	tmpName := tmp.Name()
+	// CreatePrivateFile rather than os.CreateTemp: the temporary file must be
+	// owner-only from the moment it exists (0600, or the owner-only DACL on
+	// Windows), and the rename below keeps those permissions.
+	tmpName := filepath.Join(filepath.Dir(path), ".descriptor-"+suffix[:16]+".tmp")
+	tmp, err := CreatePrivateFile(tmpName)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
 	}()
-	if err := tmp.Chmod(0o600); err != nil {
-		return err
-	}
 	if _, err := tmp.Write(data); err != nil {
 		return err
 	}

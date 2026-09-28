@@ -109,8 +109,9 @@ codex-bridge --headless --ready-file /ruta/ready.json
 
 `--headless` en el host exige `--ready-file` (si falta, es un error de uso,
 salida 2): el comando de unión completo —con su token de un solo uso— se
-escribe **solo** en el campo `join_command` de ese archivo (`0600`, creación
-exclusiva), nunca en stdout ni stderr. El archivo también trae la línea
+escribe **solo** en el campo `join_command` de ese archivo (`0600`, o ACL
+exclusiva del usuario en Windows; creación exclusiva), nunca en stdout ni
+stderr. El archivo también trae la línea
 `ready` habitual (`{"type":"ready","instance_id":...,"mode":"tailscale-host",
 "join_command":"..."}`). `--idle-timeout` sigue con valor por defecto `0`
 (desactivado) en este modo: el puente humano Mac↔Windows no debe cerrarse solo
@@ -167,7 +168,10 @@ TUI observadora (igual que `codex-bridge tui`, ver abajo, pero sobre su
 propio endpoint de orquestador) en vez de quedarse en silencio; aquí la TUI
 **es** el proceso: cerrarla con `Ctrl+C`, `/quit` o un `/stop` confirmado
 cierra el puente entero (a diferencia de una `codex-bridge tui` separada,
-donde `/quit` solo cierra esa ventana y dejar el puente vivo). En ese modo no
+donde `/quit` solo cierra esa ventana y deja el puente vivo). Para
+distinguirlas, esta TUI se titula `CODEX-BRIDGE LOCAL` y su pie dice
+`/quit cierra el puente`; la separada se titula `CODEX-BRIDGE OBSERVADOR` y
+dice `/quit cierra esta ventana`. En ese modo no
 se imprime la línea `ready` en stdout —usa `--ready-file` para conocer el
 `instance_id` desde otro lado—. Con `--headless`, o si stdout no es una
 terminal (el caso normal cuando un agente lo lanza), imprime la línea
@@ -182,9 +186,12 @@ lado orquestador (la propia TUI, embebida o separada, cuenta así, porque usa
 orquestador no quede vivo para siempre.
 
 `--ready-file RUTA` escribe la línea `ready` en ese archivo (permisos
-`0600`, creación exclusiva: falla si ya existe) además de, o en lugar de,
+`0600`, o en Windows una ACL protegida solo para el usuario actual; creación
+exclusiva: falla si ya existe) además de, o en lugar de,
 stdout según el modo; útil para que quien lanzó `local` en la terminal del
-usuario conozca el `instance_id` sin buscarlo con `ps`.
+usuario conozca el `instance_id` sin buscarlo con `ps`. El archivo aparece de
+una vez, ya completo, cuando el puente está listo (se escribe en un temporal
+privado y se enlaza en su sitio), así que basta con esperar a que exista.
 
 Cada agente usa `ctl` con su `instance_id` (de la línea `ready`) y su rol; el
 usuario puede tener varios puentes a la vez, así que `--instance-id` es
@@ -197,6 +204,21 @@ codex-bridge ctl read --instance-id <id> --role orchestrator --after-event-seq 0
 codex-bridge ctl watch --instance-id <id> --role executor
 codex-bridge ctl list
 ```
+
+En Windows PowerShell 5.1, lo que se canaliza a un programa llega con la
+codificación de `$OutputEncoding` (por defecto ASCII: `ó` y `ñ` se convierten
+en `?` **antes** de llegar a `codex-bridge`). Configura UTF-8 sin BOM en la
+sesión antes de enviar:
+
+```powershell
+$utf8 = New-Object Text.UTF8Encoding $false
+$OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8
+"TAREA`nDescripción…" | codex-bridge ctl send --instance-id <id> --role orchestrator --body-file -
+```
+
+`ctl send` quita los BOM UTF-8 iniciales, convierte CRLF en LF y acepta un
+`--body-file` en UTF-16 con BOM (lo que escribe `>` en PowerShell 5.1), así que
+la primera línea llega exactamente como la etiqueta (`TAREA`, `RESULTADO`…).
 
 `ctl wait` devuelve el siguiente mensaje del otro rol y lo confirma (el emisor
 lo ve `delivered`) solo después de entregarlo; si el comando se corta antes, el
@@ -219,7 +241,10 @@ codex-bridge stop --instance-id <id>  # cierre limpio, equivalente a Ctrl+C en e
 ```
 
 `ps` agrupa por `instance_id` (un puente `local` aporta una sola fila con
-ambos roles) y nunca muestra `control_url`, `capability` ni `cwd`. `stop`
+ambos roles) y nunca muestra `control_url`, `capability` ni `cwd`. `MSGS` es
+el `latest_server_seq` del endpoint consultado (el del orquestador, si vive en
+este equipo): cuántos mensajes del otro rol ha confirmado ya ese lado, no el
+total de la conversación. `stop`
 elige automáticamente el endpoint que puede cerrar ese puente (el
 orquestador en `local`; el rol del ejecutor no puede cerrarlo y responde
 `FORBIDDEN`); si la instancia no existe, sale con código 3, y si su puerto no
@@ -234,7 +259,8 @@ codex-bridge tui --instance-id <id>
 Se conecta por el plano de control (nunca por el protocolo TCP), así que
 funciona igual para `local`, el host Mac y `join`: usa el descriptor del
 orquestador si vive en este equipo, o si no el del ejecutor. Muestra el
-historial completo y los mensajes en vivo de ambos roles, con hora y origen
+historial completo y los mensajes en vivo de ambos roles (`Orquestador` a la
+derecha, `Ejecutor` a la izquierda), con hora y origen
 (`agente` para `agent-control`, `humano` para `human-operator` o
 `manual-codex-copy`); lo que el usuario escribe (Ctrl+Enter/Ctrl+S) se envía
 con `source=human-operator`, visible también en la cabecera de texto de
@@ -242,7 +268,15 @@ con `source=human-operator`, visible también en la cabecera de texto de
 prioridad. Esta TUI **nunca confirma mensajes**: usa `watch`, así que el
 `ctl wait` del agente los sigue recibiendo igual, la haya visto o no.
 `/stop` pide una segunda confirmación (escribirlo de nuevo) antes de llamar a
-`stop`; `/quit` o `Ctrl+C` cierran solo la TUI, el puente sigue vivo.
+`stop`; `/quit` o `Ctrl+C` cierran solo la TUI, el puente sigue vivo. Usa la
+pantalla alternativa de la terminal, así que al salir la deja como estaba.
+
+Los descriptores de control viven en un directorio privado del usuario
+(`0700`; en Windows, `%LOCALAPPDATA%\Temp\codex-bridge\<usuario>\instances`
+con una ACL protegida solo para el usuario actual). Un directorio de Windows
+creado por v0.2.0, con la ACL heredada de `%TEMP%`, se endurece solo la
+primera vez; si pertenece a otro usuario, `ctl` se desactiva con un error que
+pide borrarlo.
 
 El flujo completo para agentes está en la skill
 [`.agents/skills/codex-bridge`](.agents/skills/codex-bridge/SKILL.md) y el
@@ -254,6 +288,11 @@ diseño en
 El transporte es TCP con frames JSON delimitados por nueva línea. Cada mensaje
 incluye `instance_id`, `message_id`, `client_seq`, `server_seq`, `sender_id`,
 `sender_role`, `kind`, `body`, `body_sha256`, `source` y marcas de tiempo.
+Los roles viajan con sus identificadores históricos del protocolo v1,
+`mac-orchestrator` y `win-executor` (también en `sender_id`, en `ctl read` y
+en los nombres de los descriptores), incluso en modo `local` y en cualquier
+sistema; cambiarlos rompería la compatibilidad del protocolo. La CLI acepta y
+muestra `orchestrator` y `executor`.
 
 El servidor confirma el mensaje en RAM antes de enviar `accepted`. El receptor
 responde `ack`; el servidor confirma ese ACK con `ack_confirmed` y el emisor ve

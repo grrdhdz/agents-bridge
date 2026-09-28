@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
@@ -98,6 +101,74 @@ func TestDirectTUIStopStillClosesImmediately(t *testing.T) {
 	}
 }
 
+// TestStandaloneObserverQuitLeavesBridgeRunning is the regression for /quit
+// in `codex-bridge tui`: it attaches through the orchestrator's endpoint (so
+// it has an OnStop), yet /quit must only close its own window (§6).
+func TestStandaloneObserverQuitLeavesBridgeRunning(t *testing.T) {
+	transport := &fakeTransport{instanceID: "abc"}
+	stopCalls := 0
+	model := New(Options{Transport: transport, LocalRole: protocol.RoleOrchestrator, Observer: true, OnStop: func() { stopCalls++ }})
+	model.command("/quit")
+	if stopCalls != 0 {
+		t.Fatalf("standalone observer /quit must not stop the bridge, got %d OnStop calls", stopCalls)
+	}
+	if model.state != "closed" || !transport.closed {
+		t.Fatal("standalone observer /quit should still close its own window and transport")
+	}
+}
+
+// TestEmbeddedObserverQuitStopsBridge covers §7.1: the TUI embedded in
+// `local` owns the process, so its /quit closes the whole bridge.
+func TestEmbeddedObserverQuitStopsBridge(t *testing.T) {
+	transport := &fakeTransport{instanceID: "abc"}
+	stopCalls := 0
+	model := New(Options{Transport: transport, LocalRole: protocol.RoleOrchestrator, Observer: true, OwnsBridge: true, OnStop: func() { stopCalls++ }})
+	model.command("/quit")
+	if stopCalls != 1 {
+		t.Fatalf("embedded observer /quit should stop the bridge once, got %d OnStop calls", stopCalls)
+	}
+}
+
+// TestObserverHeaderDistinguishesEmbeddedFromStandalone lets the user tell
+// which window closes the bridge on /quit.
+func TestObserverHeaderDistinguishesEmbeddedFromStandalone(t *testing.T) {
+	standalone := New(Options{Transport: &fakeTransport{instanceID: "abc"}, LocalRole: protocol.RoleOrchestrator, Observer: true})
+	embedded := New(Options{Transport: &fakeTransport{instanceID: "abc"}, LocalRole: protocol.RoleOrchestrator, Observer: true, OwnsBridge: true})
+	standaloneView, embeddedView := standalone.View(), embedded.View()
+	if !strings.Contains(standaloneView.Content, "OBSERVADOR") || !strings.Contains(standaloneView.Content, "/quit cierra esta ventana") {
+		t.Fatalf("standalone header/footer should say observer and that /quit only closes the window: %q", standaloneView.Content)
+	}
+	if !strings.Contains(embeddedView.Content, "CODEX-BRIDGE LOCAL") || !strings.Contains(embeddedView.Content, "/quit cierra el puente") {
+		t.Fatalf("embedded header/footer should say local and that /quit closes the bridge: %q", embeddedView.Content)
+	}
+	if standaloneView.WindowTitle == embeddedView.WindowTitle {
+		t.Fatalf("window titles should differ, both are %q", standaloneView.WindowTitle)
+	}
+	if !standaloneView.AltScreen || !embeddedView.AltScreen {
+		t.Fatal("observer views should use the alternate screen so the terminal is restored on exit")
+	}
+}
+
+// TestObserverFooterWrapsInsteadOfClipping covers narrow terminals: the help
+// line must wrap so its last command stays visible, and the whole view must
+// still fit in the terminal height.
+func TestObserverFooterWrapsInsteadOfClipping(t *testing.T) {
+	model := New(Options{Transport: &fakeTransport{instanceID: "abc"}, LocalRole: protocol.RoleOrchestrator, Observer: true})
+	model.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	content := model.View().Content
+	for _, line := range strings.Split(content, "\n") {
+		if w := lipgloss.Width(line); w > 60 {
+			t.Fatalf("line wider than the terminal (%d > 60): %q", w, line)
+		}
+	}
+	if !strings.Contains(content, "/quit cierra esta") {
+		t.Fatalf("the end of the help line should remain visible: %q", content)
+	}
+	if h := lipgloss.Height(content); h > 24 {
+		t.Fatalf("view taller than the terminal: %d > 24", h)
+	}
+}
+
 // TestObserverViewHeaderIdentifiesItselfAndShowsOriginInMessages covers §6:
 // the observer's header is visibly different, and each rendered message
 // carries a time and an origin label (humano/agente).
@@ -123,6 +194,9 @@ func TestObserverViewHeaderIdentifiesItselfAndShowsOriginInMessages(t *testing.T
 	}
 	if !strings.Contains(view, "humano") || !strings.Contains(view, "agente") {
 		t.Fatalf("observer view should label human vs agent origin: %q", view)
+	}
+	if !strings.Contains(view, "Orquestador") || !strings.Contains(view, "Ejecutor") || strings.Contains(view, "Tú") {
+		t.Fatalf("observer view should name both sides by role, not as Tú: %q", view)
 	}
 	if strings.Contains(view, "F5") || strings.Contains(view, "/pair") {
 		t.Fatalf("observer footer should not advertise pair/F5, which it does not support: %q", view)

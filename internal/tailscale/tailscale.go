@@ -10,7 +10,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"path"
 	"runtime"
 	"strings"
 )
@@ -91,7 +91,7 @@ func fallbackCandidates(goos, homeDir string, getenv func(string) string) []stri
 	case "darwin":
 		candidates := []string{"/Applications/Tailscale.app/Contents/MacOS/Tailscale"}
 		if homeDir != "" {
-			candidates = append(candidates, filepath.Join(homeDir, "Applications", "Tailscale.app", "Contents", "MacOS", "Tailscale"))
+			candidates = append(candidates, joinPlatformPath(goos, homeDir, "Applications", "Tailscale.app", "Contents", "MacOS", "Tailscale"))
 		}
 		return candidates
 	case "windows":
@@ -108,10 +108,12 @@ func fallbackCandidates(goos, homeDir string, getenv func(string) string) []stri
 	}
 }
 
+// joinPlatformPath joins with goos's separator, not the host's: filepath.Join
+// would build a macOS path with backslashes when tests run on Windows.
 func joinPlatformPath(goos string, first string, rest ...string) string {
 	if goos != "windows" {
 		parts := append([]string{first}, rest...)
-		return filepath.Join(parts...)
+		return path.Join(parts...)
 	}
 	joined := strings.TrimRight(first, `\/`)
 	for _, part := range rest {

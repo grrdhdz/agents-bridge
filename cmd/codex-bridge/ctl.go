@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf16"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
@@ -228,6 +230,7 @@ func ctlSend(ctx context.Context, env ctlEnv, d control.Descriptor, messageID, b
 	if err != nil {
 		return failure("USAGE", "read body: %v", err)
 	}
+	body = normalizeBody(body)
 	if messageID == "" {
 		if messageID, err = control.NewID(); err != nil {
 			return err
@@ -238,6 +241,36 @@ func ctlSend(ctx context.Context, env ctlEnv, d control.Descriptor, messageID, b
 		return err
 	}
 	return ctlSimple(ctx, env, d, http.MethodPost, "/v1/send", bytes.NewReader(append(payload, '\n')))
+}
+
+var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
+
+// normalizeBody undoes what Windows shells add to a body on its way in, so
+// the first line is exactly the label (TAREA, RESULTADO…) the other agent
+// matches on. Windows PowerShell 5.1 prefixes text piped to a native program
+// with one or more UTF-8 BOMs and ends lines with CRLF, and its `>` /
+// Out-File writes UTF-16LE with a BOM. A body with none of these is unchanged.
+func normalizeBody(body []byte) []byte {
+	if len(body) >= 2 && len(body)%2 == 0 {
+		var order binary.ByteOrder
+		switch {
+		case body[0] == 0xFF && body[1] == 0xFE:
+			order = binary.LittleEndian
+		case body[0] == 0xFE && body[1] == 0xFF:
+			order = binary.BigEndian
+		}
+		if order != nil {
+			units := make([]uint16, 0, len(body)/2-1)
+			for i := 2; i < len(body); i += 2 {
+				units = append(units, order.Uint16(body[i:]))
+			}
+			body = []byte(string(utf16.Decode(units)))
+		}
+	}
+	for bytes.HasPrefix(body, utf8BOM) {
+		body = body[len(utf8BOM):]
+	}
+	return bytes.ReplaceAll(body, []byte("\r\n"), []byte("\n"))
 }
 
 func ctlWatch(ctx context.Context, env ctlEnv, d control.Descriptor, after uint64) error {

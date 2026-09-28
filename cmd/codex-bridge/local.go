@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 	"time"
 
@@ -28,8 +27,9 @@ const defaultLocalIdleTimeout = 30 * time.Minute
 // prints only a ready record without secrets. Everything is destroyed when
 // ctx ends, the orchestrator endpoint receives POST /v1/stop, or idleTimeout
 // elapses without activity (idleTimeout <= 0 disables the idle timer). When
-// readyFile is non-empty, the same ready record is also written there (0600,
-// created exclusively so a stale file is never silently overwritten) — §7.1:
+// readyFile is non-empty, the same ready record is also written there (owner
+// only — 0600, or the owner-only DACL on Windows — never over an existing
+// file, and appearing only once complete, see control.ReadyFile) — §7.1:
 // it lets an orchestrator that launched this in the user's own terminal
 // learn instance_id without scraping stdout or shelling out to `ps`.
 //
@@ -38,17 +38,15 @@ const defaultLocalIdleTimeout = 30 * time.Minute
 // runEmbeddedTUI. isTerminal is a parameter (not a direct term.IsTerminal
 // call) so tests can exercise both paths without a real terminal.
 func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeout time.Duration, readyFile string, headless bool, isTerminal func() bool) error {
-	var readyFileHandle *os.File
+	var readyOut *control.ReadyFile
 	if readyFile != "" {
-		// Opened exclusively up front, before anything else starts, so a
-		// stale or colliding file is reported before any state exists to
-		// tear down, and nothing else can win the race to create it first.
+		// Checked up front, before anything else starts, so a stale file is
+		// reported before any state exists to tear down.
 		var err error
-		readyFileHandle, err = os.OpenFile(readyFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		readyOut, err = control.ReserveReadyFile(readyFile)
 		if err != nil {
 			return fmt.Errorf("--ready-file: %w", err)
 		}
-		defer readyFileHandle.Close()
 	}
 	server, err := bridge.NewServer("127.0.0.1", bridge.DefaultOptions())
 	if err != nil {
@@ -116,8 +114,8 @@ func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeo
 	if err != nil {
 		return err
 	}
-	if readyFileHandle != nil {
-		if _, err := fmt.Fprintln(readyFileHandle, string(ready)); err != nil {
+	if readyOut != nil {
+		if err := readyOut.Publish(append(ready, '\n')); err != nil {
 			return fmt.Errorf("--ready-file: %w", err)
 		}
 	}
@@ -180,12 +178,14 @@ func runEmbeddedTUI(ctx context.Context, stop *stopper, ownerEndpoint *control.E
 // ControlTransport the standalone `codex-bridge tui` uses), and closing it
 // asks that very endpoint to stop, which — because CanStop is true for the
 // orchestrator in local mode — actually tears down the whole bridge.
+// OwnsBridge is what tells the model so; the standalone TUI never sets it.
 func buildEmbeddedObserverOptions(ownerEndpoint *control.Endpoint) tui.Options {
 	transport := tui.NewControlTransport(ownerEndpoint.Descriptor())
 	return tui.Options{
-		Transport: transport,
-		LocalRole: protocol.RoleOrchestrator,
-		Observer:  true,
+		Transport:  transport,
+		LocalRole:  protocol.RoleOrchestrator,
+		Observer:   true,
+		OwnsBridge: true,
 		OnStop: func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()

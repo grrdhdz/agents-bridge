@@ -39,6 +39,12 @@ type Options struct {
 	// bridge is someone else's to close; this TUI keeps watching until the
 	// watch stream itself reports the instance is gone.
 	Observer bool
+	// OwnsBridge marks the observer TUI embedded in `codex-bridge local`
+	// (§7.1): there the TUI *is* the process, so /quit and Ctrl+C close the
+	// whole bridge. A standalone `codex-bridge tui` leaves it false, and its
+	// /quit only closes its own window — even though it is attached through
+	// the orchestrator's endpoint and therefore has an OnStop to call.
+	OwnsBridge bool
 }
 
 type eventMsg struct{ event bridge.Event }
@@ -52,6 +58,7 @@ type Model struct {
 	onStop      func()
 	onPair      func() string
 	observer    bool
+	ownsBridge  bool
 	stopConfirm bool
 	events      EventSubscription
 
@@ -66,6 +73,8 @@ type Model struct {
 	copyInfo string
 	width    int
 	height   int
+	// footerHeight is the footer line count the last resize budgeted for.
+	footerHeight int
 }
 
 func New(options Options) Model {
@@ -98,6 +107,7 @@ func New(options Options) Model {
 		onStop:      options.OnStop,
 		onPair:      options.OnPair,
 		observer:    options.Observer,
+		ownsBridge:  options.Observer && options.OwnsBridge,
 		input:       input,
 		viewport:    vp,
 		byID:        make(map[string]int),
@@ -166,6 +176,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.handleFrame(msg.event.Frame)
+		m.relayoutFooter()
 		if msg.event.Frame.Type == protocol.FrameClose || m.state == "closed" {
 			return m, tea.Quit
 		}
@@ -196,6 +207,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "ctrl+enter", "ctrl+s":
 			m.submit()
+			m.relayoutFooter()
 			if m.state == "closed" {
 				return m, tea.Quit
 			}
@@ -249,12 +261,28 @@ func (m *Model) resize() {
 	if m.error != "" {
 		footerLines++
 	}
+	if m.observer {
+		footerLines = lipgloss.Height(m.observerFooter())
+	}
+	m.footerHeight = footerLines
 	viewportHeight := m.height - inputHeight - headerLines - footerLines - 2
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
 	m.viewport.SetHeight(viewportHeight)
 	m.refreshViewport(false)
+}
+
+// relayoutFooter resizes the viewport when the observer's wrapped footer
+// changed height (an error line appeared or went away), so the input box is
+// never pushed below the bottom of the terminal.
+func (m *Model) relayoutFooter() {
+	if !m.observer {
+		return
+	}
+	if lipgloss.Height(m.observerFooter()) != m.footerHeight {
+		m.resize()
+	}
 }
 
 func (m *Model) handleFrame(frame protocol.Frame) {
@@ -410,8 +438,13 @@ func (m *Model) command(command string) {
 	}
 }
 
+// close ends this TUI. It stops the bridge only when this TUI owns it: the
+// direct Mac TUI, or the observer embedded in `local`. A standalone observer
+// is attached through the orchestrator's endpoint too, but closing its
+// window must leave the bridge running (§6); /stop is how it closes one.
 func (m *Model) close() {
-	if m.localRole == protocol.RoleOrchestrator && m.onStop != nil {
+	ownsBridge := m.ownsBridge || (!m.observer && m.localRole == protocol.RoleOrchestrator)
+	if ownsBridge && m.onStop != nil {
 		m.onStop()
 	}
 	m.transport.Close()
@@ -505,13 +538,12 @@ func renderMessagesWithOrigin(messages []protocol.Envelope, statuses map[string]
 	remote := lipgloss.NewStyle().Width(width).Align(lipgloss.Left).Foreground(lipgloss.Color("93c5fd"))
 	blocks := make([]string, 0, len(messages))
 	for _, e := range messages {
-		who := "Ejecutor"
-		if localRole == protocol.RoleExecutor {
-			who = "Orquestador"
-		}
+		// The observer is the human watching both agents, not either of
+		// them, so each side is named by its role rather than "Tú"; the
+		// origin label below already says whether the human wrote it.
+		who := roleLabel(e.SenderRole)
 		style := remote
 		if e.SenderRole == localRole {
-			who = "Tú"
 			style = own
 		}
 		status := statuses[e.MessageID]
@@ -523,6 +555,17 @@ func renderMessagesWithOrigin(messages []protocol.Envelope, statuses map[string]
 		blocks = append(blocks, style.Render(block))
 	}
 	return strings.Join(blocks, "\n\n")
+}
+
+func roleLabel(role protocol.Role) string {
+	switch role {
+	case protocol.RoleOrchestrator:
+		return "Orquestador"
+	case protocol.RoleExecutor:
+		return "Ejecutor"
+	default:
+		return string(role)
+	}
 }
 
 // originLabel classifies Envelope.Source (§6.1) for the observer's display.
@@ -564,14 +607,44 @@ func (m Model) View() tea.View {
 
 // observerView is View() for the observing TUI (§6): no join command / pair
 // affordances (this TUI never owns a pairing), and a header that identifies
-// it as an observer rather than as either role's own terminal.
+// it as an observer rather than as either role's own terminal. The TUI
+// embedded in `local` says so too, because there /quit closes the bridge.
 func (m Model) observerView() tea.View {
-	header := fmt.Sprintf("CODEX-BRIDGE OBSERVADOR  %s  |  %s", m.transport.InstanceID(), m.state)
-	footer := "Ctrl+Enter/Ctrl+S enviar (como human-operator) · Enter nueva línea · PgUp/PgDn/Home/End + rueda/trackpad scroll · /status · /stop (dos veces confirma) · /quit"
+	view := tea.NewView(m.observerHeader() + "\n\n" + m.viewport.View() + "\n\n" + m.observerFooter() + "\n" + m.input.View())
+	view.MouseMode = tea.MouseModeCellMotion
+	// The alternate screen gives the terminal back as it was on exit instead
+	// of leaving the last frame printed above the shell prompt.
+	view.AltScreen = true
+	view.WindowTitle = m.observerKind() + " " + m.transport.InstanceID()
+	return view
+}
+
+func (m Model) observerKind() string {
+	if m.ownsBridge {
+		return "codex-bridge local"
+	}
+	return "codex-bridge observador"
+}
+
+func (m Model) observerHeader() string {
+	kind := "CODEX-BRIDGE OBSERVADOR"
+	if m.ownsBridge {
+		kind = "CODEX-BRIDGE LOCAL"
+	}
+	return fmt.Sprintf("%s  %s  |  %s", kind, m.transport.InstanceID(), m.state)
+}
+
+// observerFooter wraps the help line (and any error) to the terminal width:
+// a single long line would otherwise be clipped at the right edge and hide
+// the commands at its end. resize uses the same text to size the viewport.
+func (m Model) observerFooter() string {
+	quit := "/quit cierra esta ventana"
+	if m.ownsBridge {
+		quit = "/quit cierra el puente"
+	}
+	footer := "Ctrl+Enter/Ctrl+S enviar (como human-operator) · Enter nueva línea · PgUp/PgDn/Home/End + rueda/trackpad scroll · /status · /stop (dos veces confirma) · " + quit
 	if m.error != "" {
 		footer += "\n" + m.error
 	}
-	view := tea.NewView(header + "\n\n" + m.viewport.View() + "\n\n" + footer + "\n" + m.input.View())
-	view.MouseMode = tea.MouseModeCellMotion
-	return view
+	return lipgloss.NewStyle().Width(m.width).Render(footer)
 }

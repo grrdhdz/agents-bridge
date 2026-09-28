@@ -144,6 +144,51 @@ func TestCtlSendAndWaitBetweenLocalRoles(t *testing.T) {
 	}
 }
 
+// TestCtlSendNormalizesWindowsShellEncoding covers bodies piped from Windows
+// PowerShell 5.1: leading UTF-8 BOMs and CRLF must not reach the other agent,
+// or the first line would no longer be exactly the label.
+// bom is U+FEFF, which UTF-8 encodes as EF BB BF.
+var bom = string(rune(0xFEFF))
+
+func TestCtlSendNormalizesWindowsShellEncoding(t *testing.T) {
+	run := startLocal(t)
+	instanceID := run.ready["instance_id"].(string)
+	code, _, stderr := run.ctlID(bom+bom+"TAREA\r\nacción ñ\r\n", instanceID, "send", "--role", "orchestrator", "--body-file", "-")
+	if code != 0 {
+		t.Fatalf("send failed: %d %s", code, stderr)
+	}
+	code, stdout, stderr := run.ctlID("", instanceID, "wait", "--role", "executor", "--timeout", "3s", "--format", "text")
+	if code != 0 {
+		t.Fatalf("wait failed: %d %s", code, stderr)
+	}
+	_, body, _ := strings.Cut(stdout, "\n")
+	if body != "TAREA\nacción ñ\n" {
+		t.Fatalf("body was not normalized: %q", body)
+	}
+}
+
+func TestNormalizeBody(t *testing.T) {
+	utf16LE := []byte{0xFF, 0xFE, 'T', 0, 'A', 0, '\r', 0, '\n', 0, 0xF1, 0x00}
+	cases := []struct {
+		name string
+		in   []byte
+		want string
+	}{
+		{"plain body is unchanged", []byte("TAREA\nhola\n"), "TAREA\nhola\n"},
+		{"lone CR is kept", []byte("a\rb"), "a\rb"},
+		{"one BOM", []byte(bom + "TAREA"), "TAREA"},
+		{"two BOMs and CRLF", []byte(bom + bom + "TAREA\r\nx\r\n"), "TAREA\nx\n"},
+		{"UTF-16LE from Out-File", utf16LE, "TA\nñ"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := string(normalizeBody(c.in)); got != c.want {
+				t.Fatalf("normalizeBody = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
 func TestCtlWaitTextTimeoutHeaderCarriesInstance(t *testing.T) {
 	run := startLocal(t)
 	instanceID := run.ready["instance_id"].(string)
@@ -256,12 +301,8 @@ func TestReadyFileWritesReadyLineWithPrivatePermsAndFailsIfExists(t *testing.T) 
 	if err != nil {
 		t.Fatalf("ready-file was not written: %v", err)
 	}
-	info, err := os.Stat(readyFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("ready-file mode = %o, want 0600", info.Mode().Perm())
+	if err := control.VerifyOwnerOnly(readyFile); err != nil {
+		t.Fatalf("ready-file is not owner-only: %v", err)
 	}
 	var fileReady map[string]any
 	if err := json.Unmarshal(trimTrailingNewline(data), &fileReady); err != nil {
@@ -396,7 +437,7 @@ func TestWatchExternalStopCallsQuitWhenContextEnds(t *testing.T) {
 func TestBuildEmbeddedObserverOptionsClosingItStopsTheBridge(t *testing.T) {
 	h := newLocalHarnessForTUITest(t)
 	opts := buildEmbeddedObserverOptions(h.ownerEndpoint)
-	if !opts.Observer || opts.LocalRole != "mac-orchestrator" || opts.Transport == nil {
+	if !opts.Observer || !opts.OwnsBridge || opts.LocalRole != "mac-orchestrator" || opts.Transport == nil {
 		t.Fatalf("unexpected embedded observer options: %+v", opts)
 	}
 	if opts.OnStop == nil {

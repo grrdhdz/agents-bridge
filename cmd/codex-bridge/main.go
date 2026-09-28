@@ -249,11 +249,10 @@ func runOrchestrator(ctx context.Context, stdout io.Writer, root string, idleTim
 // join_command field, and the process just reconnects and serves ctl until
 // ctx ends, the server closes, or POST /v1/stop fires.
 func runOrchestratorHeadless(ctx context.Context, client *bridge.Client, server *bridge.Server, root string, idleTimeout time.Duration, readyFile string, joinCommand string) error {
-	readyFileHandle, err := os.OpenFile(readyFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	readyOut, err := control.ReserveReadyFile(readyFile)
 	if err != nil {
 		return fmt.Errorf("--ready-file: %w", err)
 	}
-	defer readyFileHandle.Close()
 
 	stop := newStopper()
 	activity := control.NewActivity()
@@ -280,7 +279,7 @@ func runOrchestratorHeadless(ctx context.Context, client *bridge.Client, server 
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(readyFileHandle, string(ready)); err != nil {
+	if err := readyOut.Publish(append(ready, '\n')); err != nil {
 		return fmt.Errorf("--ready-file: %w", err)
 	}
 
@@ -365,14 +364,13 @@ func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) 
 // keepConnected), until ctx ends, the client's connection ends for good, or
 // POST /v1/stop fires.
 func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Writer, root string, readyFile string) error {
-	var readyFileHandle *os.File
+	var readyOut *control.ReadyFile
 	if readyFile != "" {
 		var err error
-		readyFileHandle, err = os.OpenFile(readyFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		readyOut, err = control.ReserveReadyFile(readyFile)
 		if err != nil {
 			return fmt.Errorf("--ready-file: %w", err)
 		}
-		defer readyFileHandle.Close()
 	}
 
 	stop := newStopper()
@@ -395,8 +393,8 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 	if err != nil {
 		return err
 	}
-	if readyFileHandle != nil {
-		if _, err := fmt.Fprintln(readyFileHandle, string(ready)); err != nil {
+	if readyOut != nil {
+		if err := readyOut.Publish(append(ready, '\n')); err != nil {
 			return fmt.Errorf("--ready-file: %w", err)
 		}
 	}
