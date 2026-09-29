@@ -29,7 +29,7 @@ import (
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.3.2"
+	appVersion  = "v0.3.3"
 )
 
 func main() {
@@ -55,7 +55,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, commandName+":", parseErr)
 			os.Exit(2)
 		}
-		th, themeErr := resolveTheme(lf.theme)
+		th, themeErr := resolveTheme(lf.theme, !lf.headless && isStdoutTerminal())
 		if themeErr != nil {
 			fmt.Fprintln(os.Stderr, commandName+":", themeErr)
 			os.Exit(2)
@@ -87,7 +87,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, commandName+":", parseErr)
 			os.Exit(2)
 		}
-		th, themeErr := resolveTheme(hf.theme)
+		th, themeErr := resolveTheme(hf.theme, !hf.headless && isStdoutTerminal())
 		if themeErr != nil {
 			fmt.Fprintln(os.Stderr, commandName+":", themeErr)
 			os.Exit(2)
@@ -133,12 +133,22 @@ func isStdoutTerminal() bool { return term.IsTerminal(os.Stdout.Fd()) }
 // (dark/light picked from the terminal's own background); NO_COLOR (any
 // non-empty value, per no-color.org) degrades every mode to attributes and
 // symbols regardless of --theme.
-func resolveTheme(flagValue string) (theme.Theme, error) {
+//
+// interactive says whether a TUI will actually be shown. Without one, "auto"
+// never asks the terminal: that query needs someone to answer it, and on
+// Windows lipgloss falls back to the process's console even when stdout is
+// redirected — a background `local --headless` then waited forever for a
+// reply from a hidden console (v0.3.0–v0.3.2).
+func resolveTheme(flagValue string, interactive bool) (theme.Theme, error) {
 	mode, err := theme.ResolveMode(flagValue, os.Getenv("CODEX_BRIDGE_THEME"))
 	if err != nil {
 		return theme.Theme{}, err
 	}
-	return theme.New(mode, theme.IsNoColor(os.Environ()), nil), nil
+	var detectDark func() bool
+	if !interactive {
+		detectDark = func() bool { return true }
+	}
+	return theme.New(mode, theme.IsNoColor(os.Environ()), detectDark), nil
 }
 
 // localFlags holds `codex-bridge local`'s own flags (§5.1, §7.1).
@@ -371,7 +381,7 @@ func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) 
 	if err != nil {
 		return err
 	}
-	th, err := resolveTheme(jf.theme)
+	th, err := resolveTheme(jf.theme, !jf.headless && isStdoutTerminal())
 	if err != nil {
 		return err
 	}

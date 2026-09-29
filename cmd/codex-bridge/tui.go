@@ -33,7 +33,7 @@ func runTUIObserver(args []string, root string) error {
 	if flags.NArg() > 0 {
 		return fmt.Errorf("unexpected argument %q", flags.Arg(0))
 	}
-	th, err := resolveTheme(*themeValue)
+	th, err := resolveTheme(*themeValue, true)
 	if err != nil {
 		return err
 	}

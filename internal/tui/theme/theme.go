@@ -35,8 +35,10 @@ import (
 	"image/color"
 	"os"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
+	term "github.com/charmbracelet/x/term"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
@@ -136,12 +138,45 @@ func New(mode Mode, noColor bool, detectDark func() bool) Theme {
 	return darkTheme(noColor)
 }
 
+// backgroundQueryTimeout bounds detectRealBackground. lipgloss has its own
+// 2s timeout, but on Windows it could not cancel a read from a console that
+// never answers, so it is not relied on.
+const backgroundQueryTimeout = 3 * time.Second
+
 // detectRealBackground wraps lipgloss.HasDarkBackground against the actual
-// terminal, defaulting to dark when it cannot be queried (piped output,
-// non-terminal stdin, etc.) so `auto` never crashes or blocks.
+// terminal, defaulting to dark when it cannot be queried so `auto` never
+// crashes or blocks. It only asks when stdin and stdout are both a real
+// terminal: otherwise lipgloss on Windows opens the process's console
+// (CONIN$/CONOUT$) behind the caller's back, which in a background process
+// is hidden and never replies.
 func detectRealBackground() bool {
-	defer func() { recover() }()
-	return lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+	return detectBackground(term.IsTerminal(os.Stdin.Fd()) && term.IsTerminal(os.Stdout.Fd()), backgroundQueryTimeout,
+		func() bool { return lipgloss.HasDarkBackground(os.Stdin, os.Stdout) })
+}
+
+// detectBackground runs query only on a terminal and gives up after timeout,
+// answering dark. The abandoned query keeps its goroutine, which ends with
+// the process; that beats a TUI that never starts.
+func detectBackground(isTerminal bool, timeout time.Duration, query func() bool) bool {
+	if !isTerminal {
+		return true
+	}
+	result := make(chan bool, 1)
+	go func() {
+		dark := true
+		defer func() {
+			// A panic in the query also means "could not tell": dark.
+			_ = recover()
+			result <- dark
+		}()
+		dark = query()
+	}()
+	select {
+	case dark := <-result:
+		return dark
+	case <-time.After(timeout):
+		return true
+	}
 }
 
 func darkTheme(noColor bool) Theme {
