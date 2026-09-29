@@ -17,6 +17,7 @@ import (
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tailscale"
+	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
 )
 
 // loopbackDetect is the injected tailscale detection for phase 3 tests (§8):
@@ -48,7 +49,7 @@ func TestParseHostFlagsRejectsHeadlessWithoutReadyFile(t *testing.T) {
 // skips parseHostFlags.
 func TestRunOrchestratorHeadlessRejectsMissingReadyFile(t *testing.T) {
 	var stdout bytes.Buffer
-	err := runOrchestrator(context.Background(), &stdout, filepath.Join(t.TempDir(), "instances"), 0, true, "", loopbackDetect)
+	err := runOrchestrator(context.Background(), &stdout, filepath.Join(t.TempDir(), "instances"), 0, true, "", loopbackDetect, theme.New(theme.ModeDark, false, nil))
 	if err == nil || !strings.Contains(err.Error(), "--ready-file") {
 		t.Fatalf("expected a --ready-file error, got %v", err)
 	}
@@ -64,7 +65,9 @@ func TestRunOrchestratorHeadlessWritesJoinCommandOnlyToReadyFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var stdout bytes.Buffer
 	done := make(chan error, 1)
-	go func() { done <- runOrchestrator(ctx, &stdout, root, 0, true, readyFile, loopbackDetect) }()
+	go func() {
+		done <- runOrchestrator(ctx, &stdout, root, 0, true, readyFile, loopbackDetect, theme.New(theme.ModeDark, false, nil))
+	}()
 
 	var ready map[string]any
 	deadline := time.Now().Add(3 * time.Second)
@@ -218,7 +221,9 @@ func TestStopClosesHeadlessHostAndHeadlessJoinIndependently(t *testing.T) {
 	defer hostCancel()
 	var stdout bytes.Buffer
 	hostDone := make(chan error, 1)
-	go func() { hostDone <- runOrchestrator(hostCtx, &stdout, root, 0, true, readyFile, loopbackDetect) }()
+	go func() {
+		hostDone <- runOrchestrator(hostCtx, &stdout, root, 0, true, readyFile, loopbackDetect, theme.New(theme.ModeDark, false, nil))
+	}()
 
 	var descriptor control.Descriptor
 	deadline := time.Now().Add(3 * time.Second)

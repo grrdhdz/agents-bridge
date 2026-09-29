@@ -23,11 +23,12 @@ import (
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tailscale"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
+	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
 )
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.2.1"
+	appVersion  = "v0.3.0"
 )
 
 func main() {
@@ -53,9 +54,14 @@ func main() {
 			fmt.Fprintln(os.Stderr, commandName+":", parseErr)
 			os.Exit(2)
 		}
+		th, themeErr := resolveTheme(lf.theme)
+		if themeErr != nil {
+			fmt.Fprintln(os.Stderr, commandName+":", themeErr)
+			os.Exit(2)
+		}
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		cwd, _ := os.Getwd()
-		err = runLocal(ctx, os.Stdout, "", cwd, lf.idleTimeout, lf.readyFile, lf.headless, isStdoutTerminal)
+		err = runLocal(ctx, os.Stdout, "", cwd, lf.idleTimeout, lf.readyFile, lf.headless, isStdoutTerminal, th)
 		stop()
 	} else if len(os.Args) > 1 && os.Args[1] == "codex" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -80,8 +86,13 @@ func main() {
 			fmt.Fprintln(os.Stderr, commandName+":", parseErr)
 			os.Exit(2)
 		}
+		th, themeErr := resolveTheme(hf.theme)
+		if themeErr != nil {
+			fmt.Fprintln(os.Stderr, commandName+":", themeErr)
+			os.Exit(2)
+		}
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		err = runOrchestrator(ctx, os.Stdout, "", hf.idleTimeout, hf.headless, hf.readyFile, tailscale.Detect)
+		err = runOrchestrator(ctx, os.Stdout, "", hf.idleTimeout, hf.headless, hf.readyFile, tailscale.Detect, th)
 		stop()
 	}
 	if err != nil {
@@ -112,11 +123,25 @@ func parseIdleTimeoutFlag(name string, args []string, def time.Duration) (time.D
 // unexpected TUI.
 func isStdoutTerminal() bool { return term.IsTerminal(os.Stdout.Fd()) }
 
+// resolveTheme builds the Theme every mode's TUI draws with (spec §8):
+// --theme (flagValue) wins over CODEX_BRIDGE_THEME, which wins over "auto"
+// (dark/light picked from the terminal's own background); NO_COLOR (any
+// non-empty value, per no-color.org) degrades every mode to attributes and
+// symbols regardless of --theme.
+func resolveTheme(flagValue string) (theme.Theme, error) {
+	mode, err := theme.ResolveMode(flagValue, os.Getenv("CODEX_BRIDGE_THEME"))
+	if err != nil {
+		return theme.Theme{}, err
+	}
+	return theme.New(mode, theme.IsNoColor(os.Environ()), nil), nil
+}
+
 // localFlags holds `codex-bridge local`'s own flags (§5.1, §7.1).
 type localFlags struct {
 	idleTimeout time.Duration
 	readyFile   string
 	headless    bool
+	theme       string
 }
 
 func parseLocalFlags(args []string) (localFlags, error) {
@@ -125,13 +150,14 @@ func parseLocalFlags(args []string) (localFlags, error) {
 	idleTimeout := flags.Duration("idle-timeout", defaultLocalIdleTimeout, "cierra el proceso tras este tiempo sin actividad (0 desactiva)")
 	readyFile := flags.String("ready-file", "", "escribe la línea ready también en este archivo (0600, creación exclusiva)")
 	headless := flags.Bool("headless", false, "no muestra la TUI observadora aunque stdout sea una terminal")
+	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return localFlags{}, err
 	}
 	if *idleTimeout < 0 {
 		return localFlags{}, fmt.Errorf("--idle-timeout no puede ser negativo")
 	}
-	return localFlags{idleTimeout: *idleTimeout, readyFile: *readyFile, headless: *headless}, nil
+	return localFlags{idleTimeout: *idleTimeout, readyFile: *readyFile, headless: *headless, theme: *themeValue}, nil
 }
 
 // hostFlags holds the Mac/tailscale-host command's own flags (§8): headless
@@ -142,6 +168,7 @@ type hostFlags struct {
 	idleTimeout time.Duration
 	readyFile   string
 	headless    bool
+	theme       string
 }
 
 func parseHostFlags(args []string) (hostFlags, error) {
@@ -150,6 +177,7 @@ func parseHostFlags(args []string) (hostFlags, error) {
 	idleTimeout := flags.Duration("idle-timeout", 0, "cierra el proceso tras este tiempo sin actividad (0 desactiva; por defecto 0 en este modo)")
 	readyFile := flags.String("ready-file", "", "escribe la línea ready (con join_command en headless) en este archivo (0600, creación exclusiva)")
 	headless := flags.Bool("headless", false, "sin TUI; requiere --ready-file, donde va el comando de unión con su token")
+	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return hostFlags{}, err
 	}
@@ -159,7 +187,7 @@ func parseHostFlags(args []string) (hostFlags, error) {
 	if *headless && strings.TrimSpace(*readyFile) == "" {
 		return hostFlags{}, fmt.Errorf("--headless requiere --ready-file: el comando de unión con su token nunca sale por stdout")
 	}
-	return hostFlags{idleTimeout: *idleTimeout, readyFile: *readyFile, headless: *headless}, nil
+	return hostFlags{idleTimeout: *idleTimeout, readyFile: *readyFile, headless: *headless, theme: *themeValue}, nil
 }
 
 // runOrchestrator hosts the Mac/tailscale-host side (§8). detect is injected
@@ -169,7 +197,7 @@ func parseHostFlags(args []string) (hostFlags, error) {
 // caller passes tailscale.Detect itself). In headless mode nothing is ever
 // written to stdout or stderr: the join command (with its token) is written
 // only into the required --ready-file's join_command field.
-func runOrchestrator(ctx context.Context, stdout io.Writer, root string, idleTimeout time.Duration, headless bool, readyFile string, detect func(context.Context) (tailscale.Info, error)) error {
+func runOrchestrator(ctx context.Context, stdout io.Writer, root string, idleTimeout time.Duration, headless bool, readyFile string, detect func(context.Context) (tailscale.Info, error), th theme.Theme) error {
 	if headless && strings.TrimSpace(readyFile) == "" {
 		return fmt.Errorf("--headless requiere --ready-file")
 	}
@@ -202,11 +230,14 @@ func runOrchestrator(ctx context.Context, stdout io.Writer, root string, idleTim
 	}
 
 	model := tui.New(tui.Options{
-		Client:      client,
-		LocalRole:   protocol.RoleOrchestrator,
-		JoinCommand: joinCommand,
-		CopyCommand: clipboard.Copy,
-		OnStop:      server.Close,
+		Client:        client,
+		LocalRole:     protocol.RoleOrchestrator,
+		JoinCommand:   joinCommand,
+		Capabilities:  tui.CapabilitiesForHost(),
+		Theme:         th,
+		CopyCommand:   clipboard.Copy,
+		PeerConnected: server.WorkerConnected,
+		OnStop:        server.Close,
 		OnPair: func() string {
 			token, tokenErr := server.RegeneratePairingToken()
 			if tokenErr != nil {
@@ -299,6 +330,7 @@ type joinFlags struct {
 	port                    int
 	headless                bool
 	readyFile               string
+	theme                   string
 }
 
 func parseJoinFlags(args []string) (joinFlags, error) {
@@ -310,13 +342,14 @@ func parseJoinFlags(args []string) (joinFlags, error) {
 	token := flags.String("token", "", "one-use pairing token printed by Mac")
 	headless := flags.Bool("headless", false, "sin TUI: publica el descriptor tailscale-join y solo reconecta")
 	readyFile := flags.String("ready-file", "", "escribe la línea ready también en este archivo (0600, creación exclusiva)")
+	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return joinFlags{}, err
 	}
 	if strings.TrimSpace(*host) == "" || *port < 1 || *port > 65535 || strings.TrimSpace(*instanceID) == "" || strings.TrimSpace(*token) == "" {
 		return joinFlags{}, fmt.Errorf("join requires --host, --port, --instance and --token")
 	}
-	return joinFlags{host: *host, port: *port, instanceID: *instanceID, token: *token, headless: *headless, readyFile: *readyFile}, nil
+	return joinFlags{host: *host, port: *port, instanceID: *instanceID, token: *token, headless: *headless, readyFile: *readyFile, theme: *themeValue}, nil
 }
 
 // runJoin implements `codex-bridge join` (§8): the interactive path is
@@ -325,6 +358,10 @@ func parseJoinFlags(args []string) (joinFlags, error) {
 // local ctl executor until ctx ends or the join process is stopped.
 func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) error {
 	jf, err := parseJoinFlags(args)
+	if err != nil {
+		return err
+	}
+	th, err := resolveTheme(jf.theme)
 	if err != nil {
 		return err
 	}
@@ -340,7 +377,7 @@ func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) 
 		return runJoinHeadless(ctx, client, stdout, root, jf.readyFile)
 	}
 
-	model := tui.New(tui.Options{Client: client, LocalRole: protocol.RoleExecutor})
+	model := tui.New(tui.Options{Client: client, LocalRole: protocol.RoleExecutor, Capabilities: tui.CapabilitiesForJoin(), Theme: th, PeerConnected: client.Connected})
 	// Created before the control endpoint so Stop (program.Quit) is safe to
 	// call as soon as the endpoint exists, mirroring the host side (§4.2).
 	program := tea.NewProgram(&model)
@@ -423,13 +460,15 @@ func printUsage() {
 	fmt.Println("codex-bridge ps [--format table|jsonl]")
 	fmt.Println("                                   lista los puentes vivos del usuario")
 	fmt.Println("codex-bridge stop --instance-id ID cierra un puente (equivale a Ctrl+C en su proceso)")
-	fmt.Println("codex-bridge tui --instance-id ID  TUI observadora: ve e interviene sin consumir mensajes")
+	fmt.Println("codex-bridge tui                   inicio: lista de tus puentes vivos (entrar, cerrar, crear, filtrar)")
+	fmt.Println("codex-bridge tui --instance-id ID  TUI observadora directa: ve e interviene sin consumir mensajes")
 	fmt.Println("codex-bridge ctl list")
 	fmt.Println("codex-bridge ctl read|watch|send|wait --instance-id ID [--role orchestrator|executor] ...")
 	fmt.Println("codex-bridge codex open --thread <deeplink|id> --instance-id ID [--prompt-file FILE|-]")
 	fmt.Println("                                   abre el chat del ejecutor en la app de Codex con el prompt escrito")
 	fmt.Println("codex-bridge --version             muestra la versión")
-	fmt.Println("\nLa instancia, tokens, colas e historial solo viven en RAM.")
+	fmt.Println("\n--theme dark|light|auto (o CODEX_BRIDGE_THEME) en host, join, local y tui; NO_COLOR degrada a símbolos.")
+	fmt.Println("La instancia, tokens, colas e historial solo viven en RAM.")
 }
 
 // formatPowerShellJoinCommand keeps every credential-bearing argument visible

@@ -18,7 +18,10 @@ y controlar sus puentes sin pasar por un agente: `codex-bridge ps` (lista
 todos), `codex-bridge stop --instance-id <id>` (cierra uno) y
 `codex-bridge tui --instance-id <id>` (TUI observadora: ve la conversación en
 vivo y puede intervenir; nunca confirma mensajes por el agente, así que tu
-`ctl wait` los sigue recibiendo igual).
+`ctl wait` los sigue recibiendo igual). Desde v0.3.0, `codex-bridge tui` sin
+argumentos abre la lista de todos sus puentes: el usuario puede supervisarlo
+todo desde ahí (entrar, cerrar con confirmación, crear uno nuevo con `n`,
+filtrar) sin que tengas que darle instance_ids.
 
 **Regla general.** El usuario puede tener varios puentes a la vez (uno por
 proyecto, cada uno con su propio chat de Codex). Todo comando `ctl` lleva
@@ -79,7 +82,8 @@ $OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEnco
      --headless` (o sin TTY se comporta igual) y toma el `instance_id` de la
      línea `{"type":"ready",...}` en stdout. Informa al usuario del
      `instance_id` y de que puede observar la conversación con
-     `codex-bridge tui --instance-id <id>`.
+     `codex-bridge tui` (lista de puentes; entra en el tuyo) o directamente
+     con `codex-bridge tui --instance-id <id>`.
    - `codex-bridge ps` lista en cualquier momento los puentes vivos del
      usuario (modo, roles, PID, inactividad, si el otro lado está conectado).
 2. Pide al usuario el deeplink del chat del ejecutor en la app de Codex

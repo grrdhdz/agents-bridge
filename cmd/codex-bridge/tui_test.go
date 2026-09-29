@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
+	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
 )
 
 // TestSelectObserverDescriptorPrefersOrchestratorThenExecutor covers §6:
@@ -61,10 +62,32 @@ func TestSelectObserverDescriptorNotFound(t *testing.T) {
 	}
 }
 
-// TestRunTUIObserverRequiresInstanceID is a small usage-error check; it
-// never reaches tea.Program.Run because instance selection fails first.
-func TestRunTUIObserverRequiresInstanceID(t *testing.T) {
-	if err := runTUIObserver(nil, t.TempDir()); err == nil || !strings.Contains(err.Error(), "--instance-id") {
-		t.Fatalf("expected a usage error, got %v", err)
+// TestTUIWithoutInstanceIDOpensTheHomeScreen covers spec §5: `codex-bridge
+// tui` with no --instance-id is the list of bridges (phase 3), not a usage
+// error; --instance-id still goes straight to that bridge.
+func TestTUIWithoutInstanceIDOpensTheHomeScreen(t *testing.T) {
+	old := startHomeTUI
+	t.Cleanup(func() { startHomeTUI = old })
+	calls := 0
+	startHomeTUI = func(theme.Theme, string) error { calls++; return nil }
+	if err := runTUIObserver(nil, t.TempDir()); err != nil || calls != 1 {
+		t.Fatalf("expected the home screen to start once, got %d calls, err %v", calls, err)
+	}
+	if err := runTUIObserver([]string{"--instance-id", "does-not-exist"}, t.TempDir()); err == nil || calls != 1 {
+		t.Fatalf("--instance-id must not open the home screen (calls=%d, err=%v)", calls, err)
+	}
+	if err := runTUIObserver([]string{"--theme", "neon"}, t.TempDir()); err == nil || calls != 1 {
+		t.Fatalf("a bad --theme is still rejected before anything starts (calls=%d, err=%v)", calls, err)
+	}
+}
+
+func TestDirectObserverHasNoHomeToReturnTo(t *testing.T) {
+	direct, fromHome := directObserverCapabilities(), tui.CapabilitiesForObserver()
+	if direct.ReturnHome {
+		t.Fatal("entered with --instance-id there is no home screen: esc must not try to return")
+	}
+	direct.ReturnHome = fromHome.ReturnHome
+	if direct != fromHome {
+		t.Fatalf("apart from ReturnHome the direct observer is the same observer: %+v vs %+v", direct, fromHome)
 	}
 }

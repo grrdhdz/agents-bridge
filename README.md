@@ -4,9 +4,12 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión publicada actual es `v0.2.1`: corrige en Windows lo encontrado al
-verificar `v0.2.0`, que añadió el modo local entre agentes del mismo equipo y
-el control no gráfico `ctl`.
+La versión actual es `v0.3.0`: rediseño de la TUI (temas claro/oscuro, Markdown
+con código resaltado, ratón, paleta de comandos, panel lateral) y una pantalla
+de inicio con la lista de tus puentes (`codex-bridge tui`). La última versión
+publicada anterior, `v0.2.1`, corrigió en Windows lo encontrado al verificar
+`v0.2.0`, que añadió el modo local entre agentes del mismo equipo y el control
+no gráfico `ctl`.
 
 ## Propiedades del MVP
 
@@ -135,23 +138,89 @@ conversación con `codex-bridge tui --instance-id <id>` (ver más abajo) sin
 tocar el flujo de los agentes; y `codex-bridge stop --instance-id <id>` cierra
 el proceso local de ese equipo (el host o el join), no el otro lado.
 
-## Controles de la TUI
+## La TUI (v0.3.0)
 
-- `Ctrl+Enter` o `Ctrl+S`: enviar el texto pegado (ambos son atajos de envío).
-- `Enter`: insertar una nueva línea; el pegado multilínea se conserva.
-- `PgUp` / `PgDn`, `Home` / `End`, rueda del mouse o gesto vertical del
-  trackpad: desplazarse por el historial RAM; los párrafos largos se ajustan al
-  ancho disponible.
-- `/status`: estado de conexión y tamaño de la cola temporal.
-- `F5`: solo tiene efecto de copia en la TUI de Mac; vuelve a copiar el comando
-  completo de unión sin mostrar sus credenciales.
-- `/pair`: solo en Mac, invalida el token anterior, genera y copia uno nuevo.
-- `/stop`: solo en Mac, cierra la instancia y elimina todo su estado.
-- `/quit` o `Ctrl+C`: cierra la instancia Mac o el cliente Windows.
+Todos los modos (host Mac, `join`, `local` y `tui`) comparten la misma
+interfaz: barra de estado arriba (instancia, modo, si el otro rol está
+conectado, inactividad), la conversación en un contenedor con borde, un panel
+lateral con el estado del puente (si la terminal es ancha; `Ctrl+B` lo
+muestra u oculta), una barra de atajos de una sola línea (se adapta al ancho y
+termina en `? más`) y el composer abajo. Usa la pantalla alternativa: al salir
+la terminal queda como estaba.
 
-Los mensajes propios aparecen a la derecha y los remotos a la izquierda. La
-orientación se calcula con `sender_role`; no se almacenan mensajes distintos
-por equipo.
+### Inicio: la lista de tus puentes
+
+`codex-bridge tui` **sin** `--instance-id` abre la pantalla de inicio: la lista
+de los puentes vivos de tu usuario (la misma fuente que `codex-bridge ps`:
+descriptores y `/v1/health`), refrescada cada 2 s. Cada fila muestra la
+instancia (corta), el proyecto (directorio de trabajo del puente), el modo,
+los roles, si el otro lado está conectado (●/○), la inactividad, el número de
+mensajes y la hora de inicio.
+
+- `enter` (o doble clic): entra en el puente como observador.
+- `s`: cierra el puente seleccionado, con un diálogo de confirmación (el mismo
+  camino que `codex-bridge stop`).
+- `n`: crea un puente `local --headless` nuevo y entra en él. Es un proceso en
+  segundo plano desacoplado de la TUI (el propio ejecutable, con el
+  `--idle-timeout` por defecto de 30 min): sigue vivo al salir de la TUI,
+  aparece en `ps` y se cierra con `stop` o por inactividad. Al salir, la TUI
+  imprime en la terminal los que sigas teniendo vivos, con el comando para
+  cerrarlos (`codex-bridge stop --instance-id <id>`); nunca los cierra sola.
+- `r`: refresca ahora. `/`: filtra por instancia, proyecto o modo (`esc` quita
+  el filtro). `q` o `Ctrl+C`: sale. `Ctrl+P`: paleta. `?`: ayuda.
+- Sin puentes, el inicio explica cómo crear uno (`n`) o lanzarlo tú
+  (`codex-bridge local`).
+
+Con `--instance-id ID` la TUI entra directo a ese puente, como antes (y no hay
+inicio al que volver).
+
+### Vista de un puente
+
+- **Composer**: `Ctrl+Enter` o `Ctrl+S` envían; `Enter` inserta una línea
+  nueva (el pegado multilínea se conserva); `Ctrl+T` rota la etiqueta
+  (`TAREA`, `PREGUNTA`, `RESPUESTA`, `FIN`); `↑`/`↓` recorren lo enviado.
+- `Tab` cambia el foco entre composer y conversación. Con foco en la
+  conversación: `↑`/`↓` (o `k`/`j`) mueven la selección entre mensajes, `g`/`G`
+  van al primero/último, `PgUp`/`PgDn` desplazan, `Enter` pliega/despliega un
+  mensaje largo (más de 30 líneas), `y` copia el cuerpo del mensaje, `?` abre
+  la ayuda.
+- Los mensajes se muestran en contenedores con borde del color de su rol
+  (orquestador, ejecutor; un mensaje humano lleva el color humano), los propios
+  a la derecha y los remotos a la izquierda, con Markdown y código resaltado.
+- `Ctrl+F` busca en la conversación (`n`/`N` saltan entre coincidencias),
+  `Ctrl+B` panel lateral, `Ctrl+P` paleta de comandos, `Ctrl+/` (o `?`) ayuda.
+- `/status`: estado de conexión y cola temporal. `F5`: solo en la TUI de Mac,
+  vuelve a copiar el comando completo de unión sin mostrar sus credenciales.
+  `/pair`: solo en Mac, invalida el token anterior y genera y copia uno nuevo.
+  `/stop`: cierra la instancia (en `local` y en la TUI observadora pide
+  confirmación). `/quit` o `Ctrl+C`: sale (en host, `join` y `local` cierra el
+  puente; en la observadora, solo la ventana).
+- Si entraste desde el inicio, `esc` (sin overlay ni búsqueda abiertos) o
+  «Volver a inicio» en la paleta vuelven a la lista; se cierra limpiamente la
+  suscripción de ese puente. Si el puente se cierra mientras lo miras (stop
+  externo, inactividad), vuelves a la lista con un aviso en vez de salir de la
+  TUI.
+
+### Ratón
+
+Clic en un mensaje lo selecciona y le da el foco; clic en el borde superior
+de un mensaje largo ya desplegado lo pliega, y en `▸ N líneas más` lo
+despliega. Clic en el composer lo enfoca, en un atajo de la barra lo ejecuta,
+en una fila de la paleta la ejecuta, y fuera de una ventana flotante la cierra.
+La rueda o el gesto vertical del trackpad desplazan la conversación o la lista.
+Para **seleccionar texto con el ratón** del terminal (copiar a mano), mantén
+`Option` (macOS) o `Shift` (Windows Terminal y la mayoría de terminales)
+mientras arrastras: así el terminal se queda el ratón en lugar de la TUI.
+
+### Temas
+
+`--theme dark|light|auto` (o `CODEX_BRIDGE_THEME`) en host, `join`, `local` y
+`tui`; por defecto `auto` según el fondo de la terminal. Ambos temas pintan
+todas las celdas con su propio fondo (funciona aunque la terminal ignore el
+cambio de color de fondo, p. ej. un panel xterm.js) y sus colores cumplen
+contrastes WCAG medidos por pruebas (texto ≥ 7:1, secundario y semánticos
+≥ 4,5:1, bordes ≥ 3:1). `NO_COLOR` degrada todo a atributos y símbolos, sin
+colores.
 
 ## Modo local entre agentes (v0.2.0)
 
@@ -251,7 +320,9 @@ orquestador en `local`; el rol del ejecutor no puede cerrarlo y responde
 `FORBIDDEN`); si la instancia no existe, sale con código 3, y si su puerto no
 responde, con código 8 e imprime el PID por si hace falta un `kill` manual.
 
-Para ver la conversación en vivo e intervenir sin ser un agente:
+Para ver la conversación en vivo e intervenir sin ser un agente, `codex-bridge
+tui` (sin argumentos) abre la lista de tus puentes y desde ahí se entra en uno;
+o directamente:
 
 ```sh
 codex-bridge tui --instance-id <id>
@@ -268,7 +339,7 @@ con `source=human-operator`, visible también en la cabecera de texto de
 `ctl wait` para que el agente sepa que ese mensaje viene del usuario y tiene
 prioridad. Esta TUI **nunca confirma mensajes**: usa `watch`, así que el
 `ctl wait` del agente los sigue recibiendo igual, la haya visto o no.
-`/stop` pide una segunda confirmación (escribirlo de nuevo) antes de llamar a
+`/stop` (o «Cerrar puente» en la paleta) pide confirmación antes de llamar a
 `stop`; `/quit` o `Ctrl+C` cierran solo la TUI, el puente sigue vivo. Usa la
 pantalla alternativa de la terminal, así que al salir la deja como estaba.
 

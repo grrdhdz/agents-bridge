@@ -14,6 +14,7 @@ import (
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
+	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
 )
 
 // defaultLocalIdleTimeout matches §5.1: a local instance with nobody present
@@ -36,8 +37,11 @@ const defaultLocalIdleTimeout = 30 * time.Minute
 // §7.1: when headless is false and isTerminal() is true, runLocal shows its
 // own embedded observer TUI instead of the plain ready/select loop — see
 // runEmbeddedTUI. isTerminal is a parameter (not a direct term.IsTerminal
-// call) so tests can exercise both paths without a real terminal.
-func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeout time.Duration, readyFile string, headless bool, isTerminal func() bool) error {
+// call) so tests can exercise both paths without a real terminal. th is the
+// already-resolved theme (flag/env/auto-detected, per --theme and
+// CODEX_BRIDGE_THEME — see resolveTheme in main.go) the embedded TUI draws
+// with.
+func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeout time.Duration, readyFile string, headless bool, isTerminal func() bool, th theme.Theme) error {
 	var readyOut *control.ReadyFile
 	if readyFile != "" {
 		// Checked up front, before anything else starts, so a stale file is
@@ -124,7 +128,7 @@ func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeo
 		// The TUI owns the process from here: it never prints ready to
 		// stdout (that would corrupt the terminal UI), and it — not the
 		// select below — decides when the bridge closes.
-		return runEmbeddedTUI(ctx, stop, ownerEndpoint, runTeaProgram)
+		return runEmbeddedTUI(ctx, stop, ownerEndpoint, th, runTeaProgram)
 	}
 
 	if _, err := fmt.Fprintln(stdout, string(ready)); err != nil {
@@ -164,8 +168,8 @@ var runTeaProgram = func(p *tea.Program) error {
 // reverse also holds — an external stop (another terminal's
 // `codex-bridge stop`, or --idle-timeout firing) must close this TUI too,
 // which watchExternalStop below wires up.
-func runEmbeddedTUI(ctx context.Context, stop *stopper, ownerEndpoint *control.Endpoint, run func(*tea.Program) error) error {
-	model := tui.New(buildEmbeddedObserverOptions(ownerEndpoint))
+func runEmbeddedTUI(ctx context.Context, stop *stopper, ownerEndpoint *control.Endpoint, th theme.Theme, run func(*tea.Program) error) error {
+	model := tui.New(buildEmbeddedObserverOptions(ownerEndpoint, th))
 	program := tea.NewProgram(&model)
 	watchCtx, cancelWatch := context.WithCancel(ctx)
 	defer cancelWatch()
@@ -179,13 +183,13 @@ func runEmbeddedTUI(ctx context.Context, stop *stopper, ownerEndpoint *control.E
 // asks that very endpoint to stop, which — because CanStop is true for the
 // orchestrator in local mode — actually tears down the whole bridge.
 // OwnsBridge is what tells the model so; the standalone TUI never sets it.
-func buildEmbeddedObserverOptions(ownerEndpoint *control.Endpoint) tui.Options {
+func buildEmbeddedObserverOptions(ownerEndpoint *control.Endpoint, th theme.Theme) tui.Options {
 	transport := tui.NewControlTransport(ownerEndpoint.Descriptor())
 	return tui.Options{
-		Transport:  transport,
-		LocalRole:  protocol.RoleOrchestrator,
-		Observer:   true,
-		OwnsBridge: true,
+		Transport:    transport,
+		LocalRole:    protocol.RoleOrchestrator,
+		Capabilities: tui.CapabilitiesForLocal(),
+		Theme:        th,
 		OnStop: func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()

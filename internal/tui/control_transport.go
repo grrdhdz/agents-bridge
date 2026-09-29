@@ -90,6 +90,33 @@ func (t *ControlTransport) QueueStats() (int, int) { return 0, 0 }
 // own to release (the underlying subscription closes itself).
 func (t *ControlTransport) Close() {}
 
+// Status implements StatusProvider (§7) with GET /v1/health, which already
+// reports peer_connected (internal/control/http.go's handleHealth); cwd and
+// started_at come straight from the descriptor already held locally
+// (control.Descriptor.CWD/StartedAt), with no need to add them to the
+// health payload or touch internal/control at all.
+func (t *ControlTransport) Status(ctx context.Context) (BridgeStatus, error) {
+	response, err := control.Do(ctx, t.descriptor, http.MethodGet, "/v1/health", nil)
+	if err != nil {
+		return BridgeStatus{}, err
+	}
+	defer response.Body.Close()
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return BridgeStatus{}, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return BridgeStatus{}, describeControlError(data)
+	}
+	var record struct {
+		PeerConnected bool `json:"peer_connected"`
+	}
+	if err := json.Unmarshal(data, &record); err != nil {
+		return BridgeStatus{}, err
+	}
+	return BridgeStatus{PeerConnected: record.PeerConnected, StartedAt: t.descriptor.StartedAt, Cwd: t.descriptor.CWD}, nil
+}
+
 // Stop calls POST /v1/stop on this endpoint (§4.2), for the observing TUI's
 // /stop command.
 func (t *ControlTransport) Stop(ctx context.Context) error {

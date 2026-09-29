@@ -6,13 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
-	"sort"
 	"text/tabwriter"
 	"time"
 
+	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
 
 // psRow is one line of `ps` output: every live bridge grouped by instance_id
@@ -59,82 +57,24 @@ func dispatchPS(ctx context.Context, args []string, env ctlEnv) error {
 	return writePSTable(env.stdout, rows)
 }
 
-// buildPSRows groups live descriptors by instance_id, so a local instance's
-// two role descriptors become one row, while separate instances stay
-// separate rows even if a process crashed and left only one role behind.
+// buildPSRows describes every live bridge (internal/bridges: the same
+// source the TUI's home screen uses) as ps rows.
 func buildPSRows(ctx context.Context, descriptors []control.Descriptor) []psRow {
-	byInstance := make(map[string][]control.Descriptor, len(descriptors))
-	order := make([]string, 0, len(descriptors))
-	for _, d := range descriptors {
-		if _, seen := byInstance[d.InstanceID]; !seen {
-			order = append(order, d.InstanceID)
-		}
-		byInstance[d.InstanceID] = append(byInstance[d.InstanceID], d)
-	}
-	sort.Strings(order)
-	rows := make([]psRow, 0, len(order))
-	for _, id := range order {
-		rows = append(rows, buildPSRow(ctx, byInstance[id]))
+	infos := bridges.FromDescriptors(ctx, descriptors)
+	rows := make([]psRow, 0, len(infos))
+	for _, info := range infos {
+		rows = append(rows, psRow{
+			InstanceID:      info.InstanceID,
+			Mode:            info.Mode,
+			Roles:           info.Roles,
+			PID:             info.PID,
+			StartedAt:       info.StartedAt.UTC().Format(time.RFC3339),
+			IdleSeconds:     info.IdleSeconds,
+			PeerConnected:   info.PeerConnected,
+			LatestServerSeq: info.LatestServerSeq,
+		})
 	}
 	return rows
-}
-
-func buildPSRow(ctx context.Context, ds []control.Descriptor) psRow {
-	row := psRow{InstanceID: ds[0].InstanceID}
-	var chosen control.Descriptor
-	haveOrchestrator, haveExecutor := false, false
-	var startedAt time.Time
-	var lastActivity *time.Time
-	for i, d := range ds {
-		if d.LocalRole == protocol.RoleOrchestrator {
-			haveOrchestrator = true
-			chosen = d
-		} else if d.LocalRole == protocol.RoleExecutor {
-			haveExecutor = true
-			if !haveOrchestrator {
-				chosen = d
-			}
-		}
-		if i == 0 || d.StartedAt.Before(startedAt) {
-			startedAt = d.StartedAt
-		}
-		if d.LastActivityAt != nil && (lastActivity == nil || d.LastActivityAt.After(*lastActivity)) {
-			lastActivity = d.LastActivityAt
-		}
-		if row.Mode == "" {
-			row.Mode = string(d.Mode)
-		}
-		row.PID = d.PID
-	}
-	if haveOrchestrator {
-		row.Roles = append(row.Roles, "orchestrator")
-	}
-	if haveExecutor {
-		row.Roles = append(row.Roles, "executor")
-	}
-	row.StartedAt = startedAt.UTC().Format(time.RFC3339)
-	if lastActivity != nil {
-		idle := int64(time.Since(*lastActivity).Seconds())
-		if idle < 0 {
-			idle = 0
-		}
-		row.IdleSeconds = &idle
-	}
-
-	healthCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
-	defer cancel()
-	if response, err := control.Do(healthCtx, chosen, http.MethodGet, "/v1/health", nil); err == nil {
-		var health struct {
-			PeerConnected   bool   `json:"peer_connected"`
-			LatestServerSeq uint64 `json:"latest_server_seq"`
-		}
-		if response.StatusCode == http.StatusOK && json.NewDecoder(response.Body).Decode(&health) == nil {
-			row.PeerConnected = health.PeerConnected
-			row.LatestServerSeq = health.LatestServerSeq
-		}
-		_ = response.Body.Close()
-	}
-	return row
 }
 
 func writePSJSONL(w io.Writer, rows []psRow) error {

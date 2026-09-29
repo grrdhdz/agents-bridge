@@ -19,6 +19,8 @@ import (
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
+	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
 )
 
 type localRun struct {
@@ -48,7 +50,7 @@ func startLocalWithOptions(t *testing.T, idleTimeout time.Duration, readyFile st
 	run.cancel = cancel
 	reader, writer := io.Pipe()
 	go func() {
-		run.err = runLocal(ctx, writer, run.root, run.cwd, idleTimeout, readyFile, true, alwaysNotTerminal)
+		run.err = runLocal(ctx, writer, run.root, run.cwd, idleTimeout, readyFile, true, alwaysNotTerminal, theme.New(theme.ModeDark, false, nil))
 		_ = writer.Close()
 		close(run.done)
 	}()
@@ -334,7 +336,7 @@ func TestReadyFileFailsWhenItAlreadyExists(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var stdout bytes.Buffer
-	err := runLocal(ctx, &stdout, filepath.Join(t.TempDir(), "instances"), "/repo", 0, readyFile, true, alwaysNotTerminal)
+	err := runLocal(ctx, &stdout, filepath.Join(t.TempDir(), "instances"), "/repo", 0, readyFile, true, alwaysNotTerminal, theme.New(theme.ModeDark, false, nil))
 	if err == nil {
 		t.Fatal("runLocal should fail when --ready-file already exists")
 	}
@@ -436,8 +438,8 @@ func TestWatchExternalStopCallsQuitWhenContextEnds(t *testing.T) {
 // shortcut that only looks right.
 func TestBuildEmbeddedObserverOptionsClosingItStopsTheBridge(t *testing.T) {
 	h := newLocalHarnessForTUITest(t)
-	opts := buildEmbeddedObserverOptions(h.ownerEndpoint)
-	if !opts.Observer || !opts.OwnsBridge || opts.LocalRole != "mac-orchestrator" || opts.Transport == nil {
+	opts := buildEmbeddedObserverOptions(h.ownerEndpoint, theme.New(theme.ModeDark, false, nil))
+	if opts.Capabilities != tui.CapabilitiesForLocal() || opts.LocalRole != "mac-orchestrator" || opts.Transport == nil {
 		t.Fatalf("unexpected embedded observer options: %+v", opts)
 	}
 	if opts.OnStop == nil {
@@ -469,7 +471,7 @@ func TestRunLocalShowsEmbeddedTUIAndSkipsStdoutReady(t *testing.T) {
 	var stdout bytes.Buffer
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := runLocal(ctx, &stdout, root, "/repo", 0, "", false, func() bool { return true })
+	err := runLocal(ctx, &stdout, root, "/repo", 0, "", false, func() bool { return true }, theme.New(theme.ModeDark, false, nil))
 	if err != nil {
 		t.Fatalf("runLocal (TUI branch) returned an error: %v", err)
 	}

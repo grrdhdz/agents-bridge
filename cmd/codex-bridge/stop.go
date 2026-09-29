@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
 	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
 
 func runStop(ctx context.Context, args []string, env ctlEnv) int {
@@ -61,25 +62,13 @@ func dispatchStop(ctx context.Context, args []string, env ctlEnv) error {
 	return err
 }
 
-// selectStopDescriptor picks the one endpoint on this machine allowed to
-// stop the instance (§4.2): the orchestrator's in local and tailscale-host,
-// the executor's in tailscale-join, where it is the only descriptor present
-// here. It never falls back across machines: an instance not found in this
-// user's descriptor directory is INSTANCE_NOT_FOUND (exit 3).
+// selectStopDescriptor maps internal/bridges' selection (shared with the
+// TUI's home screen) onto this command's error codes: an instance not found
+// in this user's descriptor directory is INSTANCE_NOT_FOUND (exit 3).
 func selectStopDescriptor(descriptors []control.Descriptor, instanceID string) (control.Descriptor, error) {
-	var matches []control.Descriptor
-	for _, d := range descriptors {
-		if d.InstanceID == instanceID {
-			matches = append(matches, d)
-		}
-	}
-	if len(matches) == 0 {
+	d, err := bridges.SelectStopDescriptor(descriptors, instanceID)
+	if errors.Is(err, bridges.ErrNotFound) {
 		return control.Descriptor{}, failure("INSTANCE_NOT_FOUND", "instance %q not found", instanceID)
 	}
-	for _, d := range matches {
-		if d.LocalRole == protocol.RoleOrchestrator {
-			return d, nil
-		}
-	}
-	return matches[0], nil
+	return d, err
 }

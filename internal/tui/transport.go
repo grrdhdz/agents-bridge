@@ -2,10 +2,39 @@ package tui
 
 import (
 	"context"
+	"os"
+	"time"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
+
+// BridgeStatus is what an optional StatusProvider reports (spec §7): enough
+// to fill the sidebar's "Puente" section beyond what Model already deduces
+// from frame events alone.
+type BridgeStatus struct {
+	// PeerConnected reports whether the other role currently has a live
+	// connection, independent of Model's own frame-derived connState.
+	PeerConnected bool
+	// StartedAt is when this side of the bridge came up, used for the
+	// sidebar's "tiempo activo".
+	StartedAt time.Time
+	// Cwd is the project directory (base name shown in the status bar),
+	// taken from the descriptor when one exists (§7: "toma el cwd del
+	// descriptor en el lado cliente cuando exista"), or the process's own
+	// working directory for host/join (they are that process). Empty when
+	// neither is available.
+	Cwd string
+}
+
+// StatusProvider is spec §7's optional interface: a Transport that can also
+// report BridgeStatus, checked with a type assertion so a Transport that
+// does not implement it (there is none left un-implemented today, but the
+// interface stays optional per spec) simply leaves the sidebar showing only
+// what frame events already reveal.
+type StatusProvider interface {
+	Status(ctx context.Context) (BridgeStatus, error)
+}
 
 // Transport is the message channel Model needs, reduced to exactly the
 // methods it calls (§6.2 of docs/superpowers/specs/2026-09-27-bridge-visibility-design.md):
@@ -40,8 +69,31 @@ type EventSubscription interface {
 
 // clientTransport adapts a *bridge.Client to Transport without changing any
 // of its behavior: this is exactly what the TUI called before the
-// interface existed.
-type clientTransport struct{ client *bridge.Client }
+// interface existed. It also implements StatusProvider (§7): peerConnected
+// is the mode-specific callback the caller wires in (e.g.
+// *bridge.Server.WorkerConnected for the host, since a *bridge.Client alone
+// has no notion of "is my peer connected" — only "is my own connection
+// up"); startedAt and cwd are captured once at construction, since host and
+// join are themselves the process whose directory and start time matter.
+type clientTransport struct {
+	client        *bridge.Client
+	peerConnected func() bool
+	startedAt     time.Time
+	cwd           string
+}
+
+func newClientTransport(client *bridge.Client, peerConnected func() bool) clientTransport {
+	cwd, _ := os.Getwd()
+	return clientTransport{client: client, peerConnected: peerConnected, startedAt: time.Now(), cwd: cwd}
+}
+
+func (t clientTransport) Status(context.Context) (BridgeStatus, error) {
+	connected := t.client.Connected()
+	if t.peerConnected != nil {
+		connected = t.peerConnected()
+	}
+	return BridgeStatus{PeerConnected: connected, StartedAt: t.startedAt, Cwd: t.cwd}, nil
+}
 
 func (t clientTransport) InstanceID() string { return t.client.InstanceID() }
 func (t clientTransport) Connected() bool    { return t.client.Connected() }
