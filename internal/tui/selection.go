@@ -277,10 +277,19 @@ func (m *Model) toggleSidebar() {
 	m.resize()
 }
 
+// noColorThemeNotice explains why "Cambiar tema" has no visible effect: with
+// NO_COLOR every theme renders without color, so there is nothing to switch
+// to, and silently doing nothing looked like a broken light theme.
+const noColorThemeNotice = "Colores desactivados por NO_COLOR: el tema no se puede cambiar"
+
 // toggleTheme flips dark/light (the command palette's "cambiar tema";
 // §6.8's own --theme/env var selection is unaffected, this is a live,
 // in-session override).
 func (m *Model) toggleTheme() {
+	if m.th.NoColor {
+		m.pushToast(noColorThemeNotice)
+		return
+	}
 	mode := theme.ModeLight
 	if m.th.Mode == theme.ModeLight {
 		mode = theme.ModeDark

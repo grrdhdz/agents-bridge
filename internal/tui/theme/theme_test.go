@@ -235,12 +235,14 @@ func TestPaletteContrastMeetsWCAGMinimums(t *testing.T) {
 	}
 }
 
-// TestLightSurfaceIsOffWhiteNotPureWhite pins the light theme's surfaces to
-// the tenuous off-white range the report asked for (~#F3F4F6–#F6F8FA for
-// content, a touch more marked for the status bar) rather than a raw
-// #FFFFFF background — the "glare" complaint was as much about painting
-// *some* surface at all as about text contrast.
-func TestLightSurfaceIsOffWhiteNotPureWhite(t *testing.T) {
+// TestLightSurfaceIsBluishNotWhite pins the light theme's surfaces to the
+// bluish tone the command palette introduced: the whole light TUI, not just
+// its overlays, should read as that tone ("todo del tono azulado de la
+// paleta de comandos, no blanco"). It replaces the earlier off-white
+// (#F3F4F6) request. Both surfaces stay light — never pure #FFFFFF glare,
+// never dark enough to stop being a light theme — and the raised one (status
+// bar, overlays, code blocks) a touch more marked than the base.
+func TestLightSurfaceIsBluishNotWhite(t *testing.T) {
 	light := New(ModeLight, false, nil)
 	white := color.White
 	for _, c := range []struct {
@@ -251,8 +253,12 @@ func TestLightSurfaceIsOffWhiteNotPureWhite(t *testing.T) {
 		if ratio <= 1.0 {
 			t.Fatalf("%s should differ from pure white, got contrast ratio %.3f", c.name, ratio)
 		}
-		if ratio > 1.4 {
-			t.Fatalf("%s should be a *tenuous* off-white (subtle vs. white), got contrast ratio %.3f — too dark to be \"tenue\"", c.name, ratio)
+		if ratio > 1.5 {
+			t.Fatalf("%s should stay a light surface, got contrast ratio %.3f against white", c.name, ratio)
+		}
+		r, _, b, _ := c.col.RGBA()
+		if b <= r {
+			t.Fatalf("%s should be bluish (blue channel above red), got %v", c.name, c.col)
 		}
 	}
 	if contrastRatio(light.SurfaceRaised, white) <= contrastRatio(light.Surface, white) {

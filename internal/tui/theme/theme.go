@@ -203,7 +203,9 @@ func darkTheme(noColor bool) Theme {
 // lightTheme: every color is chosen to clear its required WCAG ratio
 // against Surface (see TestPaletteContrastMeetsWCAGMinimums for the exact
 // numbers), never the pale #999/#aaa-style grays a real report called out
-// specifically.
+// specifically. Surface is the command palette's bluish tone, so the whole
+// light TUI reads as it instead of white; SurfaceRaised (status bar,
+// overlays, code blocks) is a slightly deeper shade of the same blue.
 func lightTheme(noColor bool) Theme {
 	return Theme{
 		Mode:           ModeLight,
@@ -220,8 +222,8 @@ func lightTheme(noColor bool) Theme {
 		Notice:         lipgloss.Color("#5b21b6"),
 		Muted:          lipgloss.Color("#334155"),
 		Text:           lipgloss.Color("#0f172a"),
-		Surface:        lipgloss.Color("#f3f4f6"),
-		SurfaceRaised:  lipgloss.Color("#dce3ee"),
+		Surface:        lipgloss.Color("#dce3ee"),
+		SurfaceRaised:  lipgloss.Color("#d0d9e7"),
 	}
 }
 

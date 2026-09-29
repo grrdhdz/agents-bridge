@@ -532,6 +532,10 @@ func (h *HomeModel) runHomePaletteItem(id string) tea.Cmd {
 	case "filter":
 		h.openFilter()
 	case "theme":
+		if h.th.NoColor {
+			h.Notify(noColorThemeNotice)
+			return nil
+		}
 		mode := theme.ModeLight
 		if h.th.Mode == theme.ModeLight {
 			mode = theme.ModeDark
@@ -932,7 +936,9 @@ func (h *HomeModel) shortcutsBar(row int) string {
 		h.addRegion(row, start, end, run)
 		cursor = end + 1
 	}
-	return lipgloss.NewStyle().Width(h.width).Render(line)
+	// Muted for the same reason as Model.shortcutsBar: never the terminal's
+	// default foreground on the theme's own Surface.
+	return h.th.MutedStyle().Width(h.width).Render(line)
 }
 
 // --- floating windows --------------------------------------------------

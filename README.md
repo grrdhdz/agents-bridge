@@ -4,7 +4,11 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión actual es `v0.3.3`: corrige que en Windows `local --headless` (y
+La versión actual es `v0.3.4`: el tema claro usa en toda la TUI el tono azulado
+de la paleta de comandos en vez de blanco, la línea de atajos usa el color
+secundario del tema (antes heredaba el de la terminal y en el tema claro casi
+no se leía) y «Cambiar tema» avisa cuando `NO_COLOR` desactiva los colores.
+`v0.3.3` corrigió que en Windows `local --headless` (y
 cualquier modo sin TUI lanzado en segundo plano) se quedara colgado sin
 arrancar desde `v0.3.0`, al consultar el color de fondo de una consola oculta
 para el tema `auto`. `v0.3.2` hizo que todos los colores de resaltado de código

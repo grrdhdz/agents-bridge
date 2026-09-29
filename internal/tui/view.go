@@ -105,7 +105,10 @@ func (m *Model) shortcutsBarLine() string {
 func (m *Model) shortcutsBar(row int) string {
 	line := m.shortcutsBarLine()
 	m.registerShortcutRegions(row, line)
-	return lipgloss.NewStyle().Width(m.width).Render(line)
+	// Muted, not the terminal default: that default is whatever the user's
+	// terminal scheme uses (light gray on a dark scheme), which the light
+	// theme's Surface made nearly invisible.
+	return m.th.MutedStyle().Width(m.width).Render(line)
 }
 
 // registerShortcutRegions locates each of shortcutActions' labels inside
