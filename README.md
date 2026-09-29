@@ -4,8 +4,9 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión actual es `v0.3.1`: corrige que `join --headless` quedara vivo al
-cerrarse el host (ahora termina solo; ver `--reconnect-timeout`). `v0.3.0` trajo el
+La versión actual es `v0.3.2`: todos los colores de resaltado de código cumplen
+contraste WCAG ≥ 4.5:1 en los temas claro y oscuro. `v0.3.1` corrigió que
+`join --headless` quedara vivo al cerrarse el host (ver `--reconnect-timeout`). `v0.3.0` trajo el
 rediseño de la TUI (temas claro/oscuro, Markdown
 con código resaltado, ratón, paleta de comandos, panel lateral) y una pantalla
 de inicio con la lista de tus puentes (`codex-bridge tui`). La última versión

@@ -10,6 +10,8 @@ package tui
 import (
 	"fmt"
 	"image/color"
+	"math"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -156,8 +158,94 @@ func applyThemeColors(cfg ansi.StyleConfig, th theme.Theme, role protocol.Role) 
 		muted := hex(th.Muted)
 		cfg.CodeBlock.Chroma.Comment.Color = muted
 		cfg.CodeBlock.Chroma.CommentPreproc.Color = muted
+		ensureChromaContrast(cfg.CodeBlock.Chroma, th)
 	}
 	return cfg
+}
+
+// chromaMinContrast is the WCAG AA floor for normal text every syntax
+// color of a code block must reach against the background it is painted on.
+const chromaMinContrast = 4.5
+
+// chromaErrorInk is the dark foreground used on glamour's own red Error
+// background: the bundled near-white (#F1F1F1) reads 2.8-2.9:1 on it, and
+// a mid-tone red cannot be fixed by tinting the foreground of the same hue.
+const chromaErrorInk = "#0f172a"
+
+// ensureChromaContrast repairs every chroma foreground that falls below
+// chromaMinContrast against its effective background (its own
+// BackgroundColor if it has one, else the theme's SurfaceRaised). Glamour's
+// bundled palettes were tuned for its own reference background, so most
+// light-mode tokens (and a few dark-mode ones) miss the floor. A failing
+// color keeps its hue and is only shifted toward black (light theme) or
+// white (dark theme) by the smallest step that clears the floor, so tokens
+// stay distinguishable from each other; colors that already pass are
+// untouched.
+func ensureChromaContrast(ch *ansi.Chroma, th theme.Theme) {
+	v := reflect.ValueOf(ch).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		prim, ok := v.Field(i).Addr().Interface().(*ansi.StylePrimitive)
+		if !ok || prim.Color == nil || v.Type().Field(i).Name == "Background" {
+			continue
+		}
+		bg := color.Color(th.SurfaceRaised)
+		if prim.BackgroundColor != nil {
+			bg = lipgloss.Color(*prim.BackgroundColor)
+		}
+		fg := lipgloss.Color(*prim.Color)
+		if contrastRatio(fg, bg) >= chromaMinContrast {
+			continue
+		}
+		var fixed string
+		if prim.BackgroundColor != nil {
+			fixed = chromaErrorInk
+		} else {
+			fixed = colorHex(shiftForContrast(fg, bg, th.Mode == theme.ModeDark))
+		}
+		prim.Color = &fixed
+	}
+}
+
+// shiftForContrast mixes fg toward white (lighten) or black by the
+// smallest 1% step whose contrast against bg reaches chromaMinContrast.
+func shiftForContrast(fg, bg color.Color, lighten bool) color.Color {
+	r, g, b, _ := fg.RGBA()
+	target := 0.0
+	if lighten {
+		target = 255
+	}
+	for step := 1; step <= 100; step++ {
+		t := float64(step) / 100
+		mix := func(c uint32) uint8 {
+			v := float64(c>>8)*(1-t) + target*t
+			return uint8(math.Round(v))
+		}
+		out := color.RGBA{R: mix(r), G: mix(g), B: mix(b), A: 0xff}
+		if contrastRatio(out, bg) >= chromaMinContrast {
+			return out
+		}
+	}
+	return color.RGBA{R: uint8(target), G: uint8(target), B: uint8(target), A: 0xff}
+}
+
+func srgbLinear(c uint32) float64 {
+	v := float64(c>>8) / 255.0
+	if v <= 0.04045 {
+		return v / 12.92
+	}
+	return math.Pow((v+0.055)/1.055, 2.4)
+}
+
+func contrastRatio(a, b color.Color) float64 {
+	lum := func(c color.Color) float64 {
+		r, g, bl, _ := c.RGBA()
+		return 0.2126*srgbLinear(r) + 0.7152*srgbLinear(g) + 0.0722*srgbLinear(bl)
+	}
+	la, lb := lum(a), lum(b)
+	if la < lb {
+		la, lb = lb, la
+	}
+	return (la + 0.05) / (lb + 0.05)
 }
 
 // stripHeadingPrefixes returns a copy of style with every heading level's

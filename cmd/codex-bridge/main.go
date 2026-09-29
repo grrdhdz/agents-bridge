@@ -29,7 +29,7 @@ import (
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.3.1"
+	appVersion  = "v0.3.2"
 )
 
 func main() {
