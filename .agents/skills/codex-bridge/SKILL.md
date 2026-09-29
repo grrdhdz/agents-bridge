@@ -118,7 +118,11 @@ usuario) para que se active con
 `codex-bridge join --host ... --port ... --instance ... --token ... --headless`,
 que publica su propio descriptor `tailscale-join` y toma el mismo
 `instance_id`. Desde ahí, `TAREA`/`FIN`/`ctl wait` funcionan exactamente
-igual que en `local`. El usuario observa e interviene en cualquiera de los
+igual que en `local`. El join headless termina solo (código 0) cuando el host
+cierra el puente; si el host desaparece sin avisar, sale con código 8 tras
+`--reconnect-timeout` (por defecto 15m, `0` = reintentar siempre) y con código 4
+si el host rechaza la reconexión. Por eso no hay que cerrar el lado del
+ejecutor a mano al terminar. El usuario observa e interviene en cualquiera de los
 dos equipos con `codex-bridge tui --instance-id <id>`, y `codex-bridge stop
 --instance-id <id>` en cada equipo cierra solo el proceso de ese lado (el host
 o el join), no el otro.

@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -183,5 +184,49 @@ func TestClientResendsAckAfterReplayWhenAckNeverReachedServer(t *testing.T) {
 		if time.Now().After(deadline) {
 			t.Fatalf("orchestrator never saw delivered for %s after reconnect: last err %v", messageID, err)
 		}
+	}
+}
+
+func TestClientServerClosedSignalsOnlyOnServerClose(t *testing.T) {
+	server, err := NewServer("127.0.0.1", DefaultOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	worker, _, err := Dial(context.Background(), server.Addr().String(), server.InstanceID(), protocol.RoleExecutor, server.JoinToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer worker.Close()
+	select {
+	case <-worker.ServerClosed():
+		t.Fatal("ServerClosed fired while the server is alive")
+	default:
+	}
+	server.Close()
+	select {
+	case <-worker.ServerClosed():
+	case <-time.After(3 * time.Second):
+		t.Fatal("ServerClosed never fired after the server closed the instance")
+	}
+	select {
+	case <-worker.Done():
+		t.Fatal("Done keeps its meaning: only an explicit Close ends it")
+	default:
+	}
+	if err := worker.Reconnect(context.Background()); err == nil {
+		t.Fatal("Reconnect must refuse after the server closed the instance")
+	}
+}
+
+func TestIsDefinitiveRejection(t *testing.T) {
+	for code, want := range map[string]bool{"PAIRING_INVALID": true, "INSTANCE_MISMATCH": true, "ROLE_ALREADY_BOUND": false, "WORKER_CONNECTED": false, "HELLO_REJECTED": false, "INSTANCE_CLOSED": false} {
+		err := fmt.Errorf("wrapped: %w", &RejectedError{Code: code, Detail: "x"})
+		if got := IsDefinitiveRejection(err); got != want {
+			t.Errorf("%s: got %v want %v", code, got, want)
+		}
+	}
+	if IsDefinitiveRejection(errors.New("dial tcp: refused")) || IsDefinitiveRejection(nil) {
+		t.Error("network errors are not definitive rejections")
 	}
 }

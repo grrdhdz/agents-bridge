@@ -210,22 +210,89 @@ func watchExternalStop(ctx context.Context, stop *stopper, quit func()) {
 	quit()
 }
 
-// keepConnected replaces the TUI reconnect tick for headless clients.
+// reconnectPolicy bounds the headless join's reconnect loop. Zero interval
+// and attemptTimeout take the production cadence (1s tick, 3s per attempt);
+// they are injectable so tests do not wait on it. timeout 0 retries forever.
+type reconnectPolicy struct {
+	timeout, interval, attemptTimeout time.Duration
+}
+
+// exitError carries a specific process exit code out of a run* function.
+type exitError struct {
+	code int
+	err  error
+}
+
+func (e *exitError) Error() string { return e.err.Error() }
+func (e *exitError) Unwrap() error { return e.err }
+
+// keepConnected replaces the TUI reconnect tick for headless clients. It
+// never gives up on network errors, but it stops once the server closed the
+// instance or definitively rejected the client: redialling would be futile.
 func keepConnected(ctx context.Context, client *bridge.Client) {
-	ticker := time.NewTicker(time.Second)
+	_ = superviseConnection(ctx, client, reconnectPolicy{})
+}
+
+func serverClosed(client *bridge.Client) bool {
+	select {
+	case <-client.ServerClosed():
+		return true
+	default:
+		return false
+	}
+}
+
+// superviseConnection keeps client connected until ctx ends, the client is
+// closed, or the server closes the instance (all nil). It returns an
+// exitError when the server definitively rejects the reconnect (4) or the
+// client stays disconnected for policy.timeout (8, transport).
+func superviseConnection(ctx context.Context, client *bridge.Client, policy reconnectPolicy) error {
+	if policy.interval <= 0 {
+		policy.interval = time.Second
+	}
+	if policy.attemptTimeout <= 0 {
+		policy.attemptTimeout = 3 * time.Second
+	}
+	ticker := time.NewTicker(policy.interval)
 	defer ticker.Stop()
+	var downSince time.Time
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-client.Done():
-			return
+			return nil
+		case <-client.ServerClosed():
+			return nil
 		case <-ticker.C:
-			if !client.Connected() {
-				attempt, cancel := context.WithTimeout(ctx, 3*time.Second)
-				_ = client.Reconnect(attempt)
-				cancel()
-			}
+		}
+		if client.Connected() {
+			downSince = time.Time{}
+			continue
+		}
+		select {
+		case <-client.ServerClosed():
+			return nil
+		default:
+		}
+		if downSince.IsZero() {
+			downSince = time.Now()
+		}
+		attempt, cancel := context.WithTimeout(ctx, policy.attemptTimeout)
+		err := client.Reconnect(attempt)
+		cancel()
+		switch {
+		case err == nil:
+			downSince = time.Time{}
+		case ctx.Err() != nil:
+			return nil
+		case serverClosed(client):
+			// The reconnect itself learned the host closed (INSTANCE_CLOSED).
+			return nil
+		case bridge.IsDefinitiveRejection(err):
+			return &exitError{code: exitUnauthorized, err: fmt.Errorf("el host rechazó la reconexión: %w", err)}
+		case policy.timeout > 0 && time.Since(downSince) >= policy.timeout:
+			return &exitError{code: exitTransport, err: fmt.Errorf("sin conexión con el host durante %s (--reconnect-timeout); último error: %w", policy.timeout, err)}
 		}
 	}
 }

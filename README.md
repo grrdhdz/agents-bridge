@@ -4,7 +4,9 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión actual es `v0.3.0`: rediseño de la TUI (temas claro/oscuro, Markdown
+La versión actual es `v0.3.1`: corrige que `join --headless` quedara vivo al
+cerrarse el host (ahora termina solo; ver `--reconnect-timeout`). `v0.3.0` trajo el
+rediseño de la TUI (temas claro/oscuro, Markdown
 con código resaltado, ratón, paleta de comandos, panel lateral) y una pantalla
 de inicio con la lista de tus puentes (`codex-bridge tui`). La última versión
 publicada anterior, `v0.2.1`, corrigió en Windows lo encontrado al verificar
@@ -132,6 +134,20 @@ mano). Publica su propio descriptor `tailscale-join`, imprime la línea `ready`
 en stdout (y en `--ready-file` si se indica) y solo reconecta en segundo
 plano; un agente en ese equipo usa
 `codex-bridge ctl --instance-id <id> --role executor ...` normalmente.
+
+El join headless termina solo, sin necesidad de `stop`:
+
+- Si el host cierra el puente (Ctrl+C, `stop`, cierre por inactividad; también
+  si lo notifica al reconectar con `INSTANCE_CLOSED`), el join
+  borra su descriptor y sale con código 0 en pocos segundos.
+- Si el host desaparece sin avisar (caída, apagado, red cortada), reintenta
+  reconectar y, tras `--reconnect-timeout DURACION` sin conexión continua
+  (por defecto `15m`; `0` = reintentar siempre), sale con código 8 y un mensaje
+  en stderr. Una reconexión exitosa reinicia el reloj.
+- Si el host rechaza de forma definitiva la reconexión (instancia distinta o
+  token inválido), sale de inmediato con código 4.
+
+`--reconnect-timeout` solo afecta a `--headless`; la TUI de `join` no cambia.
 
 En cualquiera de los dos equipos, el usuario observa e interviene en la
 conversación con `codex-bridge tui --instance-id <id>` (ver más abajo) sin

@@ -137,7 +137,7 @@ func TestJoinHeadlessPublishesDescriptorAndAllowsCtlWaitSend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	reader, writer := io.Pipe()
 	done := make(chan error, 1)
-	go func() { done <- runJoinHeadless(ctx, worker, writer, root, "") }()
+	go func() { done <- runJoinHeadless(ctx, worker, writer, root, "", reconnectPolicy{}) }()
 
 	line, err := bufio.NewReader(reader).ReadString('\n')
 	if err != nil {

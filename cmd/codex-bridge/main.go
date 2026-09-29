@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -28,7 +29,7 @@ import (
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.3.0"
+	appVersion  = "v0.3.1"
 )
 
 func main() {
@@ -97,6 +98,10 @@ func main() {
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, commandName+":", err)
+		var ee *exitError
+		if errors.As(err, &ee) {
+			os.Exit(ee.code)
+		}
 		os.Exit(1)
 	}
 }
@@ -331,6 +336,7 @@ type joinFlags struct {
 	headless                bool
 	readyFile               string
 	theme                   string
+	reconnectTimeout        time.Duration
 }
 
 func parseJoinFlags(args []string) (joinFlags, error) {
@@ -342,6 +348,7 @@ func parseJoinFlags(args []string) (joinFlags, error) {
 	token := flags.String("token", "", "one-use pairing token printed by Mac")
 	headless := flags.Bool("headless", false, "sin TUI: publica el descriptor tailscale-join y solo reconecta")
 	readyFile := flags.String("ready-file", "", "escribe la línea ready también en este archivo (0600, creación exclusiva)")
+	reconnectTimeout := flags.Duration("reconnect-timeout", 15*time.Minute, "solo --headless: termina si no logra reconectar durante este tiempo continuo (0 = reintentar siempre)")
 	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return joinFlags{}, err
@@ -349,7 +356,10 @@ func parseJoinFlags(args []string) (joinFlags, error) {
 	if strings.TrimSpace(*host) == "" || *port < 1 || *port > 65535 || strings.TrimSpace(*instanceID) == "" || strings.TrimSpace(*token) == "" {
 		return joinFlags{}, fmt.Errorf("join requires --host, --port, --instance and --token")
 	}
-	return joinFlags{host: *host, port: *port, instanceID: *instanceID, token: *token, headless: *headless, readyFile: *readyFile, theme: *themeValue}, nil
+	if *reconnectTimeout < 0 {
+		return joinFlags{}, fmt.Errorf("--reconnect-timeout no puede ser negativo")
+	}
+	return joinFlags{reconnectTimeout: *reconnectTimeout, host: *host, port: *port, instanceID: *instanceID, token: *token, headless: *headless, readyFile: *readyFile, theme: *themeValue}, nil
 }
 
 // runJoin implements `codex-bridge join` (§8): the interactive path is
@@ -374,7 +384,7 @@ func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) 
 	defer client.Close()
 
 	if jf.headless {
-		return runJoinHeadless(ctx, client, stdout, root, jf.readyFile)
+		return runJoinHeadless(ctx, client, stdout, root, jf.readyFile, reconnectPolicy{timeout: jf.reconnectTimeout})
 	}
 
 	model := tui.New(tui.Options{Client: client, LocalRole: protocol.RoleExecutor, Capabilities: tui.CapabilitiesForJoin(), Theme: th, PeerConnected: client.Connected})
@@ -400,7 +410,7 @@ func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) 
 // tailscale-join descriptor and a reconnect loop (matching `local`'s
 // keepConnected), until ctx ends, the client's connection ends for good, or
 // POST /v1/stop fires.
-func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Writer, root string, readyFile string) error {
+func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Writer, root string, readyFile string, policy reconnectPolicy) error {
 	var readyOut *control.ReadyFile
 	if readyFile != "" {
 		var err error
@@ -424,7 +434,8 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 	}
 	defer endpoint.Close()
 
-	go keepConnected(ctx, client)
+	supervised := make(chan error, 1)
+	go func() { supervised <- superviseConnection(ctx, client, policy) }()
 
 	ready, err := json.Marshal(map[string]any{"v": 1, "type": "ready", "instance_id": client.InstanceID(), "mode": string(control.ModeTailscaleJoin)})
 	if err != nil {
@@ -443,6 +454,10 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 	case <-ctx.Done():
 	case <-client.Done():
 	case <-stop.done():
+	case err := <-supervised:
+		// nil: the host closed the instance (or ctx/Close); otherwise the
+		// reconnect budget ran out or the host refused us for good.
+		return err
 	}
 	return nil
 }
@@ -451,8 +466,9 @@ func printUsage() {
 	fmt.Println("codex-bridge [--idle-timeout D]   crea una instancia efímera y TUI de orquestador en Mac")
 	fmt.Println("codex-bridge --headless --ready-file FILE")
 	fmt.Println("                                   igual, sin TUI; el comando de unión (con su token) va solo en FILE")
-	fmt.Println("codex-bridge join ... [--headless] [--ready-file FILE]")
-	fmt.Println("                                   une Windows usando el comando impreso por Mac; --headless sin TUI")
+	fmt.Println("codex-bridge join ... [--headless] [--ready-file FILE] [--reconnect-timeout D]")
+	fmt.Println("                                   une Windows usando el comando impreso por Mac; --headless sin TUI,")
+	fmt.Println("                                   termina solo si el host cierra o si pasa --reconnect-timeout (15m; 0 = sin límite) sin reconectar")
 	fmt.Println("codex-bridge local [--idle-timeout D] [--headless] [--ready-file FILE]")
 	fmt.Println("                                   instancia local sin Tailscale para dos agentes; si stdout es una")
 	fmt.Println("                                   terminal muestra su propia TUI observadora (--headless la omite)")

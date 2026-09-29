@@ -48,6 +48,8 @@ type Client struct {
 	pendingOrder []string
 	pendingBytes int
 	closedCh     chan struct{}
+	// serverClosedCh is created lazily (see ServerClosed) under mu.
+	serverClosedCh chan struct{}
 	// publishMu makes the message_id idempotency check and its registration
 	// one step, so concurrent retries cannot fork one report into two.
 	publishMu sync.Mutex
@@ -90,6 +92,66 @@ func (c *Client) ReadEvents(afterEventSeq uint64, limit int) ([]Event, uint64, b
 // Done closes when the client is explicitly closed, allowing UI consumers to
 // stop waiting without leaving a goroutine blocked on a subscription.
 func (c *Client) Done() <-chan struct{} { return c.closedCh }
+
+// ServerClosed closes when the server told this client the instance was
+// closed (FrameClose, or an INSTANCE_CLOSED rejection of a reconnect). Unlike Done it is not caused by our own Close, and it
+// is a state rather than an event, so a late observer still sees it. After it
+// fires there is nothing left to reconnect to.
+func (c *Client) ServerClosed() <-chan struct{} {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.serverClosedLocked()
+}
+
+func (c *Client) serverClosedLocked() chan struct{} {
+	if c.serverClosedCh == nil {
+		c.serverClosedCh = make(chan struct{})
+	}
+	return c.serverClosedCh
+}
+
+func (c *Client) markServerClosed() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	ch := c.serverClosedLocked()
+	select {
+	case <-ch:
+	default:
+		close(ch)
+	}
+}
+
+func (c *Client) isServerClosedLocked() bool {
+	select {
+	case <-c.serverClosedLocked():
+		return true
+	default:
+		return false
+	}
+}
+
+// RejectedError is the server's explicit refusal of a hello (FrameError).
+type RejectedError struct{ Code, Detail string }
+
+func (e *RejectedError) Error() string {
+	detail := e.Detail
+	if e.Code != "" {
+		detail = e.Code + ": " + detail
+	}
+	return "server rejected connection: " + detail
+}
+
+// IsDefinitiveRejection reports rejections retrying cannot fix: wrong
+// instance or an invalid/expired token. ROLE_ALREADY_BOUND and
+// WORKER_CONNECTED are what a server answers while it has not yet noticed the
+// old connection died, so they stay transient.
+func IsDefinitiveRejection(err error) bool {
+	var rejected *RejectedError
+	if !errors.As(err, &rejected) {
+		return false
+	}
+	return rejected.Code == "PAIRING_INVALID" || rejected.Code == "INSTANCE_MISMATCH"
+}
 
 func (c *Client) Role() protocol.Role { return c.role }
 
@@ -141,11 +203,12 @@ func (c *Client) connect(ctx context.Context, token string) (protocol.Frame, err
 	}
 	if welcome.Type == protocol.FrameError {
 		_ = conn.Close()
-		detail := welcome.Detail
-		if welcome.Code != "" {
-			detail = welcome.Code + ": " + detail
+		// INSTANCE_CLOSED is the host closing the instance, seen from a
+		// reconnect that raced past the FrameClose: same fact as FrameClose.
+		if welcome.Code == "INSTANCE_CLOSED" {
+			c.markServerClosed()
 		}
-		return protocol.Frame{}, fmt.Errorf("server rejected connection: %s", detail)
+		return protocol.Frame{}, &RejectedError{Code: welcome.Code, Detail: welcome.Detail}
 	}
 	if welcome.Type != protocol.FrameWelcome || welcome.InstanceID != c.instanceID {
 		_ = conn.Close()
@@ -225,6 +288,7 @@ func (c *Client) readLoop(scanner *bufio.Scanner, conn net.Conn) {
 		}
 		c.emit(frame)
 		if frame.Type == protocol.FrameClose {
+			c.markServerClosed()
 			c.mu.Lock()
 			if c.conn == conn {
 				c.conn = nil
@@ -288,6 +352,10 @@ func (c *Client) Reconnect(ctx context.Context) error {
 	if c.closed {
 		c.mu.Unlock()
 		return errors.New("client is closed")
+	}
+	if c.isServerClosedLocked() {
+		c.mu.Unlock()
+		return errors.New("instance was closed by the server")
 	}
 	if c.conn != nil {
 		c.mu.Unlock()
