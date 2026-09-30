@@ -156,7 +156,9 @@ func (m *Model) unreadBar() string {
 // handleMouseClick).
 func (m *Model) View() tea.View {
 	m.regions = nil
-	backdrop := m.backdropScreen()
+	// The frame is never taller than the terminal, whatever the composer
+	// holds: an overflow scrolls the status bar off the top.
+	backdrop := fitLines(m.backdropScreen(), m.height)
 
 	var windows []floatingWindow
 	switch {

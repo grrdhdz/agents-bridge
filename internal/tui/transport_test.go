@@ -13,7 +13,7 @@ import (
 func TestClientTransportStatusUsesPeerConnectedCallback(t *testing.T) {
 	_, client := newTUITestClient(t)
 	peerUp := false
-	transport := newClientTransport(client, func() bool { return peerUp })
+	transport := newClientTransport(client, func() bool { return peerUp }, nil)
 
 	status, err := transport.Status(context.Background())
 	if err != nil {
@@ -41,7 +41,7 @@ func TestClientTransportStatusUsesPeerConnectedCallback(t *testing.T) {
 // Connected().
 func TestClientTransportStatusFallsBackWithoutCallback(t *testing.T) {
 	_, client := newTUITestClient(t)
-	transport := newClientTransport(client, nil)
+	transport := newClientTransport(client, nil, nil)
 	status, err := transport.Status(context.Background())
 	if err != nil {
 		t.Fatalf("Status: %v", err)

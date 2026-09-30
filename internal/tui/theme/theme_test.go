@@ -265,3 +265,65 @@ func TestLightSurfaceIsBluishNotWhite(t *testing.T) {
 		t.Fatal("SurfaceRaised (status bar) should be at least as marked as Surface, not lighter")
 	}
 }
+
+func sameColor(a, b color.Color) bool {
+	ar, ag, ab, aa := a.RGBA()
+	br, bg, bb, ba := b.RGBA()
+	return ar == br && ag == bg && ab == bb && aa == ba
+}
+
+// TestCoordinationLabelStyles covers v0.4.0's badges: URGENTE takes the
+// danger color, PROGRESO the muted one (both already contrast-checked in
+// TestPaletteContrastMeetsWCAGMinimums), and under NO_COLOR they keep an
+// attribute-only difference (reverse for URGENTE, faint for PROGRESO).
+func TestCoordinationLabelStyles(t *testing.T) {
+	for _, mode := range []Mode{ModeDark, ModeLight} {
+		th := New(mode, false, nil)
+		if got := th.LabelStyle("URGENTE").GetForeground(); !sameColor(got, th.Danger) {
+			t.Fatalf("%s: URGENTE should use Danger, got %v", mode, got)
+		}
+		if got := th.LabelStyle("PROGRESO").GetForeground(); !sameColor(got, th.Muted) {
+			t.Fatalf("%s: PROGRESO should use Muted, got %v", mode, got)
+		}
+		plain := New(mode, true, nil)
+		if !plain.LabelStyle("URGENTE").GetReverse() {
+			t.Fatalf("%s: NO_COLOR URGENTE should be reverse video", mode)
+		}
+		if !plain.LabelStyle("PROGRESO").GetFaint() {
+			t.Fatalf("%s: NO_COLOR PROGRESO should be faint", mode)
+		}
+	}
+}
+
+// TestEveryLabelColorMeetsSecondaryContrast checks each badge's foreground
+// against the surface it sits on, so a future label cannot slip in below the
+// 4.5:1 floor.
+func TestEveryLabelColorMeetsSecondaryContrast(t *testing.T) {
+	for _, mode := range []Mode{ModeDark, ModeLight} {
+		th := New(mode, false, nil)
+		for _, label := range []string{"TAREA", "PREGUNTA", "RESPUESTA", "RESULTADO", "FIN", "URGENTE", "PROGRESO"} {
+			fg := th.LabelStyle(label).GetForeground()
+			if got := contrastRatio(fg, th.Surface); got < 4.5 {
+				t.Errorf("%s/%s badge contrast %.2f:1 is below 4.5:1", mode, label, got)
+			}
+		}
+	}
+}
+
+// TestAutoWithoutAnswerIsDarkAndUndecidedAndNeverQueries: New must not touch
+// the terminal at all (no stdin reader); an unanswered auto is dark with
+// Auto set, and any explicit choice or injected answer settles it.
+func TestAutoWithoutAnswerIsDarkAndUndecidedAndNeverQueries(t *testing.T) {
+	th := New(ModeAuto, false, nil)
+	if th.Mode != ModeDark || !th.Auto {
+		t.Fatalf("auto/nil = %q auto=%v", th.Mode, th.Auto)
+	}
+	if got := New(ModeAuto, false, func() bool { return false }); got.Mode != ModeLight || got.Auto {
+		t.Fatalf("auto with an answer = %q auto=%v", got.Mode, got.Auto)
+	}
+	for _, m := range []Mode{ModeDark, ModeLight} {
+		if New(m, false, nil).Auto {
+			t.Fatalf("%s is explicit, not auto", m)
+		}
+	}
+}

@@ -24,9 +24,28 @@ type psRow struct {
 	// IdleSeconds is nil when no descriptor for this instance ever recorded
 	// activity (e.g. a legacy process from before last_activity_at existed),
 	// so ps can show "-" instead of a misleading "0s".
-	IdleSeconds     *int64 `json:"idle_seconds,omitempty"`
-	PeerConnected   bool   `json:"peer_connected"`
-	LatestServerSeq uint64 `json:"latest_server_seq"`
+	IdleSeconds     *int64                 `json:"idle_seconds,omitempty"`
+	PeerConnected   bool                   `json:"peer_connected"`
+	LatestServerSeq uint64                 `json:"latest_server_seq"`
+	RoleStates      map[string]psRoleState `json:"role_states,omitempty"`
+}
+
+type psRoleState struct {
+	State                 string `json:"state"`
+	LastMessageAgeSeconds *int64 `json:"last_message_age_seconds,omitempty"`
+}
+
+// formatRoleCell is a ps ORQ/EJEC cell: the role's state and, when known,
+// the age of its last message ("trabajando 2m"); "—" when nothing is known
+// (a host or join never sees the other role).
+func formatRoleCell(state string, age *int64) string {
+	if state == "" || state == string(control.StateUnknown) {
+		return string(control.StateUnknown)
+	}
+	if age == nil {
+		return state
+	}
+	return state + " " + humanizeIdle(time.Duration(*age)*time.Second)
 }
 
 func runPS(ctx context.Context, args []string, env ctlEnv) int {
@@ -63,7 +82,23 @@ func buildPSRows(ctx context.Context, descriptors []control.Descriptor) []psRow 
 	infos := bridges.FromDescriptors(ctx, descriptors)
 	rows := make([]psRow, 0, len(infos))
 	for _, info := range infos {
+		var roleStates map[string]psRoleState
+		if len(info.RoleStates) > 0 {
+			roleStates = make(map[string]psRoleState, len(info.RoleStates))
+			for key, role := range info.RoleStates {
+				state := psRoleState{State: role.State}
+				if role.LastMessageAt != nil {
+					age := int64(time.Since(*role.LastMessageAt).Seconds())
+					if age < 0 {
+						age = 0
+					}
+					state.LastMessageAgeSeconds = &age
+				}
+				roleStates[key] = state
+			}
+		}
 		rows = append(rows, psRow{
+			RoleStates:      roleStates,
 			InstanceID:      info.InstanceID,
 			Mode:            info.Mode,
 			Roles:           info.Roles,
@@ -88,7 +123,7 @@ func writePSJSONL(w io.Writer, rows []psRow) error {
 
 func writePSTable(w io.Writer, rows []psRow) error {
 	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "INSTANCE\tMODE\tROLES\tPID\tSTARTED\tIDLE\tPEER\tMSGS")
+	fmt.Fprintln(tw, "INSTANCE\tMODE\tROLES\tPID\tSTARTED\tIDLE\tPEER\tMSGS\tORQ\tEJEC")
 	for _, row := range rows {
 		peer := "no"
 		if row.PeerConnected {
@@ -114,7 +149,9 @@ func writePSTable(w io.Writer, rows []psRow) error {
 		if row.IdleSeconds != nil {
 			idle = humanizeIdle(time.Duration(*row.IdleSeconds) * time.Second)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\n", row.InstanceID, mode, roles, row.PID, startedDisplay, idle, peer, row.LatestServerSeq)
+		orq := row.RoleStates["orchestrator"]
+		ejec := row.RoleStates["executor"]
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\n", row.InstanceID, mode, roles, row.PID, startedDisplay, idle, peer, row.LatestServerSeq, formatRoleCell(orq.State, orq.LastMessageAgeSeconds), formatRoleCell(ejec.State, ejec.LastMessageAgeSeconds))
 	}
 	return tw.Flush()
 }

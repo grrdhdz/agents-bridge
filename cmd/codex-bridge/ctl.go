@@ -42,7 +42,7 @@ func exitCodeFor(code string) int {
 		return exitNotFound
 	case "UNAUTHORIZED":
 		return exitUnauthorized
-	case "FORBIDDEN", "WAIT_IN_PROGRESS":
+	case "FORBIDDEN", "WAIT_IN_PROGRESS", "INBOX_NOT_EMPTY":
 		return exitForbidden
 	case "ID_CONFLICT":
 		return exitConflict
@@ -63,6 +63,8 @@ type ctlEnv struct {
 	stdin          io.Reader
 	stdout, stderr io.Writer
 	root           string
+	// now stamps exports; nil means time.Now.
+	now func() time.Time
 }
 
 type ctlFailure struct {
@@ -99,7 +101,7 @@ func reportFailure(err error, stderr io.Writer) int {
 
 func dispatchCtl(ctx context.Context, args []string, env ctlEnv) error {
 	if len(args) == 0 {
-		return failure("USAGE", "ctl requires one of: list, read, watch, send, wait")
+		return failure("USAGE", "ctl requires one of: list, read, watch, send, wait, peek, export")
 	}
 	operation, args := args[0], args[1:]
 	flags := flag.NewFlagSet("codex-bridge ctl "+operation, flag.ContinueOnError)
@@ -111,7 +113,9 @@ func dispatchCtl(ctx context.Context, args []string, env ctlEnv) error {
 	messageID := flags.String("message-id", "", "idempotency key for send")
 	bodyFile := flags.String("body-file", "", "UTF-8 body file, or - for stdin")
 	timeout := flags.Duration("timeout", 5*time.Minute, "wait timeout")
-	format := flags.String("format", "jsonl", "wait output: jsonl or text")
+	format := flags.String("format", "jsonl", "wait/peek output: jsonl or text; export: md or jsonl")
+	force := flags.Bool("force", false, "send: publish even with unread messages from the other role")
+	output := flags.String("output", "", "export: new file to write (must not exist)")
 	if err := flags.Parse(args); err != nil {
 		return failure("USAGE", "%v", err)
 	}
@@ -126,13 +130,19 @@ func dispatchCtl(ctx context.Context, args []string, env ctlEnv) error {
 		return err
 	}
 	switch operation {
-	case "read", "watch", "send", "wait":
+	case "read", "watch", "send", "wait", "peek", "export":
 	default:
 		return failure("USAGE", "unknown ctl operation %q", operation)
 	}
 	if strings.TrimSpace(*instanceID) == "" {
 		return failure("USAGE", "--instance-id is required")
 	}
+	formatSet := false
+	flags.Visit(func(f *flag.Flag) {
+		if f.Name == "format" {
+			formatSet = true
+		}
+	})
 	descriptor, err := control.SelectDescriptor(env.root, *instanceID, role)
 	if err != nil {
 		switch err.Error() {
@@ -148,7 +158,18 @@ func dispatchCtl(ctx context.Context, args []string, env ctlEnv) error {
 	case "watch":
 		return ctlWatch(ctx, env, descriptor, *after)
 	case "send":
-		return ctlSend(ctx, env, descriptor, *messageID, *bodyFile)
+		return ctlSend(ctx, env, descriptor, *messageID, *bodyFile, *force)
+	case "peek":
+		if *format != "jsonl" && *format != "text" {
+			return failure("USAGE", "--format must be jsonl or text")
+		}
+		return ctlPeek(ctx, env, descriptor, *format)
+	case "export":
+		exportFormat := *format
+		if !formatSet {
+			exportFormat = "md"
+		}
+		return ctlExport(ctx, env, descriptor, *output, exportFormat)
 	default:
 		if *format != "jsonl" && *format != "text" {
 			return failure("USAGE", "--format must be jsonl or text")
@@ -199,6 +220,14 @@ func failureFromBody(status int, data []byte) error {
 	return failure(record.Code, "%s", record.Message)
 }
 
+func readAll(response *http.Response) ([]byte, error) {
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, failure("TRANSPORT_ERROR", "%v", err)
+	}
+	return data, nil
+}
+
 func ctlSimple(ctx context.Context, env ctlEnv, d control.Descriptor, method, path string, body io.Reader) error {
 	response, err := request(ctx, d, method, path, body)
 	if err != nil {
@@ -216,7 +245,7 @@ func ctlSimple(ctx context.Context, env ctlEnv, d control.Descriptor, method, pa
 	return err
 }
 
-func ctlSend(ctx context.Context, env ctlEnv, d control.Descriptor, messageID, bodyFile string) error {
+func ctlSend(ctx context.Context, env ctlEnv, d control.Descriptor, messageID, bodyFile string, force bool) error {
 	var body []byte
 	var err error
 	switch bodyFile {
@@ -236,7 +265,9 @@ func ctlSend(ctx context.Context, env ctlEnv, d control.Descriptor, messageID, b
 			return err
 		}
 	}
-	payload, err := json.Marshal(map[string]any{"v": 1, "message_id": messageID, "body": string(body)})
+	// The inbox guard (§3.1) is on unless --force: an executor must not
+	// answer past a message it has not read.
+	payload, err := json.Marshal(map[string]any{"v": 1, "message_id": messageID, "body": string(body), "require_inbox_empty": !force})
 	if err != nil {
 		return err
 	}

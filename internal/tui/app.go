@@ -20,6 +20,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
+	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui/keys"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
@@ -48,6 +49,11 @@ type Options struct {
 	// itself talking to), so it can leave this nil. Ignored unless Client
 	// is set (Transport already covers its own status).
 	PeerConnected func() bool
+	// RoleStates optionally reports each role's state (§3.4) for the side
+	// panel when the direct client path is used; host and join wire their
+	// own control endpoint's RoleSnapshots (their own role only). Ignored
+	// unless Client is set.
+	RoleStates func() map[protocol.Role]control.RoleSnapshot
 	// Transport lets a caller supply a non-*bridge.Client message channel,
 	// namely the observing TUI's control-plane client (host's and join's own
 	// embedded views also accept one for tests). When both are unset, the
@@ -246,7 +252,7 @@ func New(options Options) Model {
 
 	transport := options.Transport
 	if transport == nil && options.Client != nil {
-		transport = newClientTransport(options.Client, options.PeerConnected)
+		transport = newClientTransport(options.Client, options.PeerConnected, options.RoleStates)
 	}
 
 	km := keys.New()
@@ -287,6 +293,9 @@ func (m *Model) Init() tea.Cmd {
 		m.copyJoinCommand()
 	}
 	cmds := []tea.Cmd{m.input.Focus(), reconnectTick(m.id)}
+	if m.th.Auto && !m.th.NoColor {
+		cmds = append(cmds, tea.RequestBackgroundColor)
+	}
 	if m.transport != nil {
 		sub, err := m.transport.Subscribe(0)
 		if err == nil {
@@ -359,7 +368,18 @@ func fetchStatusCmd(provider StatusProvider, owner int) tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg = filterInput(msg); msg == nil {
+		return m, nil
+	}
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		// The answer to the auto theme's request (Init): the terminal's own
+		// background, read by Bubble Tea's input reader. Only an undecided
+		// auto theme reacts; an explicit --theme always wins.
+		if m.th.Auto {
+			m.applyTheme(autoThemeFor(m.th, msg))
+		}
+		return m, nil
 	case eventMsg:
 		if m.events == nil || m.staleOwner(msg.owner) {
 			return m, nil
@@ -566,7 +586,7 @@ func (m *Model) toggleFocus() {
 }
 
 // cycleLabel rotates the composer's label selector (§6.5): ninguna → TAREA
-// → PREGUNTA → RESPUESTA → FIN → ninguna.
+// → PREGUNTA → RESPUESTA → FIN → URGENTE → PROGRESO → ninguna.
 func (m *Model) cycleLabel() {
 	m.labelIdx = (m.labelIdx + 1) % len(composerLabels)
 	m.updateComposerPlaceholder()

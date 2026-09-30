@@ -191,7 +191,7 @@ el panel muestra solo lo deducible de los eventos.
 ## 8. Tema
 
 - Oscuro y claro; por defecto según el fondo de la terminal
-  (`lipgloss.HasDarkBackground`). `--theme dark|light|auto` en `tui`, `local`,
+  (desde v0.4.0: `tea.RequestBackgroundColor` dentro del programa, arrancando en oscuro; antes `lipgloss.HasDarkBackground`, que leía stdin fuera de Bubble Tea). `--theme dark|light|auto` en `tui`, `local`,
   host y `join`, y variable `CODEX_BRIDGE_THEME`.
 - Paleta con colores semánticos (orquestador, ejecutor, humano, estados,
   borde activo/inactivo, avisos) y contraste verificado en ambos temas.

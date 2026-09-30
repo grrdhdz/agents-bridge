@@ -109,12 +109,22 @@ func (t *ControlTransport) Status(ctx context.Context) (BridgeStatus, error) {
 		return BridgeStatus{}, describeControlError(data)
 	}
 	var record struct {
-		PeerConnected bool `json:"peer_connected"`
+		PeerConnected bool                            `json:"peer_connected"`
+		Roles         map[string]control.RoleSnapshot `json:"roles"`
 	}
 	if err := json.Unmarshal(data, &record); err != nil {
 		return BridgeStatus{}, err
 	}
-	return BridgeStatus{PeerConnected: record.PeerConnected, StartedAt: t.descriptor.StartedAt, Cwd: t.descriptor.CWD}, nil
+	status := BridgeStatus{PeerConnected: record.PeerConnected, StartedAt: t.descriptor.StartedAt, Cwd: t.descriptor.CWD}
+	for key, snap := range record.Roles {
+		if role, ok := control.RoleFromKey(key); ok {
+			if status.Roles == nil {
+				status.Roles = make(map[protocol.Role]control.RoleSnapshot, len(record.Roles))
+			}
+			status.Roles[role] = snap
+		}
+	}
+	return status, nil
 }
 
 // Stop calls POST /v1/stop on this endpoint (§4.2), for the observing TUI's

@@ -4,7 +4,15 @@
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión actual es `v0.3.4`: el tema claro usa en toda la TUI el tono azulado
+La versión actual es `v0.4.0`: además de lo siguiente, el tema `auto` ya no
+lee stdin fuera de Bubble Tea y el composer descarta caracteres de control
+(corrige texto de reportes de ratón en el composer y la barra de estado
+cortada en el panel xterm.js); coordinación entre agentes (ver «Coordinación
+entre agentes» más abajo): `ctl send` ya no deja publicar con mensajes del otro
+rol sin leer, `ctl peek` los mira sin consumirlos, las etiquetas `URGENTE` y
+`PROGRESO`, el estado por rol (`esperando`/`trabajando`/`callado`) en `ps` y
+en el panel lateral, y `ctl export` para guardar la conversación como
+evidencia. `v0.3.4`: el tema claro usa en toda la TUI el tono azulado
 de la paleta de comandos en vez de blanco, la línea de atajos usa el color
 secundario del tema (antes heredaba el de la terminal y en el tema claro casi
 no se leía) y «Cambiar tema» avisa cuando `NO_COLOR` desactiva los colores.
@@ -202,7 +210,13 @@ inicio al que volver).
 
 - **Composer**: `Ctrl+Enter` o `Ctrl+S` envían; `Enter` inserta una línea
   nueva (el pegado multilínea se conserva); `Ctrl+T` rota la etiqueta
-  (`TAREA`, `PREGUNTA`, `RESPUESTA`, `FIN`); `↑`/`↓` recorren lo enviado.
+  (`TAREA`, `PREGUNTA`, `RESPUESTA`, `FIN`, `URGENTE`, `PROGRESO`); `↑`/`↓`
+  recorren lo enviado. `URGENTE` lleva una insignia de color de peligro y
+  `PROGRESO` una atenuada.
+- El panel lateral muestra, bajo cada participante, su estado
+  (`esperando`, `trabajando` o `callado`; ver «Estado por rol»). Si el estado
+  no se conoce (en host y `join` solo se conoce el del propio rol), no se
+  imprime.
 - `Tab` cambia el foco entre composer y conversación. Con foco en la
   conversación: `↑`/`↓` (o `k`/`j`) mueven la selección entre mensajes, `g`/`G`
   van al primero/último, `PgUp`/`PgDn` desplazan, `Enter` pliega/despliega un
@@ -239,7 +253,13 @@ mientras arrastras: así el terminal se queda el ratón en lugar de la TUI.
 ### Temas
 
 `--theme dark|light|auto` (o `CODEX_BRIDGE_THEME`) en host, `join`, `local` y
-`tui`; por defecto `auto` según el fondo de la terminal. Ambos temas pintan
+`tui`; por defecto `auto`: arranca en oscuro y, desde dentro de la TUI
+(`tea.RequestBackgroundColor`, respuesta leída por el lector de entrada de
+Bubble Tea), pasa a claro si la terminal responde con un fondo claro; si no
+responde, se queda en oscuro. Nada más lee stdin (hasta `v0.3.4` una consulta
+abandonada competía con Bubble Tea y comía bytes de los reportes de ratón en
+terminales que no responden, como el panel xterm.js). Los modos sin TUI no
+consultan nada. Ambos temas pintan
 todas las celdas con su propio fondo (funciona aunque la terminal ignore el
 cambio de color de fondo, p. ej. un panel xterm.js) y sus colores cumplen
 contrastes WCAG medidos por pruebas (texto ≥ 7:1, secundario y semánticos
@@ -296,6 +316,8 @@ printf 'TAREA\n...\n' | codex-bridge ctl send --instance-id <id> --role orchestr
 codex-bridge ctl wait --instance-id <id> --role executor --timeout 5m --format text
 codex-bridge ctl read --instance-id <id> --role orchestrator --after-event-seq 0
 codex-bridge ctl watch --instance-id <id> --role executor
+codex-bridge ctl peek --instance-id <id> --role executor --format text
+codex-bridge ctl export --instance-id <id> --role orchestrator --output conversacion.md
 codex-bridge ctl list
 ```
 
@@ -319,6 +341,41 @@ lo ve `delivered`) solo después de entregarlo; si el comando se corta antes, el
 mensaje se vuelve a entregar. Los modos con TUI también publican su descriptor,
 así que `ctl` funciona igual en Mac y Windows.
 
+### Coordinación entre agentes (v0.4.0)
+
+- **Guarda de bandeja.** `ctl send` falla con `INBOX_NOT_EMPTY` (HTTP 409,
+  salida 5, con `unread` y la etiqueta del más reciente) si el otro rol tiene
+  mensajes que este rol aún no ha consumido con `ctl wait`, y no publica nada.
+  Evita que un `RESULTADO` se cruce con una `RESPUESTA` sin leer. `--force`
+  publica de todos modos. La comprobación y la publicación son atómicas
+  respecto al cursor de `wait`. Los envíos de la TUI (`human-operator`) nunca
+  se bloquean, y tampoco los mensajes `URGENTE` o `FIN` (interrupciones y
+  cierres) de ningún rol: saltan la guarda aunque haya mensajes sin leer.
+- **`ctl peek [--format jsonl|text]`** (`GET /v1/peek`): cuántos mensajes del
+  otro rol hay sin leer, si alguno es `URGENTE`, y la etiqueta y `message_id`
+  del más reciente. No confirma, no mueve el cursor y no cuenta como presencia
+  (no mantiene vivo un `--idle-timeout`). Texto:
+  `--- codex-bridge instance=ID unread=N urgent=sí|no latest=ETIQUETA`.
+- **Etiquetas nuevas**: `URGENTE` (interrumpe; el ejecutor la atiende en su
+  siguiente `peek`) y `PROGRESO` (nota breve de avance).
+- **Estado por rol.** Cada endpoint registra si hay un `wait` en curso, la hora
+  del último `wait` y la del último mensaje del rol. Estados: `esperando`
+  (hay un `wait` en curso), `trabajando` (sin `wait`, con actividad en los
+  últimos 15 min), `callado` (sin `wait` ni actividad en 15 min) y `—`
+  (desconocido). En `local` ambos endpoints comparten el registro y conocen los
+  dos roles; en host y `join` solo el propio. `/v1/health` lo expone en
+  `roles: {orchestrator|executor: {state, last_message_at, last_wait_at}}`;
+  `ps` añade las columnas `ORQ` y `EJEC` (estado y antigüedad del último
+  mensaje, p. ej. `trabajando 2m`) y `--format jsonl` el campo `role_states`.
+- **`ctl export --output FILE [--format md|jsonl]`**: vuelca la conversación
+  retenida en RAM a un archivo **nuevo** (creación exclusiva, solo el
+  propietario; falla con error de uso si ya existe). No confirma mensajes.
+  Markdown: cabecera con instancia y hora de exportación y un bloque por
+  mensaje (rol, origen, hora, estado, etiqueta, cuerpo). JSONL: los envelopes,
+  uno por línea. Si el journal ya expulsó eventos antiguos, el archivo lo dice
+  al principio (Markdown: aviso; JSONL: primera línea `export_notice`). Es la
+  única vez que un cuerpo llega a disco, y solo cuando alguien lo pide.
+
 Cuando el ejecutor es un agente de la app de Codex, el orquestador puede abrir
 su chat con el prompt ya escrito (el usuario pulsa Enter):
 
@@ -329,7 +386,7 @@ codex-bridge codex open --thread 'codex://threads/<id>' --instance-id <id> --pro
 Para ver y cerrar los puentes del usuario, sin depender de `ctl`:
 
 ```sh
-codex-bridge ps                       # tabla: instancia, modo, roles, pid, inicio, inactividad, peer, mensajes
+codex-bridge ps                       # tabla: instancia, modo, roles, pid, inicio, inactividad, peer, mensajes, estado ORQ/EJEC
 codex-bridge ps --format jsonl
 codex-bridge stop --instance-id <id>  # cierre limpio, equivalente a Ctrl+C en ese proceso
 ```

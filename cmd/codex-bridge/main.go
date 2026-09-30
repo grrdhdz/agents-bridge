@@ -29,7 +29,7 @@ import (
 
 const (
 	commandName = "codex-bridge"
-	appVersion  = "v0.3.4"
+	appVersion  = "v0.4.0"
 )
 
 func main() {
@@ -104,6 +104,16 @@ func main() {
 		}
 		os.Exit(1)
 	}
+}
+
+// endpointRoles is the RoleStates source for the direct TUIs (host, join):
+// the state of this process's own role, or nothing while no control endpoint
+// exists (ctl unavailable).
+func endpointRoles(endpoint *control.Endpoint) map[protocol.Role]control.RoleSnapshot {
+	if endpoint == nil {
+		return nil
+	}
+	return endpoint.RoleSnapshots()
 }
 
 // parseIdleTimeoutFlag reads --idle-timeout from args without disturbing
@@ -244,8 +254,13 @@ func runOrchestrator(ctx context.Context, stdout io.Writer, root string, idleTim
 		return runOrchestratorHeadless(ctx, client, server, root, idleTimeout, readyFile, joinCommand)
 	}
 
+	// The side panel reads the state of the roles this process serves from
+	// the control endpoint, which is created after the model; the closure
+	// only runs once program.Run has started, by which time it is set.
+	var hostEndpoint *control.Endpoint
 	model := tui.New(tui.Options{
 		Client:        client,
+		RoleStates:    func() map[protocol.Role]control.RoleSnapshot { return endpointRoles(hostEndpoint) },
 		LocalRole:     protocol.RoleOrchestrator,
 		JoinCommand:   joinCommand,
 		Capabilities:  tui.CapabilitiesForHost(),
@@ -284,6 +299,7 @@ func runOrchestrator(ctx context.Context, stdout io.Writer, root string, idleTim
 	}); ctlErr != nil {
 		fmt.Println("ctl no disponible:", ctlErr)
 	} else {
+		hostEndpoint = endpoint
 		defer endpoint.Close()
 	}
 	_, err = program.Run()
@@ -397,7 +413,8 @@ func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) 
 		return runJoinHeadless(ctx, client, stdout, root, jf.readyFile, reconnectPolicy{timeout: jf.reconnectTimeout})
 	}
 
-	model := tui.New(tui.Options{Client: client, LocalRole: protocol.RoleExecutor, Capabilities: tui.CapabilitiesForJoin(), Theme: th, PeerConnected: client.Connected})
+	var joinEndpoint *control.Endpoint
+	model := tui.New(tui.Options{Client: client, LocalRole: protocol.RoleExecutor, Capabilities: tui.CapabilitiesForJoin(), Theme: th, PeerConnected: client.Connected, RoleStates: func() map[protocol.Role]control.RoleSnapshot { return endpointRoles(joinEndpoint) }})
 	// Created before the control endpoint so Stop (program.Quit) is safe to
 	// call as soon as the endpoint exists, mirroring the host side (§4.2).
 	program := tea.NewProgram(&model)
@@ -410,6 +427,7 @@ func runJoin(ctx context.Context, args []string, stdout io.Writer, root string) 
 	}); ctlErr != nil {
 		fmt.Fprintln(os.Stderr, "ctl no disponible:", ctlErr)
 	} else {
+		joinEndpoint = ctlEndpoint
 		defer ctlEndpoint.Close()
 	}
 	_, err = program.Run()
@@ -489,7 +507,9 @@ func printUsage() {
 	fmt.Println("codex-bridge tui                   inicio: lista de tus puentes vivos (entrar, cerrar, crear, filtrar)")
 	fmt.Println("codex-bridge tui --instance-id ID  TUI observadora directa: ve e interviene sin consumir mensajes")
 	fmt.Println("codex-bridge ctl list")
-	fmt.Println("codex-bridge ctl read|watch|send|wait --instance-id ID [--role orchestrator|executor] ...")
+	fmt.Println("codex-bridge ctl read|watch|send|wait|peek|export --instance-id ID [--role orchestrator|executor] ...")
+	fmt.Println("                                   send bloquea con INBOX_NOT_EMPTY (salida 5) si hay mensajes sin leer; --force lo omite")
+	fmt.Println("                                   peek mira los mensajes sin leer sin consumirlos; export --output FILE [--format md|jsonl]")
 	fmt.Println("codex-bridge codex open --thread <deeplink|id> --instance-id ID [--prompt-file FILE|-]")
 	fmt.Println("                                   abre el chat del ejecutor en la app de Codex con el prompt escrito")
 	fmt.Println("codex-bridge --version             muestra la versión")

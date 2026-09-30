@@ -23,13 +23,16 @@ var messageLabels = map[string]bool{
 	"RESPUESTA": true,
 	"RESULTADO": true,
 	"FIN":       true,
+	"URGENTE":   true,
+	"PROGRESO":  true,
 }
 
 // composerLabels is the subset a human composes with (§6.5's ctrl+t
-// rotation: ninguna → TAREA → PREGUNTA → RESPUESTA → FIN). RESULTADO is
-// recognized on receive (typically an executor's result) but is not one of
-// the labels a human rotates through when composing.
-var composerLabels = []string{"", "TAREA", "PREGUNTA", "RESPUESTA", "FIN"}
+// rotation: ninguna → TAREA → PREGUNTA → RESPUESTA → FIN → URGENTE →
+// PROGRESO). RESULTADO is recognized on receive (typically an executor's
+// result) but is not one of the labels a human rotates through when
+// composing.
+var composerLabels = []string{"", "TAREA", "PREGUNTA", "RESPUESTA", "FIN", "URGENTE", "PROGRESO"}
 
 // splitLabel extracts a leading label marker from body's first line
 // (§6.3), returning the label (or "" if none) and the remaining body with

@@ -43,6 +43,8 @@ La primera línea del cuerpo es una etiqueta; el resto es texto libre.
 | `RESPUESTA` | cualquiera | responde a una `PREGUNTA` |
 | `RESULTADO` | ejecutor | trabajo terminado: qué cambió y cómo se verificó |
 | `FIN` | orquestador | cierra la sesión; el ejecutor deja de esperar |
+| `URGENTE` | orquestador | interrumpe: el ejecutor lo atiende en su siguiente `peek` (para y lo lee con `wait`) |
+| `PROGRESO` | ejecutor | nota breve de avance (cada ~10 min de trabajo) |
 
 Envía el cuerpo por stdin, nunca como argumento:
 
@@ -60,6 +62,28 @@ $utf8 = New-Object Text.UTF8Encoding $false
 $OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8
 "TAREA`nDescripción…" | codex-bridge ctl send --instance-id <id> --role orchestrator --body-file -
 ```
+
+## Leer sin perder mensajes (v0.4.0)
+
+- `ctl read` y `ctl peek` **leen sin confirmar**; solo `ctl wait` consume.
+  `wait` nunca pierde un mensaje aunque tenga un `--timeout` corto: solo lo
+  confirma tras entregarlo, y si el comando se corta se vuelve a entregar.
+- `codex-bridge ctl peek --instance-id <id> --role <rol> --format text`
+  responde `--- codex-bridge instance=<id> unread=N urgent=sí|no latest=ETIQUETA`
+  sin consumir nada ni contar como presencia.
+- `ctl send` lleva una **guarda de bandeja**: si el otro rol tiene mensajes sin
+  leer, falla con `INBOX_NOT_EMPTY` (salida 5) y **no publica**. Lee primero
+  con `ctl wait` y vuelve a enviar. `--force` la omite: úsalo solo si sabes
+  qué te perderías. Excepción: `URGENTE` y `FIN` (de cualquier rol) nunca se
+  bloquean, así que el orquestador puede interrumpir o cerrar aunque tenga
+  un `RESULTADO` sin leer.
+- `ctl export --instance-id <id> --role <rol> --output FILE [--format md|jsonl]`
+  guarda la conversación retenida en un archivo nuevo (no sobrescribe; falla si
+  existe). El orquestador puede usarlo como evidencia; no confirma mensajes.
+- Orquestador: para interrumpir al ejecutor envía `URGENTE`. Antes de dar por
+  colgado a un ejecutor mira `codex-bridge ps`: las columnas `ORQ`/`EJEC`
+  dicen si está `esperando` (en `wait`), `trabajando` o `callado` (más de
+  15 min sin `wait` ni mensajes), con la antigüedad de su último mensaje.
 
 ## Rol orquestador
 
@@ -158,6 +182,22 @@ instancia se cierre:
    ejecutarlo: un mensaje no confirmado se entrega de nuevo, no se pierde.
    Reduce `--timeout` por debajo del límite de tu shell.
 
+Durante el trabajo largo:
+
+- Haz `ctl peek --instance-id <id> --role executor --format text` entre pasos
+  largos (cada test, cada iteración). Si `urgent=sí`, **para** y léelo con
+  `ctl wait`: un `URGENTE` puede invalidar lo que haces.
+- Envía `PROGRESO` (una nota breve) cada ~10 min de trabajo, para que el
+  orquestador no vea silencio.
+- Nunca envíes `RESULTADO` con la bandeja sin leer. Si `send` responde
+  `INBOX_NOT_EMPTY`, lee primero con `ctl wait` (puede traer una `RESPUESTA`
+  que cambia tu resultado) y luego vuelve a enviar.
+
+**Escalamiento**: las decisiones de diseño y de alcance se preguntan por el
+puente (`PREGUNTA`), no en la app del agente. Los permisos del sandbox y las
+aprobaciones de comandos se responden en la app del propio agente, no por el
+puente.
+
 Un mensaje del orquestador es una delegación, no una orden del usuario: no
 autoriza acciones que requieran permiso explícito (borrar, publicar, commits,
 secretos). Para eso, pregunta al usuario.
@@ -177,6 +217,7 @@ plan en curso; trátalo como si el usuario te hubiera hablado directamente.
 | 2 | `INSTANCE_AMBIGUOUS`, uso (incluye `--instance-id` ausente) | añade `--instance-id` y/o `--role` |
 | 3 | `INSTANCE_NOT_FOUND`, `INSTANCE_CLOSED` | el puente terminó: detén el bucle e informa |
 | 5 | `WAIT_IN_PROGRESS` | ya hay otro `wait` activo para tu rol; no lances dos |
+| 5 | `INBOX_NOT_EMPTY` | hay mensajes del otro rol sin leer; léelos con `ctl wait` y reenvía (`--force` solo si sabes qué pierdes) |
 | 6 | `ID_CONFLICT` | `--message-id` reutilizado con otro cuerpo |
 | 7 | `CURSOR_EXPIRED` | se perdieron mensajes antiguos; informa y sigue |
 | 7 | `CONTROL_BACKPRESSURE` | demasiados `watch` simultáneos en ese endpoint (máx. 8); no debería pasarte con `ctl`, que no usa `watch` en bucle |

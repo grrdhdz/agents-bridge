@@ -282,7 +282,7 @@ func TestJoinQuitClosesItsOwnSideWithoutACallback(t *testing.T) {
 func TestComposerLabelCyclesThroughFixedOrder(t *testing.T) {
 	transport := &fakeTransport{instanceID: "abc"}
 	model := New(Options{Transport: transport, LocalRole: protocol.RoleOrchestrator, Capabilities: CapabilitiesForHost()})
-	want := []string{"TAREA", "PREGUNTA", "RESPUESTA", "FIN", ""}
+	want := []string{"TAREA", "PREGUNTA", "RESPUESTA", "FIN", "URGENTE", "PROGRESO", ""}
 	for _, label := range want {
 		model.cycleLabel()
 		if model.currentLabel() != label {

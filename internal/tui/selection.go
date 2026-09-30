@@ -294,8 +294,18 @@ func (m *Model) toggleTheme() {
 	if m.th.Mode == theme.ModeLight {
 		mode = theme.ModeDark
 	}
-	m.th = theme.New(mode, m.th.NoColor, nil)
+	m.applyTheme(theme.New(mode, m.th.NoColor, nil))
+}
+
+// applyTheme installs th and re-styles everything that caches styles.
+func (m *Model) applyTheme(th theme.Theme) {
+	m.th = th
 	m.input.SetStyles(textAreaStyles(m.th))
 	m.searchInput.SetStyles(textInputStyles(m.th))
 	m.refreshViewport(false)
+}
+
+// autoThemeFor settles an undecided auto theme with the terminal's answer.
+func autoThemeFor(th theme.Theme, msg tea.BackgroundColorMsg) theme.Theme {
+	return theme.New(theme.ModeAuto, th.NoColor, msg.IsDark)
 }

@@ -45,6 +45,25 @@ type responseEnvelope struct {
 	Heartbeat       string           `json:"heartbeat_at,omitempty"`
 	LatestServerSeq uint64           `json:"latest_server_seq,omitempty"`
 	PeerConnected   bool             `json:"peer_connected,omitempty"`
+	// Roles is the per-role state (§3.4), keyed by RoleKey; health only.
+	Roles map[string]RoleSnapshot `json:"roles,omitempty"`
+	// Unread accompanies INBOX_NOT_EMPTY (§3.1).
+	Unread int `json:"unread,omitempty"`
+}
+
+// peekResponse is GET /v1/peek's body. Unlike responseEnvelope its fields
+// have no omitempty: "unread":0 and "urgent":false are answers, not absences.
+type peekResponse struct {
+	V               int    `json:"v"`
+	Type            string `json:"type"`
+	RequestID       string `json:"request_id,omitempty"`
+	OK              bool   `json:"ok"`
+	Operation       string `json:"operation"`
+	InstanceID      string `json:"instance_id"`
+	Unread          int    `json:"unread"`
+	Urgent          bool   `json:"urgent"`
+	LatestLabel     string `json:"latest_label"`
+	LatestMessageID string `json:"latest_message_id"`
 }
 
 // waitResponse is separate from responseEnvelope because there "message" is
@@ -82,6 +101,7 @@ func (e *Endpoint) registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/watch", e.handleWatch)
 	mux.HandleFunc("/v1/send", e.handleSend)
 	mux.HandleFunc("/v1/wait", e.handleWait)
+	mux.HandleFunc("/v1/peek", e.handlePeek)
 	mux.HandleFunc("/v1/stop", e.handleStop)
 }
 
@@ -153,7 +173,12 @@ func (e *Endpoint) handleHealth(w http.ResponseWriter, r *http.Request) {
 	e.descriptorMu.RLock()
 	descriptor := e.descriptor
 	e.descriptorMu.RUnlock()
+	roles := make(map[string]RoleSnapshot)
+	for role, snap := range e.RoleSnapshots() {
+		roles[RoleKey(role)] = snap
+	}
 	_ = writeJSON(w, http.StatusOK, responseEnvelope{
+		Roles:           roles,
 		V:               1,
 		Type:            "response",
 		RequestID:       requestID,
@@ -326,6 +351,11 @@ type sendRequest struct {
 	// send) or "human-operator" (the observing TUI). Any other value is
 	// rejected so a typo cannot silently mislabel a message's origin.
 	Source string `json:"source,omitempty"`
+	// RequireInboxEmpty (§3.1) makes the send fail with INBOX_NOT_EMPTY while
+	// the other role has messages this role has not consumed with wait. Absent
+	// means false, so a client written before the guard behaves as always;
+	// human-operator sends ignore it.
+	RequireInboxEmpty bool `json:"require_inbox_empty,omitempty"`
 }
 
 func resolveSendSource(raw string) (string, bool) {
@@ -369,7 +399,11 @@ func (e *Endpoint) handleSend(w http.ResponseWriter, r *http.Request) {
 		writeError(w, requestID, "MESSAGE_INVALID", fmt.Sprintf("unsupported source %q", request.Source), false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
 		return
 	}
-	envelope, err := e.client.PublishWithIDSource(request.MessageID, request.Body, source)
+	envelope, blocked, err := e.publishSend(request, source)
+	if blocked != nil {
+		_ = writeJSON(w, http.StatusConflict, responseEnvelope{V: 1, Type: "error", RequestID: requestID, OK: false, Code: "INBOX_NOT_EMPTY", Message: blocked.message(), InstanceID: e.descriptor.InstanceID, Unread: blocked.unread})
+		return
+	}
 	if err != nil {
 		e.writeBridgeError(w, requestID, err)
 		return
@@ -426,6 +460,8 @@ func (e *Endpoint) handleWait(w http.ResponseWriter, r *http.Request) {
 	}
 	e.waiting.Store(true)
 	defer e.waiting.Store(false)
+	e.roles.WaitStart(e.descriptor.LocalRole)
+	defer e.roles.WaitEnd(e.descriptor.LocalRole)
 
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
@@ -441,7 +477,7 @@ func (e *Endpoint) handleWait(w http.ResponseWriter, r *http.Request) {
 		var cursorErr *bridge.CursorExpiredError
 		if errors.As(err, &cursorErr) && cursorErr.OldestEventSeq > 0 {
 			// Report the gap once; the next wait continues from what remains.
-			e.consumed = cursorErr.OldestEventSeq - 1
+			e.setConsumed(cursorErr.OldestEventSeq - 1)
 		}
 		e.writeBridgeError(w, requestID, err)
 		return
@@ -455,7 +491,7 @@ func (e *Endpoint) handleWait(w http.ResponseWriter, r *http.Request) {
 	if r.Context().Err() != nil {
 		return
 	}
-	e.consumed = event.EventSeq
+	e.setConsumed(event.EventSeq)
 	_ = e.client.Ack(event.MessageID, event.ServerSeq)
 }
 
@@ -467,7 +503,7 @@ func (e *Endpoint) isPeerMessage(event bridge.Event) bool {
 // if nothing is pending, subscribes from the last scanned event so no event
 // published between the scan and the subscription is missed.
 func (e *Endpoint) nextPeerMessage(ctx context.Context) (bridge.Event, error) {
-	after := e.consumed
+	after := e.loadConsumed()
 	for {
 		events, next, more, err := e.client.ReadEvents(after, 1000)
 		if err != nil {
@@ -525,4 +561,173 @@ func bridgeError(err error) (string, int, bool, uint64) {
 		return "CONTROL_BACKPRESSURE", http.StatusTooManyRequests, true, 0
 	}
 	return "TRANSPORT_ERROR", http.StatusServiceUnavailable, true, 0
+}
+
+// consumed is the RAM cursor of the last peer message this role received
+// through wait. It is guarded by cursorMu, a short lock held only for a load,
+// a store, or (send guard) the unread check plus the publication that
+// depends on it. It is deliberately not waitMu, which a wait holds for up to
+// 30 minutes.
+func (e *Endpoint) loadConsumed() uint64 {
+	e.cursorMu.Lock()
+	defer e.cursorMu.Unlock()
+	return e.consumed
+}
+
+func (e *Endpoint) setConsumed(seq uint64) {
+	e.cursorMu.Lock()
+	e.consumed = seq
+	e.cursorMu.Unlock()
+}
+
+// knownLabels are the first-line markers the control plane recognizes
+// (mirrors the TUI's badges).
+var knownLabels = map[string]bool{
+	"TAREA": true, "PREGUNTA": true, "RESPUESTA": true, "RESULTADO": true,
+	"FIN": true, "URGENTE": true, "PROGRESO": true,
+}
+
+func bodyLabel(body string) string {
+	first, _, _ := strings.Cut(body, "\n")
+	first = strings.TrimSuffix(first, "\r")
+	if knownLabels[first] {
+		return first
+	}
+	return ""
+}
+
+// inbox summarizes the peer messages after a cursor.
+type inbox struct {
+	unread      int
+	urgent      bool
+	latestLabel string
+	latestID    string
+}
+
+func (i inbox) message() string {
+	latest := i.latestLabel
+	if latest == "" {
+		latest = "sin etiqueta"
+	}
+	return fmt.Sprintf("hay %d mensaje(s) sin leer del otro rol (el más reciente: %s); léelos con ctl wait antes de enviar, o usa --force", i.unread, latest)
+}
+
+// unreadAfter counts the peer messages after cursor in the retained journal.
+// If the cursor already fell out of the journal, the evicted messages are
+// gone and only what remains is counted.
+func (e *Endpoint) unreadAfter(cursor uint64) (inbox, error) {
+	var sum inbox
+	after := cursor
+	for {
+		events, next, more, err := e.client.ReadEvents(after, 1000)
+		if err != nil {
+			var expired *bridge.CursorExpiredError
+			if errors.As(err, &expired) && expired.OldestEventSeq > 0 && after < expired.OldestEventSeq-1 {
+				after = expired.OldestEventSeq - 1
+				continue
+			}
+			return inbox{}, err
+		}
+		for _, event := range events {
+			if !e.isPeerMessage(event) {
+				continue
+			}
+			sum.unread++
+			label := bodyLabel(event.Envelope.Body)
+			if label == "URGENTE" {
+				sum.urgent = true
+			}
+			sum.latestLabel, sum.latestID = label, event.Envelope.MessageID
+		}
+		after = next
+		if !more {
+			return sum, nil
+		}
+	}
+}
+
+// guardExempt: URGENTE and FIN are interruptions and closings, so they skip
+// the inbox guard for both roles (otherwise an unread RESULTADO would stop
+// the orchestrator from interrupting).
+func guardExempt(body string) bool {
+	label := bodyLabel(body)
+	return label == "URGENTE" || label == "FIN"
+}
+
+// publishSend publishes a send request. With the guard on, the unread check
+// and the publication run under cursorMu, the lock every advance of the wait
+// cursor takes: a concurrent wait can therefore not consume (and so change
+// the answer) between the check and the publish, and the check reads the
+// cursor value the publish is justified by. A retry of an already accepted
+// message_id skips the guard, since it publishes nothing new.
+func (e *Endpoint) publishSend(request sendRequest, source string) (protocol.Envelope, *inbox, error) {
+	if !request.RequireInboxEmpty || source == protocol.SourceHumanOperator || guardExempt(request.Body) {
+		envelope, err := e.client.PublishWithIDSource(request.MessageID, request.Body, source)
+		return envelope, nil, err
+	}
+	e.cursorMu.Lock()
+	defer e.cursorMu.Unlock()
+	if _, exists := e.client.EventHub().Envelope(request.MessageID); !exists {
+		sum, err := e.unreadAfter(e.consumed)
+		if err != nil {
+			return protocol.Envelope{}, nil, err
+		}
+		if sum.unread > 0 {
+			return protocol.Envelope{}, &sum, nil
+		}
+	}
+	envelope, err := e.client.PublishWithIDSource(request.MessageID, request.Body, source)
+	return envelope, nil, err
+}
+
+// handlePeek implements GET /v1/peek (§3.2): a read-only look at the unread
+// peer messages. It never moves the cursor, never ACKs, and touches neither
+// Activity nor the role registry, so it is not presence.
+func (e *Endpoint) handlePeek(w http.ResponseWriter, r *http.Request) {
+	requestID, ok := e.authorize(w, r)
+	if !ok {
+		return
+	}
+	if r.Method != http.MethodGet {
+		writeError(w, requestID, "INVALID_METHOD", "peek requires GET", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
+		return
+	}
+	sum, err := e.unreadAfter(e.loadConsumed())
+	if err != nil {
+		e.writeBridgeError(w, requestID, err)
+		return
+	}
+	_ = writeJSON(w, http.StatusOK, peekResponse{V: 1, Type: "response", RequestID: requestID, OK: true, Operation: "peek", InstanceID: e.descriptor.InstanceID, Unread: sum.unread, Urgent: sum.urgent, LatestLabel: sum.latestLabel, LatestMessageID: sum.latestID})
+}
+
+// RoleSnapshots first replays new journal messages into the registry (so a
+// message sent by any path, including a direct TUI, counts), then derives the
+// state of every role this endpoint tracks. The direct host/join TUI reads it
+// too, to fill its side panel without a control round trip.
+func (e *Endpoint) RoleSnapshots() map[protocol.Role]RoleSnapshot {
+	e.scanMu.Lock()
+	after := e.scanned
+	for {
+		events, next, more, err := e.client.ReadEvents(after, 1000)
+		if err != nil {
+			var expired *bridge.CursorExpiredError
+			if errors.As(err, &expired) && expired.OldestEventSeq > 0 && after < expired.OldestEventSeq-1 {
+				after = expired.OldestEventSeq - 1
+				continue
+			}
+			break
+		}
+		for _, event := range events {
+			if event.Kind == bridge.EventMessage && event.Envelope != nil {
+				e.roles.Message(event.Envelope.SenderRole, event.Envelope.CreatedAt)
+			}
+		}
+		after = next
+		if !more {
+			break
+		}
+	}
+	e.scanned = after
+	e.scanMu.Unlock()
+	return e.roles.Snapshot()
 }

@@ -71,6 +71,9 @@ func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeo
 	defer worker.Close()
 
 	activity := control.NewActivity()
+	// One registry for both endpoints (like Activity), so each one reports
+	// the state of both roles (§3.4).
+	roles := control.NewRoles(nil, protocol.RoleOrchestrator, protocol.RoleExecutor)
 	stop := newStopper()
 
 	// peerConnected in local mode means both clients are connected: this
@@ -87,6 +90,7 @@ func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeo
 		Stop:          stop.stop,
 		PeerConnected: peerConnected,
 		Activity:      activity,
+		Roles:         roles,
 	})
 	if err != nil {
 		return fmt.Errorf("ctl orquestador: %w", err)
@@ -100,6 +104,7 @@ func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeo
 		CanStop:       false,
 		PeerConnected: peerConnected,
 		Activity:      activity,
+		Roles:         roles,
 	})
 	if err != nil {
 		return fmt.Errorf("ctl ejecutor: %w", err)

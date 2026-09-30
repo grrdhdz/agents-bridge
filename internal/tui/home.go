@@ -142,7 +142,12 @@ func NewHome(o HomeOptions) HomeModel {
 }
 
 // Init starts the refresh loop.
-func (h *HomeModel) Init() tea.Cmd { return h.Resume() }
+func (h *HomeModel) Init() tea.Cmd {
+	if h.th.Auto && !h.th.NoColor {
+		return tea.Batch(h.Resume(), tea.RequestBackgroundColor)
+	}
+	return h.Resume()
+}
 
 // Resume (re)starts the refresh loop: one immediate listing plus a fresh
 // tick chain. Any tick from an earlier chain (say, from before the person
@@ -315,7 +320,15 @@ func (h *HomeModel) rowScreenY(i int) int { return homeBoxTop + 2 + (i - h.offse
 // --- update ------------------------------------------------------------
 
 func (h *HomeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg = filterInput(msg); msg == nil {
+		return h, nil
+	}
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		if h.th.Auto {
+			h.SetTheme(autoThemeFor(h.th, msg))
+		}
+		return h, nil
 	case tea.WindowSizeMsg:
 		h.width, h.height = msg.Width, msg.Height
 		if h.width < 20 {

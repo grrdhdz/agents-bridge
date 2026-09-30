@@ -46,8 +46,18 @@ type Info struct {
 	IdleSeconds     *int64
 	PeerConnected   bool
 	LatestServerSeq uint64
+	// RoleStates is each role's state as the probed endpoint reports it (§3.4),
+	// keyed "orchestrator"/"executor". A local instance reports both; a host
+	// or join only its own role, so a missing key means unknown.
+	RoleStates map[string]RoleInfo
 	// Project is the base name of the descriptor's cwd ("" when unknown).
 	Project string
+}
+
+// RoleInfo is one role's derived state and when it last sent a message.
+type RoleInfo struct {
+	State         string
+	LastMessageAt *time.Time
 }
 
 // List reads this user's live descriptors under root ("" means the
@@ -136,10 +146,20 @@ func describe(ctx context.Context, ds []control.Descriptor) Info {
 		var health struct {
 			PeerConnected   bool   `json:"peer_connected"`
 			LatestServerSeq uint64 `json:"latest_server_seq"`
+			Roles           map[string]struct {
+				State         string     `json:"state"`
+				LastMessageAt *time.Time `json:"last_message_at"`
+			} `json:"roles"`
 		}
 		if response.StatusCode == http.StatusOK && json.NewDecoder(response.Body).Decode(&health) == nil {
 			info.PeerConnected = health.PeerConnected
 			info.LatestServerSeq = health.LatestServerSeq
+			if len(health.Roles) > 0 {
+				info.RoleStates = make(map[string]RoleInfo, len(health.Roles))
+				for key, role := range health.Roles {
+					info.RoleStates[key] = RoleInfo{State: role.State, LastMessageAt: role.LastMessageAt}
+				}
+			}
 		}
 		_ = response.Body.Close()
 	}

@@ -33,12 +33,9 @@ package theme
 import (
 	"fmt"
 	"image/color"
-	"os"
 	"strings"
-	"time"
 
 	"charm.land/lipgloss/v2"
-	term "github.com/charmbracelet/x/term"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
@@ -88,6 +85,11 @@ func IsNoColor(environ []string) bool {
 type Theme struct {
 	Mode    Mode
 	NoColor bool
+	// Auto is true while the theme came from "auto" with no answer yet: it
+	// is dark for now and the TUI asks the terminal for its background from
+	// inside the program (tea.RequestBackgroundColor), never by reading
+	// stdin itself.
+	Auto bool
 
 	Orchestrator color.Color
 	Executor     color.Color
@@ -114,17 +116,21 @@ type Theme struct {
 	SurfaceRaised color.Color
 }
 
-// New builds a Theme for mode. detectDark is consulted only for ModeAuto —
-// pass nil to use lipgloss.HasDarkBackground against the real terminal
-// (errors default to dark, matching most terminal emulators' defaults).
+// New builds a Theme for mode. For ModeAuto, detectDark (when given) supplies
+// the answer; with nil the theme is dark and Auto stays true — New never
+// queries the terminal, because reading stdin from anywhere but Bubble Tea's
+// own input reader steals bytes from it (v0.3.3: an abandoned OSC 11 query
+// ate pieces of mouse reports in a terminal that never answers). The TUI
+// finishes the job from inside the program with tea.RequestBackgroundColor.
 func New(mode Mode, noColor bool, detectDark func() bool) Theme {
 	resolved := mode
+	undecided := false
 	if resolved == ModeAuto {
 		dark := true
 		if detectDark != nil {
 			dark = detectDark()
 		} else {
-			dark = detectRealBackground()
+			undecided = true
 		}
 		if dark {
 			resolved = ModeDark
@@ -132,51 +138,14 @@ func New(mode Mode, noColor bool, detectDark func() bool) Theme {
 			resolved = ModeLight
 		}
 	}
+	var t Theme
 	if resolved == ModeLight {
-		return lightTheme(noColor)
+		t = lightTheme(noColor)
+	} else {
+		t = darkTheme(noColor)
 	}
-	return darkTheme(noColor)
-}
-
-// backgroundQueryTimeout bounds detectRealBackground. lipgloss has its own
-// 2s timeout, but on Windows it could not cancel a read from a console that
-// never answers, so it is not relied on.
-const backgroundQueryTimeout = 3 * time.Second
-
-// detectRealBackground wraps lipgloss.HasDarkBackground against the actual
-// terminal, defaulting to dark when it cannot be queried so `auto` never
-// crashes or blocks. It only asks when stdin and stdout are both a real
-// terminal: otherwise lipgloss on Windows opens the process's console
-// (CONIN$/CONOUT$) behind the caller's back, which in a background process
-// is hidden and never replies.
-func detectRealBackground() bool {
-	return detectBackground(term.IsTerminal(os.Stdin.Fd()) && term.IsTerminal(os.Stdout.Fd()), backgroundQueryTimeout,
-		func() bool { return lipgloss.HasDarkBackground(os.Stdin, os.Stdout) })
-}
-
-// detectBackground runs query only on a terminal and gives up after timeout,
-// answering dark. The abandoned query keeps its goroutine, which ends with
-// the process; that beats a TUI that never starts.
-func detectBackground(isTerminal bool, timeout time.Duration, query func() bool) bool {
-	if !isTerminal {
-		return true
-	}
-	result := make(chan bool, 1)
-	go func() {
-		dark := true
-		defer func() {
-			// A panic in the query also means "could not tell": dark.
-			_ = recover()
-			result <- dark
-		}()
-		dark = query()
-	}()
-	select {
-	case dark := <-result:
-		return dark
-	case <-time.After(timeout):
-		return true
-	}
+	t.Auto = undecided
+	return t
 }
 
 func darkTheme(noColor bool) Theme {
@@ -325,6 +294,14 @@ func (t Theme) ConnIndicator(state string) string {
 func (t Theme) LabelStyle(label string) lipgloss.Style {
 	style := lipgloss.NewStyle().Bold(true).Padding(0, 1)
 	if t.NoColor {
+		// Attributes only: URGENTE reads as a reversed block, PROGRESO
+		// recedes like other secondary text.
+		switch label {
+		case "URGENTE":
+			return style.Reverse(true)
+		case "PROGRESO":
+			return style.Faint(true)
+		}
 		return style
 	}
 	c := t.Info
@@ -339,6 +316,10 @@ func (t Theme) LabelStyle(label string) lipgloss.Style {
 		c = t.Success
 	case "FIN":
 		c = t.Warning
+	case "URGENTE":
+		c = t.Danger
+	case "PROGRESO":
+		c = t.Muted
 	}
 	return style.Foreground(c)
 }

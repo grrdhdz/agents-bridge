@@ -13,6 +13,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
 )
@@ -52,6 +53,11 @@ type sidebarData struct {
 	ExecutorLastActivity     time.Time
 	HaveExecutorActivity     bool
 
+	// OrchestratorState/ExecutorState are the participants' derived states
+	// (§3.4), "" when unknown.
+	OrchestratorState string
+	ExecutorState     string
+
 	Pending []pendingItem
 	Totals  map[protocol.Role]int
 }
@@ -70,6 +76,8 @@ func (m *Model) buildSidebarData() sidebarData {
 		data.StartedAt = m.status.StartedAt
 		data.HavePeer = true
 		data.PeerConnected = m.status.PeerConnected
+		data.OrchestratorState = roleStateText(m.status.Roles, protocol.RoleOrchestrator)
+		data.ExecutorState = roleStateText(m.status.Roles, protocol.RoleExecutor)
 	}
 	now := m.now()
 	for _, e := range m.messages {
@@ -93,6 +101,16 @@ func (m *Model) buildSidebarData() sidebarData {
 		}
 	}
 	return data
+}
+
+// roleStateText is a role's state word for the panel, or "" when the source
+// does not know it (a host/join never learns the other role's state).
+func roleStateText(roles map[protocol.Role]control.RoleSnapshot, role protocol.Role) string {
+	snap, ok := roles[role]
+	if !ok || snap.State == control.StateUnknown {
+		return ""
+	}
+	return string(snap.State)
 }
 
 // projectName is the status bar/sidebar's project label (§6.2/§6.4): the
@@ -135,8 +153,8 @@ func renderSidebar(data sidebarData, th theme.Theme, width int) string {
 	fmt.Fprintf(&b, "inactivo %s\n", formatIdle(data.Idle))
 
 	section("PARTICIPANTES")
-	writeParticipant(&b, th, "Orquestador", data.HaveOrchestratorActivity, data.OrchestratorLastActivity)
-	writeParticipant(&b, th, "Ejecutor", data.HaveExecutorActivity, data.ExecutorLastActivity)
+	writeParticipant(&b, th, "Orquestador", data.OrchestratorState, data.HaveOrchestratorActivity, data.OrchestratorLastActivity)
+	writeParticipant(&b, th, "Ejecutor", data.ExecutorState, data.HaveExecutorActivity, data.ExecutorLastActivity)
 
 	section("PENDIENTES")
 	if len(data.Pending) == 0 {
@@ -160,14 +178,18 @@ func renderSidebar(data sidebarData, th theme.Theme, width int) string {
 	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(strings.TrimRight(b.String(), "\n"))
 }
 
-func writeParticipant(b *strings.Builder, th theme.Theme, name string, have bool, at time.Time) {
+func writeParticipant(b *strings.Builder, th theme.Theme, name, state string, have bool, at time.Time) {
 	indicator := "○"
 	activity := "sin actividad"
 	if have {
 		indicator = "●"
 		activity = "última " + at.Local().Format("15:04:05")
 	}
-	fmt.Fprintf(b, "%s %s\n  %s\n", indicator, name, th.MutedStyle().Render(activity))
+	fmt.Fprintf(b, "%s %s\n", indicator, name)
+	if state != "" {
+		fmt.Fprintf(b, "  %s\n", th.TextStyle().Render(state))
+	}
+	fmt.Fprintf(b, "  %s\n", th.MutedStyle().Render(activity))
 }
 
 func shortMessageID(id string) string {

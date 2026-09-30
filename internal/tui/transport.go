@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
+	"github.com/grrdhdz/codex-agents-bridge/internal/control"
 	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
 )
 
@@ -25,6 +26,10 @@ type BridgeStatus struct {
 	// working directory for host/join (they are that process). Empty when
 	// neither is available.
 	Cwd string
+	// Roles is each role's state (§3.4), when the source knows it: the
+	// control plane reports both roles in `local` and only its own in
+	// host/join; a missing role means unknown.
+	Roles map[protocol.Role]control.RoleSnapshot
 }
 
 // StatusProvider is spec §7's optional interface: a Transport that can also
@@ -78,13 +83,14 @@ type EventSubscription interface {
 type clientTransport struct {
 	client        *bridge.Client
 	peerConnected func() bool
+	roleStates    func() map[protocol.Role]control.RoleSnapshot
 	startedAt     time.Time
 	cwd           string
 }
 
-func newClientTransport(client *bridge.Client, peerConnected func() bool) clientTransport {
+func newClientTransport(client *bridge.Client, peerConnected func() bool, roleStates func() map[protocol.Role]control.RoleSnapshot) clientTransport {
 	cwd, _ := os.Getwd()
-	return clientTransport{client: client, peerConnected: peerConnected, startedAt: time.Now(), cwd: cwd}
+	return clientTransport{client: client, peerConnected: peerConnected, roleStates: roleStates, startedAt: time.Now(), cwd: cwd}
 }
 
 func (t clientTransport) Status(context.Context) (BridgeStatus, error) {
@@ -92,7 +98,11 @@ func (t clientTransport) Status(context.Context) (BridgeStatus, error) {
 	if t.peerConnected != nil {
 		connected = t.peerConnected()
 	}
-	return BridgeStatus{PeerConnected: connected, StartedAt: t.startedAt, Cwd: t.cwd}, nil
+	status := BridgeStatus{PeerConnected: connected, StartedAt: t.startedAt, Cwd: t.cwd}
+	if t.roleStates != nil {
+		status.Roles = t.roleStates()
+	}
+	return status, nil
 }
 
 func (t clientTransport) InstanceID() string { return t.client.InstanceID() }

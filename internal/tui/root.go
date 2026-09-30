@@ -71,6 +71,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.bridge.Update(msg)
 		}
 		return a, nil
+	case tea.BackgroundColorMsg:
+		a.home.Update(msg)
+		if a.bridge != nil {
+			a.bridge.Update(msg)
+		}
+		return a, nil
 	case openBridgeMsg:
 		if a.bridge != nil {
 			return a, nil

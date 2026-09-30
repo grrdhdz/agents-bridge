@@ -78,9 +78,15 @@ type Endpoint struct {
 	stop          func()
 	peerConnected func() bool
 	activity      *Activity
+	roles         *Roles
+	cursorMu      sync.Mutex // guards consumed and the send guard's check+publish
+	scanMu        sync.Mutex
+	scanned       uint64 // last journal event replayed into roles
 
-	// waitMu admits one /v1/wait per endpoint and guards consumed, the RAM
-	// cursor of the last peer message this role received through wait.
+	// waitMu admits one /v1/wait per endpoint. consumed is the RAM cursor of
+	// the last peer message this role received through wait; it is guarded by
+	// cursorMu (see loadConsumed), not by waitMu, so a guarded send never
+	// queues behind a long wait.
 	waitMu   sync.Mutex
 	waiting  atomic.Bool
 	consumed uint64
@@ -123,6 +129,9 @@ type Options struct {
 	// Activity is the shared activity tracker for this instance (§5.1). It
 	// may be nil, in which case idle tracking and presence are no-ops.
 	Activity *Activity
+	// Roles is the per-role state registry (§3.4). `local` shares one between
+	// both endpoints; nil makes the endpoint track just its own role.
+	Roles *Roles
 }
 
 // Start creates one loopback control endpoint and its protected ephemeral
@@ -168,6 +177,10 @@ func Start(client *bridge.Client, opts Options) (*Endpoint, error) {
 		Mode:              opts.Mode,
 		LastActivityAt:    &now,
 	}
+	roles := opts.Roles
+	if roles == nil {
+		roles = NewRoles(nil, role)
+	}
 	e := &Endpoint{
 		client:         client,
 		listener:       listener,
@@ -180,6 +193,7 @@ func Start(client *bridge.Client, opts Options) (*Endpoint, error) {
 		stop:           opts.Stop,
 		peerConnected:  opts.PeerConnected,
 		activity:       opts.Activity,
+		roles:          roles,
 	}
 	mux := http.NewServeMux()
 	e.registerHandlers(mux)
