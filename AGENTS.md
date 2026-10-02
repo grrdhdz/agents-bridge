@@ -40,7 +40,8 @@ ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 ## Invariantes del proyecto
 
 - Todo estado de chat vive en RAM: sin SQLite, archivos de historial ni logs de
-  cuerpos. El descriptor de control es metadata efímera, no historial.
+  cuerpos. El descriptor de control y los vínculos de sesiones son metadata de
+  coordinación, no historial.
 - Cada invocación crea una instancia aislada (`instance_id`, puerto y tokens
   propios). Instancias concurrentes no comparten nada.
 - El protocolo TCP v1 (`engine/internal/protocol`) no cambia de forma
@@ -53,11 +54,13 @@ ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 
 - `engine/` — módulo Go `github.com/grrdhdz/agents-bridge/engine`.
 - `engine/cmd/agents-bridge` — CLI: host, `join`, `local`, `ctl`, `ps`, `stop`,
-  `tui` y `codex open`.
+  `tui`, `bind`, `unbind` y `codex open`.
 - `engine/internal/protocol` — frames, envelopes y validación.
 - `engine/internal/bridge` — `Server`, `Client`, `EventHub` (fan-out + journal).
 - `engine/internal/control` — endpoint HTTP loopback y descriptores.
 - `engine/internal/bridges` — registro y listado de puentes.
+- `engine/internal/hooks` — vínculos de sesiones y coordinación del harness,
+  núcleo independiente de la TUI.
 - `engine/internal/tui` — TUI Bubble Tea, cliente del núcleo.
 - `engine/internal/tailscale`, `engine/internal/clipboard` — integración de
   plataforma.

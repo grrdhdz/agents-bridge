@@ -15,7 +15,7 @@ import (
 // cannot accidentally couple the reusable core to one of its clients.
 func TestCoreDoesNotDependOnClients(t *testing.T) {
 	const module = "github.com/grrdhdz/agents-bridge/engine"
-	coreRoots := []string{"protocol", "bridge", "control", "bridges"}
+	coreRoots := []string{"protocol", "bridge", "control", "bridges", "hooks"}
 	isWithin := func(path, root string) bool {
 		return path == root || strings.HasPrefix(path, root+"/")
 	}

@@ -87,9 +87,10 @@ type Endpoint struct {
 	// the last peer message this role received through wait; it is guarded by
 	// cursorMu (see loadConsumed), not by waitMu, so a guarded send never
 	// queues behind a long wait.
-	waitMu   sync.Mutex
-	waiting  atomic.Bool
-	consumed uint64
+	waitMu      sync.Mutex
+	waiting     atomic.Bool
+	consumed    uint64
+	finReceived bool
 
 	// watchCount admits at most maxConcurrentWatch concurrent /v1/watch
 	// subscribers per endpoint (§8, §10.3).

@@ -34,7 +34,18 @@ const (
 
 func main() {
 	var err error
-	if len(os.Args) > 1 && os.Args[1] == "ctl" {
+	if len(os.Args) > 1 && (os.Args[1] == "bind" || os.Args[1] == "unbind") {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		env := ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr}
+		code := 0
+		if os.Args[1] == "bind" {
+			code = runBind(ctx, os.Args[2:], env)
+		} else {
+			code = runUnbind(ctx, os.Args[2:], env)
+		}
+		stop()
+		os.Exit(code)
+	} else if len(os.Args) > 1 && os.Args[1] == "ctl" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		code := runCtl(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr})
 		stop()
@@ -491,6 +502,9 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 }
 
 func printUsage() {
+	fmt.Println("agents-bridge bind --instance-id ID --role orchestrator|executor   valida el vínculo que registra el hook")
+	fmt.Println("agents-bridge bind --list           lista vínculos de sesiones")
+	fmt.Println("agents-bridge unbind                el hook elimina el vínculo de esta sesión")
 	fmt.Println("agents-bridge [--idle-timeout D]   crea una instancia efímera y TUI de orquestador en Mac")
 	fmt.Println("agents-bridge --headless --ready-file FILE")
 	fmt.Println("                                   igual, sin TUI; el comando de unión (con su token) va solo en FILE")

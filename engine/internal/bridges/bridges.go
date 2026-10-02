@@ -56,8 +56,10 @@ type Info struct {
 
 // RoleInfo is one role's derived state and when it last sent a message.
 type RoleInfo struct {
-	State         string
-	LastMessageAt *time.Time
+	Tool            string
+	LastHeartbeatAt *time.Time
+	State           string
+	LastMessageAt   *time.Time
 }
 
 // List reads this user's live descriptors under root ("" means the
@@ -147,8 +149,10 @@ func describe(ctx context.Context, ds []control.Descriptor) Info {
 			PeerConnected   bool   `json:"peer_connected"`
 			LatestServerSeq uint64 `json:"latest_server_seq"`
 			Roles           map[string]struct {
-				State         string     `json:"state"`
-				LastMessageAt *time.Time `json:"last_message_at"`
+				State           string     `json:"state"`
+				Tool            string     `json:"tool"`
+				LastHeartbeatAt *time.Time `json:"last_heartbeat_at"`
+				LastMessageAt   *time.Time `json:"last_message_at"`
 			} `json:"roles"`
 		}
 		if response.StatusCode == http.StatusOK && json.NewDecoder(response.Body).Decode(&health) == nil {
@@ -157,7 +161,7 @@ func describe(ctx context.Context, ds []control.Descriptor) Info {
 			if len(health.Roles) > 0 {
 				info.RoleStates = make(map[string]RoleInfo, len(health.Roles))
 				for key, role := range health.Roles {
-					info.RoleStates[key] = RoleInfo{State: role.State, LastMessageAt: role.LastMessageAt}
+					info.RoleStates[key] = RoleInfo{State: role.State, LastMessageAt: role.LastMessageAt, Tool: role.Tool, LastHeartbeatAt: role.LastHeartbeatAt}
 				}
 			}
 		}

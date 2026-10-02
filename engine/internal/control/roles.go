@@ -50,15 +50,19 @@ func RoleFromKey(key string) (protocol.Role, bool) {
 // RoleSnapshot is one role's derived state plus the two timestamps it came
 // from; the pointers are nil while nothing was recorded.
 type RoleSnapshot struct {
-	State         RoleState  `json:"state"`
-	LastMessageAt *time.Time `json:"last_message_at,omitempty"`
-	LastWaitAt    *time.Time `json:"last_wait_at,omitempty"`
+	State           RoleState  `json:"state"`
+	LastHeartbeatAt *time.Time `json:"last_heartbeat_at,omitempty"`
+	Tool            string     `json:"tool,omitempty"`
+	LastMessageAt   *time.Time `json:"last_message_at,omitempty"`
+	LastWaitAt      *time.Time `json:"last_wait_at,omitempty"`
 }
 
 type roleRecord struct {
 	waiting  int
 	lastWait time.Time
 	lastMsg  time.Time
+	lastBeat time.Time
+	tool     string
 }
 
 // Roles is the per-role state registry of one bridge instance (§3.4). In
@@ -97,6 +101,7 @@ func (r *Roles) WaitStart(role protocol.Role) {
 	defer r.mu.Unlock()
 	if rec := r.tracked[role]; rec != nil {
 		rec.waiting++
+		rec.tool = ""
 		rec.lastWait = r.now()
 	}
 }
@@ -129,6 +134,19 @@ func (r *Roles) Message(role protocol.Role, at time.Time) {
 	}
 }
 
+// Heartbeat records finite activity for either role; it never holds presence.
+func (r *Roles) Heartbeat(role protocol.Role, tool string) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if rec := r.tracked[role]; rec != nil {
+		rec.lastBeat = r.now()
+		rec.tool = tool
+	}
+}
+
 // Snapshot derives every tracked role's state at the registry's clock.
 func (r *Roles) Snapshot() map[protocol.Role]RoleSnapshot {
 	if r == nil {
@@ -153,11 +171,21 @@ func (r *Roles) Snapshot() map[protocol.Role]RoleSnapshot {
 				latest = t
 			}
 		}
+		if !rec.lastBeat.IsZero() {
+			t := rec.lastBeat
+			snap.LastHeartbeatAt = &t
+			if t.After(latest) {
+				latest = t
+			}
+		}
 		switch {
 		case rec.waiting > 0:
 			snap.State = StateWaiting
 		case !latest.IsZero() && now.Sub(latest) < roleQuietAfter:
 			snap.State = StateWorking
+			if latest.Equal(rec.lastBeat) {
+				snap.Tool = rec.tool
+			}
 		case !latest.IsZero() || now.Sub(r.since) >= roleQuietAfter:
 			snap.State = StateQuiet
 		default:

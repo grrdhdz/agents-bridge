@@ -110,6 +110,9 @@ func roleStateText(roles map[protocol.Role]control.RoleSnapshot, role protocol.R
 	if !ok || snap.State == control.StateUnknown {
 		return ""
 	}
+	if snap.State == control.StateWorking && snap.Tool != "" {
+		return string(snap.State) + " (" + snap.Tool + ")"
+	}
 	return string(snap.State)
 }
 

@@ -29,6 +29,25 @@ publicada anterior, `v0.2.1`, corrigió en Windows lo encontrado al verificar
 `v0.2.0`, que añadió el modo local entre agentes del mismo equipo y el control
 no gráfico `ctl`.
 
+## Vínculos de sesiones y latidos
+
+`agents-bridge bind --instance-id ID --role executor` valida un puente vivo;
+cuando los hooks están configurados, registran el vínculo al observar ese
+comando. `agents-bridge bind --list` lista vínculos y elimina los de puentes
+cerrados. `agents-bridge unbind` pide al hook desvincular la sesión actual;
+para otra sesión usa `--harness claude|codex --session-id ID`.
+
+Los vínculos solo guardan harness, sesión, instancia, rol y fecha en el runtime
+privado de `agents-bridge` (archivos 0600/directorio 0700 o ACL exclusiva en
+Windows), sin mensajes ni capabilities. El núcleo de hooks no depende de la TUI.
+
+`POST /v1/heartbeat` usa la misma autenticación y cabecera de request ID que
+el resto del control. Registra la herramienta y actividad finita de cualquiera
+de los roles: ps, health y TUI muestran «trabajando» y la herramienta. Si cesan
+los latidos, no queda presencia que prolongue el `--idle-timeout`.
+`peek` y `health` exponen `fin_received`: solo se activa cuando el rol consume
+un FIN del otro rol mediante `wait`, nunca por mirar con `peek`.
+
 ## Migración desde codex-bridge
 
 El binario ahora se llama `agents-bridge`, sin alias del nombre anterior. El

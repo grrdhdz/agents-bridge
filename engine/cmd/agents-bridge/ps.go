@@ -31,8 +31,10 @@ type psRow struct {
 }
 
 type psRoleState struct {
-	State                 string `json:"state"`
-	LastMessageAgeSeconds *int64 `json:"last_message_age_seconds,omitempty"`
+	Tool                  string     `json:"tool,omitempty"`
+	LastHeartbeatAt       *time.Time `json:"last_heartbeat_at,omitempty"`
+	State                 string     `json:"state"`
+	LastMessageAgeSeconds *int64     `json:"last_message_age_seconds,omitempty"`
 }
 
 // formatRoleCell is a ps ORQ/EJEC cell: the role's state and, when known,
@@ -86,7 +88,7 @@ func buildPSRows(ctx context.Context, descriptors []control.Descriptor) []psRow 
 		if len(info.RoleStates) > 0 {
 			roleStates = make(map[string]psRoleState, len(info.RoleStates))
 			for key, role := range info.RoleStates {
-				state := psRoleState{State: role.State}
+				state := psRoleState{State: role.State, Tool: role.Tool, LastHeartbeatAt: role.LastHeartbeatAt}
 				if role.LastMessageAt != nil {
 					age := int64(time.Since(*role.LastMessageAt).Seconds())
 					if age < 0 {
@@ -151,7 +153,7 @@ func writePSTable(w io.Writer, rows []psRow) error {
 		}
 		orq := row.RoleStates["orchestrator"]
 		ejec := row.RoleStates["executor"]
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\n", row.InstanceID, mode, roles, row.PID, startedDisplay, idle, peer, row.LatestServerSeq, formatRoleCell(orq.State, orq.LastMessageAgeSeconds), formatRoleCell(ejec.State, ejec.LastMessageAgeSeconds))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\n", row.InstanceID, mode, roles, row.PID, startedDisplay, idle, peer, row.LatestServerSeq, formatHeartbeatRole(orq), formatHeartbeatRole(ejec))
 	}
 	return tw.Flush()
 }
@@ -165,4 +167,12 @@ func humanizeIdle(d time.Duration) string {
 	default:
 		return fmt.Sprintf("%dh", int(d.Hours()))
 	}
+}
+
+func formatHeartbeatRole(role psRoleState) string {
+	state := role.State
+	if state == string(control.StateWorking) && role.Tool != "" {
+		state += " (" + role.Tool + ")"
+	}
+	return formatRoleCell(state, role.LastMessageAgeSeconds)
 }

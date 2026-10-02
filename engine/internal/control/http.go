@@ -46,7 +46,8 @@ type responseEnvelope struct {
 	LatestServerSeq uint64           `json:"latest_server_seq,omitempty"`
 	PeerConnected   bool             `json:"peer_connected,omitempty"`
 	// Roles is the per-role state (§3.4), keyed by RoleKey; health only.
-	Roles map[string]RoleSnapshot `json:"roles,omitempty"`
+	Roles       map[string]RoleSnapshot `json:"roles,omitempty"`
+	FinReceived bool                    `json:"fin_received"`
 	// Unread accompanies INBOX_NOT_EMPTY (§3.1).
 	Unread int `json:"unread,omitempty"`
 }
@@ -64,6 +65,7 @@ type peekResponse struct {
 	Urgent          bool   `json:"urgent"`
 	LatestLabel     string `json:"latest_label"`
 	LatestMessageID string `json:"latest_message_id"`
+	FinReceived     bool   `json:"fin_received"`
 }
 
 // waitResponse is separate from responseEnvelope because there "message" is
@@ -97,6 +99,7 @@ type eventRecord struct {
 
 func (e *Endpoint) registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/health", e.handleHealth)
+	mux.HandleFunc("/v1/heartbeat", e.handleHeartbeat)
 	mux.HandleFunc("/v1/read", e.handleRead)
 	mux.HandleFunc("/v1/watch", e.handleWatch)
 	mux.HandleFunc("/v1/send", e.handleSend)
@@ -179,6 +182,7 @@ func (e *Endpoint) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = writeJSON(w, http.StatusOK, responseEnvelope{
 		Roles:           roles,
+		FinReceived:     e.hasReceivedFIN(),
 		V:               1,
 		Type:            "response",
 		RequestID:       requestID,
@@ -193,6 +197,31 @@ func (e *Endpoint) handleHealth(w http.ResponseWriter, r *http.Request) {
 		QueuedEventSeq:  e.client.EventHub().LatestEventSeq(),
 		PeerConnected:   e.isPeerConnected(),
 	})
+}
+
+// handleHeartbeat records the endpoint role, never a caller-supplied role.
+func (e *Endpoint) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
+	requestID, ok := e.authorize(w, r)
+	if !ok {
+		return
+	}
+	if r.Method != http.MethodPost {
+		writeError(w, requestID, "INVALID_METHOD", "heartbeat requires POST", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
+		return
+	}
+	var input struct {
+		Tool string `json:"tool"`
+	}
+	decoder := json.NewDecoder(io.LimitReader(r.Body, 4097))
+	err := decoder.Decode(&input)
+	var extra any
+	if err != nil || decoder.Decode(&extra) != io.EOF || len(input.Tool) > 128 || strings.IndexFunc(input.Tool, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
+		writeError(w, requestID, "INVALID_JSON", "invalid heartbeat tool", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
+		return
+	}
+	e.roles.Heartbeat(e.descriptor.LocalRole, input.Tool)
+	e.activity.Touch()
+	_ = writeJSON(w, http.StatusOK, responseEnvelope{V: 1, Type: "response", RequestID: requestID, OK: true, Operation: "heartbeat", InstanceID: e.descriptor.InstanceID})
 }
 
 // handleStop implements POST /v1/stop (§4.2). Only a CanStop endpoint accepts
@@ -491,7 +520,12 @@ func (e *Endpoint) handleWait(w http.ResponseWriter, r *http.Request) {
 	if r.Context().Err() != nil {
 		return
 	}
-	e.setConsumed(event.EventSeq)
+	e.cursorMu.Lock()
+	e.consumed = event.EventSeq
+	if event.Envelope != nil && bodyLabel(event.Envelope.Body) == "FIN" {
+		e.finReceived = true
+	}
+	e.cursorMu.Unlock()
 	_ = e.client.Ack(event.MessageID, event.ServerSeq)
 }
 
@@ -568,6 +602,12 @@ func bridgeError(err error) (string, int, bool, uint64) {
 // a store, or (send guard) the unread check plus the publication that
 // depends on it. It is deliberately not waitMu, which a wait holds for up to
 // 30 minutes.
+func (e *Endpoint) hasReceivedFIN() bool {
+	e.cursorMu.Lock()
+	defer e.cursorMu.Unlock()
+	return e.finReceived
+}
+
 func (e *Endpoint) loadConsumed() uint64 {
 	e.cursorMu.Lock()
 	defer e.cursorMu.Unlock()
@@ -697,7 +737,7 @@ func (e *Endpoint) handlePeek(w http.ResponseWriter, r *http.Request) {
 		e.writeBridgeError(w, requestID, err)
 		return
 	}
-	_ = writeJSON(w, http.StatusOK, peekResponse{V: 1, Type: "response", RequestID: requestID, OK: true, Operation: "peek", InstanceID: e.descriptor.InstanceID, Unread: sum.unread, Urgent: sum.urgent, LatestLabel: sum.latestLabel, LatestMessageID: sum.latestID})
+	_ = writeJSON(w, http.StatusOK, peekResponse{V: 1, Type: "response", RequestID: requestID, OK: true, Operation: "peek", InstanceID: e.descriptor.InstanceID, Unread: sum.unread, Urgent: sum.urgent, LatestLabel: sum.latestLabel, LatestMessageID: sum.latestID, FinReceived: e.hasReceivedFIN()})
 }
 
 // RoleSnapshots first replays new journal messages into the registry (so a
