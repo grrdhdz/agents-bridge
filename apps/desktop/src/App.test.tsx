@@ -105,7 +105,7 @@ test('gallery starts with create card and tools are named keyboard controls',asy
  render(<App client={createDemoClient()}/>);await screen.findByRole('button',{name:'Abrir checkout-api'});
  expect(document.querySelector('.app-shell')?.classList.contains('chat-background')).toBe(false);
  expect(document.querySelector('.bridge-list')?.firstElementChild?.className).toContain('create-card');
- expect(screen.getByRole('navigation',{name:'Herramientas del lienzo'})).toBeDefined();
+ expect(screen.getByRole('navigation',{name:'Herramientas'})).toBeDefined();
  fireEvent.click(screen.getByRole('button',{name:'Buscar puentes'}));expect(document.activeElement).toBe(screen.getByLabelText('Filtrar puentes'));
 });
 test('folding sidebar preserves subscription, conversation and draft',async()=>{

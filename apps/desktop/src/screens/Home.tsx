@@ -9,7 +9,7 @@ export default function Home({instances,loading,creating,onOpen,onCreate,onClose
  const [filter,setFilter]=useState('');
  const shown=instances.filter(i=>`${i.instance_id} ${i.project} ${i.mode}`.toLowerCase().includes(filter.toLowerCase()));
  return <section className="home" aria-labelledby="home-title">
-  <div className="section-heading"><div><p className="eyebrow">TU ESPACIO DE COLABORACIÓN</p><h1 id="home-title">Tus puentes</h1><p className="subtitle">Un lienzo para cada conversación.</p></div><span className="workspace-count">{instances.length} puentes activos</span></div>
+  <div className="section-heading"><div><p className="eyebrow">TU ESPACIO DE COLABORACIÓN</p><h1 id="home-title">Tus puentes</h1><p className="subtitle">Todas las conversaciones entre tus agentes.</p></div><span className="workspace-count">{instances.length} puentes activos</span></div>
   <div className="list-toolbar"><label className="search"><Search size={17} aria-hidden="true"/><input aria-label="Filtrar puentes" placeholder="Buscar por proyecto o instancia…" value={filter} onChange={e=>setFilter(e.target.value)}/></label><span><span className="live-dot"/>Actualización cada 2 s</span></div>
   <div className="bridge-list"><button className="create-card" disabled={creating} onClick={onCreate}><span className="create-plus"><Plus size={30} strokeWidth={1.7} aria-hidden="true"/></span><strong>{creating?'Creando…':'Nuevo puente local'}</strong><span>Abre un espacio para tus agentes</span></button>
    {shown.map(i=><article className="bridge-card" key={i.instance_id}>
