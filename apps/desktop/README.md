@@ -1,17 +1,27 @@
 # agents-bridge: app de escritorio
 
-Esqueleto G0 de Tauri 2 + React + TypeScript + Vite. Al abrir la ventana,
-Rust lanza el sidecar incluido, envía `hello` a `agents-bridge api` y React
-muestra la versión del motor y del contrato. El handshake tiene un límite de
-5 segundos; el proceso de esa comprobación se termina también ante errores o
-cancelación. No crea ni detiene puentes. El proxy persistente y las pantallas
-de conversación corresponden a G2 y G3.
+Cliente Tauri 2 + React + TypeScript + Vite. G2 mantiene un único proceso
+`agents-bridge api` por ventana. Los comandos Rust reflejan las nueve operaciones
+públicas; no leen archivos del motor ni contienen reglas de negocio.
+
+El proxy correlaciona IDs, aplica un timeout (5 s para hello, 30 s para las otras
+operaciones) y emite `agents-bridge-event` / `agents-bridge-status` únicamente a
+la ventana propietaria. Al caer el proceso cancela las peticiones pendientes,
+notifica a la UI y reinicia con espera creciente (250 ms–5 s). Solo restaura las
+suscripciones, con IDs estables para la ventana; nunca repite envíos, creaciones
+ni cierres. El replay se deduplica en la interfaz por `message_id`.
+
+Al destruir la ventana o salir de la app, el proxy cierra stdin y, si el sidecar
+no termina, finaliza solo ese proceso. Nunca envía Stop por su cuenta: los
+puentes siguen vivos. Las pruebas Rust compilan un sidecar falso desde
+`src-tauri/tests/fixtures/` y comprueban correlación fuera de orden, eventos,
+timeouts, caída, restauración y cierre. No se necesitan instalaciones globales.
 
 ## Separación
 
 El runtime de la app solo usa la CLI pública y el contrato JSONL v1. No importa
 Go, no lee descriptores, vínculos ni archivos internos del motor. Rust hace de
-proxy de `hello`; las reglas del puente permanecen en Go. La WebView no recibe
+proxy de las operaciones; las reglas del puente permanecen en Go. La WebView no recibe
 permisos para ejecutar comandos arbitrarios.
 
 Las únicas referencias de compilación al motor son:

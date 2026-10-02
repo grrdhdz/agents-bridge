@@ -1,114 +1,119 @@
-use serde::Serialize;
+mod proxy;
+use proxy::Proxy;
 use serde_json::Value;
-use std::time::Duration;
-use tauri_plugin_shell::{
-    process::{CommandChild, CommandEvent},
-    ShellExt,
-};
+use std::{collections::HashMap, sync::Mutex, time::Duration};
+use tauri::{Emitter, Manager};
 
-#[derive(Debug, Serialize, PartialEq)]
-struct HelloResult {
-    engine_version: String,
-    contract_version: u8,
-}
+#[derive(Default)]
+struct Windows(Mutex<HashMap<String, Proxy>>);
 
-fn decode_hello(line: &[u8]) -> Result<HelloResult, String> {
-    let packet: Value = serde_json::from_slice(line).map_err(|_| "Respuesta inválida del motor")?;
-    if packet["v"] != 1 || packet["id"] != "desktop-hello" || packet["ok"] != true {
-        return Err("El motor no confirmó el contrato v1".into());
-    }
-    let result = &packet["result"];
-    let version = result["engine_version"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .ok_or("El motor no informó su versión")?;
-    if result["contract_version"] != 1 {
-        return Err("Versión de contrato no compatible".into());
-    }
-    Ok(HelloResult {
-        engine_version: version.into(),
-        contract_version: 1,
-    })
-}
-
-struct ChildGuard(Option<CommandChild>);
-impl Drop for ChildGuard {
-    fn drop(&mut self) {
-        if let Some(child) = self.0.take() {
-            let _ = child.kill();
-        }
-    }
-}
-
-#[tauri::command]
-async fn engine_hello(app: tauri::AppHandle) -> Result<HelloResult, String> {
-    let command = app
-        .shell()
-        .sidecar("agents-bridge")
-        .map_err(|_| "No se encontró el motor incluido en la app")?
-        .args(["api"]);
-    let (mut events, child) = command.spawn().map_err(|_| "No se pudo iniciar el motor")?;
-    let mut guard = ChildGuard(Some(child));
-    guard
-        .0
-        .as_mut()
-        .unwrap()
-        .write(b"{\"v\":1,\"id\":\"desktop-hello\",\"op\":\"hello\",\"args\":{}}\n")
-        .map_err(|_| "No se pudo contactar con el motor")?;
-    let response = tokio::time::timeout(Duration::from_secs(5), async {
-        while let Some(event) = events.recv().await {
-            match event {
-                CommandEvent::Stdout(line) => return decode_hello(&line),
-                CommandEvent::Terminated(_) | CommandEvent::Error(_) => {
-                    return Err("El motor terminó antes de responder".into());
-                }
-                _ => {}
-            }
-        }
-        Err("El canal del motor se cerró".into())
+async fn request(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, Windows>,
+    op: &'static str,
+    args: Option<Value>,
+) -> Result<Value, String> {
+    let proxy = {
+        let mut windows = state.0.lock().unwrap();
+        let label = window.label().to_string();
+        windows
+            .entry(label.clone())
+            .or_insert_with(|| {
+                let exe = std::env::current_exe().expect("No se encontró el ejecutable de la app");
+                let sidecar = exe.parent().unwrap().join(if cfg!(windows) {
+                    "agents-bridge.exe"
+                } else {
+                    "agents-bridge"
+                });
+                let app = window.app_handle().clone();
+                Proxy::start(sidecar, vec!["api".into()], move |packet| {
+                    let name = if packet.get("status").is_some() {
+                        "agents-bridge-status"
+                    } else {
+                        "agents-bridge-event"
+                    };
+                    let _ = app.emit_to(&label, name, packet);
+                })
+            })
+            .clone()
+    };
+    let timeout = if op == "hello" { 5 } else { 30 };
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        proxy.request(
+            op,
+            args.unwrap_or_else(|| serde_json::json!({})),
+            Duration::from_secs(timeout),
+        )
     })
     .await
-    .map_err(|_| "El motor no respondió a tiempo")?;
-    if let Ok(ref hello) = response {
+    .map_err(|_| "El canal del motor se cerró")??;
+    if op == "hello" {
+        if result["contract_version"] != 1 || result["engine_version"].as_str().is_none() {
+            return Err("Versión de contrato no compatible".into());
+        }
         eprintln!(
-            "Motor conectado: {} · API v{}",
-            hello.engine_version, hello.contract_version
+            "Motor conectado: {} · API v1",
+            result["engine_version"].as_str().unwrap()
         );
     }
-    // G0 comprueba el handshake; G2 mantendrá el proxy de la sesión.
-    response
+    Ok(result)
 }
+macro_rules! operation {
+    ($name:ident, $op:literal) => {
+        #[tauri::command]
+        async fn $name(
+            window: tauri::WebviewWindow,
+            state: tauri::State<'_, Windows>,
+            args: Option<Value>,
+        ) -> Result<Value, String> {
+            request(window, state, $op, args).await
+        }
+    };
+}
+operation!(engine_hello, "hello");
+operation!(engine_list, "list");
+operation!(engine_subscribe, "subscribe");
+operation!(engine_unsubscribe, "unsubscribe");
+operation!(engine_send, "send");
+operation!(engine_stop, "stop");
+operation!(engine_create_local, "create_local");
+operation!(engine_health, "health");
+operation!(engine_export, "export");
 
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![engine_hello])
-        .run(tauri::generate_context!())
-        .expect("No se pudo iniciar agents-bridge");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn hello_accepts_only_matching_v1_success() {
-        let result = decode_hello(br#"{"v":1,"id":"desktop-hello","ok":true,"result":{"engine_version":"v0.4.0","contract_version":1}}"#).unwrap();
-        assert_eq!(
-            result,
-            HelloResult {
-                engine_version: "v0.4.0".into(),
-                contract_version: 1
+    let app = tauri::Builder::default()
+        .manage(Windows::default())
+        .invoke_handler(tauri::generate_handler![
+            engine_hello,
+            engine_list,
+            engine_subscribe,
+            engine_unsubscribe,
+            engine_send,
+            engine_stop,
+            engine_create_local,
+            engine_health,
+            engine_export
+        ])
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(proxy) = window
+                    .state::<Windows>()
+                    .0
+                    .lock()
+                    .unwrap()
+                    .remove(window.label())
+                {
+                    proxy.shutdown();
+                }
             }
-        );
-        for line in [
-            br#"{"v":2}"#.as_slice(),
-            br#"{"v":1,"id":"other","ok":true}"#,
-            b"invalid",
-            br#"{"v":1,"id":"desktop-hello","ok":false,"error":{"message":"private"}}"#,
-        ] {
-            let error = decode_hello(line).unwrap_err();
-            assert!(!error.contains("private"));
+        })
+        .build(tauri::generate_context!())
+        .expect("No se pudo iniciar agents-bridge");
+    app.run(|handle, event| {
+        if matches!(event, tauri::RunEvent::Exit) {
+            for (_, proxy) in handle.state::<Windows>().0.lock().unwrap().drain() {
+                proxy.shutdown();
+            }
         }
-    }
+    });
 }
