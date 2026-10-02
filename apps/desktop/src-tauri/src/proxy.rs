@@ -415,16 +415,24 @@ fn actor(
 mod tests {
     use super::*;
     use serde_json::json;
-    use std::{fs, process::Command, sync::mpsc, time::Duration};
-    fn fixture() -> (Proxy, mpsc::Receiver<serde_json::Value>, std::path::PathBuf) {
-        let root = std::env::temp_dir().join(format!(
-            "agents-bridge-proxy-{}-{}",
+    use std::{fs, process::Command, sync::atomic::AtomicU64, sync::mpsc, time::Duration};
+    fn fixture_root(timestamp: u128) -> std::path::PathBuf {
+        static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
+        // Clock precision cannot distinguish parallel tests; the counter can.
+        std::env::temp_dir().join(format!(
+            "agents-bridge-proxy-{}-{}-{}",
             std::process::id(),
+            timestamp,
+            NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
+        ))
+    }
+    fn fixture() -> (Proxy, mpsc::Receiver<serde_json::Value>, std::path::PathBuf) {
+        let root = fixture_root(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
-        ));
+                .as_nanos(),
+        );
         fs::create_dir(&root).unwrap();
         let exe = root.join(if cfg!(windows) { "fake.exe" } else { "fake" });
         assert!(Command::new("rustc")
@@ -441,6 +449,16 @@ mod tests {
             rx,
             root,
         )
+    }
+    #[test]
+    fn fixture_names_are_unique_when_timestamps_collide() {
+        let paths: std::collections::HashSet<_> = (0..32)
+            .map(|_| std::thread::spawn(|| fixture_root(123)))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|thread| thread.join().unwrap())
+            .collect();
+        assert_eq!(paths.len(), 32);
     }
     #[test]
     fn correlates_out_of_order_and_times_out() {
