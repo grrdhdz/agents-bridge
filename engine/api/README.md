@@ -24,7 +24,7 @@ Petición (id no vacío, máximo 128 caracteres, args siempre objeto):
 Respuesta (id correlaciona con la petición; id vacío si no se pudo decodificar):
 
 ```json
-{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.4.0","contract_version":1}}
+{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.5.1","contract_version":1}}
 ```
 
 ```json
@@ -50,6 +50,9 @@ Evento independiente de cualquier petición:
 | create_local | `{idle_timeout?}` | instance_id, state=running, una vez publicado el ready. |
 | health | `{instance_id}` | state, pid, peer_connected, fin_received, latest_server_seq y role_states. |
 | export | `{instance_id, format, output}` | instance_id, format, output absoluto. |
+| integration_status | `{}` | harnesses (claude/codex): installed, opted_out, path, trust_note/error opcionales; cli_path, cli_on_path, cli_current, cli_error/path_note opcionales. Solo lectura. |
+| integration_ensure | `{}` | Estado anterior más changed: copia CLI y mantiene hooks globales, respetando exclusiones. |
+| integration_set | `{harness, enabled}` | Mismo resultado que ensure; guarda la elección e instala/desinstala el harness. |
 
 Ejemplos de peticiones independientes:
 
@@ -112,3 +115,40 @@ keywords desconocidos y valida los paquetes de los tests sin dependencias nuevas
 `health` incluye `unread` cuando el peek del endpoint está disponible: cuenta
 la bandeja del rol local sin consumirla. Es opcional para mantener compatibilidad
 con motores v1 anteriores y omitir un dato desconocido si peek falla.
+
+## Integración automática (motor v0.5.1)
+
+La app llama a `integration_ensure` una vez al arrancar; el motor es el único
+que copia su ejecutable, edita hooks y guarda las exclusiones. No requiere un
+puente activo. No cambia el contrato v1: son operaciones añadidas.
+
+```json
+{"v":1,"id":"hooks","op":"integration_ensure","args":{}}
+{"v":1,"id":"status","op":"integration_status","args":{}}
+{"v":1,"id":"off","op":"integration_set","args":{"harness":"claude","enabled":false}}
+```
+
+La CLI estable vive en `~/.local/bin/agents-bridge` (macOS/Linux) o
+`%LOCALAPPDATA%\agents-bridge\bin\agents-bridge.exe` (Windows). Solo se
+reemplaza si su hash cambia y el destino es propio; la copia es atómica.
+Windows añade el directorio al PATH de usuario y notifica el cambio. En macOS
+no se modifican perfiles de shell: los hooks usan la ruta absoluta.
+
+El motor mantiene metadata privada en
+`<UserConfigDir>/agents-bridge/integration-state.json`: versión, ruta de CLI y
+`opted_out` por harness. Desactivar en la app o usar `integration uninstall`
+persiste la exclusión tras actualizar. Reactivar o `integration install` la
+borra. Un segundo ensure correcto no escribe ni crea backups. Cambios de
+versión, entradas ausentes/rutas distintas o CLI ausente se reparan.
+
+Fallos parciales se devuelven en `harnesses.<nombre>.error` o `cli_error`;
+los fallos generales usan `INTEGRATION_FAILED`. La app sigue funcionando y no
+reintenta en bucle. Los archivos JSON inválidos y destinos ajenos quedan
+intactos. Se conservan hooks de terceros, con backups antes de cambios.
+Codex sigue exigiendo habilitación/confianza manual; nunca escribimos
+`trusted_hash` ni `[hooks.state]`. `trust_note` explica el paso pendiente.
+
+Pruebas y smoke usan HOME, APPDATA, LOCALAPPDATA, UserConfigDir/XDG y PATH
+temporales. La prueba Windows usa una clave desechable del registro y no
+modifica `HKCU\Environment` real; el adaptador de producción usa esa clave
+solo cuando un usuario arranca la app. La app nunca lee este estado privado.

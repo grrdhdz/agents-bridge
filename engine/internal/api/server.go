@@ -11,6 +11,7 @@ import (
 	"github.com/grrdhdz/agents-bridge/engine/internal/bridgeexport"
 	"github.com/grrdhdz/agents-bridge/engine/internal/bridges"
 	"github.com/grrdhdz/agents-bridge/engine/internal/control"
+	"github.com/grrdhdz/agents-bridge/engine/internal/integration"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -25,6 +26,7 @@ const MaxLineBytes = 2 * 1024 * 1024
 // CreateLocal reuses the CLI's detached launcher. Empty timeout means default.
 type Options struct {
 	Root, Version string
+	Integration   integration.EnsureOptions
 	CreateLocal   func(context.Context, string) (string, error)
 }
 type Server struct {
@@ -34,6 +36,9 @@ type Server struct {
 }
 
 func New(o Options) *Server {
+	if o.Integration.Version == "" {
+		o.Integration.Version = o.Version
+	}
 	s := &Server{options: o}
 	if o.Root != "" {
 		s.private = append(s.private, o.Root)
@@ -287,6 +292,25 @@ func (s *Server) call(ctx context.Context, d control.Descriptor, method, path st
 func arg(r Request, key string) string { v, _ := r.Args[key].(string); return v }
 func (s *Server) dispatch(ctx, sessionctx context.Context, r Request, subs map[string]*subscription, emit func(any) error) (any, func(), error) {
 	switch r.Op {
+	case "integration_status":
+		result, err := integration.Status(s.options.Integration)
+		if err != nil {
+			return nil, nil, fail("INTEGRATION_FAILED", "No se pudo leer el estado de integración.")
+		}
+		return result, nil, nil
+	case "integration_ensure":
+		result, err := integration.Ensure(ctx, s.options.Integration)
+		if err != nil {
+			return nil, nil, fail("INTEGRATION_FAILED", "No se pudo preparar la integración de hooks.")
+		}
+		return result, nil, nil
+	case "integration_set":
+		enabled, _ := r.Args["enabled"].(bool)
+		result, err := integration.Set(ctx, s.options.Integration, arg(r, "harness"), enabled)
+		if err != nil {
+			return nil, nil, fail("INTEGRATION_FAILED", "No se pudo cambiar la integración de hooks.")
+		}
+		return result, nil, nil
 	case "hello":
 		return map[string]any{"engine_version": s.options.Version, "contract_version": 1}, nil, nil
 	case "list":

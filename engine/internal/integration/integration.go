@@ -22,7 +22,10 @@ import (
 var Events = []string{"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"}
 var labels = map[string]string{"SessionStart": "session_start", "UserPromptSubmit": "user_prompt_submit", "PreToolUse": "pre_tool_use", "PostToolUse": "post_tool_use", "Stop": "stop"}
 
-type Options struct{ Home, Project, Scope, Harness, Executable string }
+type Options struct {
+	Home, Project, Scope, Harness, Executable, ConfigDir string
+	PreserveOptOut                                       bool
+}
 type Entry struct {
 	Event       string `json:"event"`
 	Binary      string `json:"binary"`
@@ -127,6 +130,11 @@ func readObject(path string) (map[string]any, []byte, error) {
 	return d, raw, nil
 }
 func Apply(action string, o Options) (Result, error) {
+	managerMu.Lock()
+	defer managerMu.Unlock()
+	return apply(action, o)
+}
+func apply(action string, o Options) (Result, error) {
 	path, err := o.Path()
 	r := Result{Path: path, Entries: []Entry{}}
 	if err != nil {
@@ -254,7 +262,12 @@ func Apply(action string, o Options) (Result, error) {
 			r.Changed = true
 		}
 		changed, backup := r.Changed, r.Backup
-		r, err = Apply("status", o)
+		if o.Scope == "user" && !o.PreserveOptOut {
+			if err = recordChoice(o, action == "uninstall"); err != nil {
+				return r, err
+			}
+		}
+		r, err = apply("status", o)
 		r.Changed = changed
 		r.Backup = backup
 		return r, err

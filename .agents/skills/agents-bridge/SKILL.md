@@ -88,7 +88,17 @@ $OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEnco
 ## Hooks del harness (v0.5)
 
 Cuando estén configurados en Claude Code o Codex, los hooks se invocan con
-`agents-bridge hook <claude|codex> <Evento>`. Instala con
+`agents-bridge hook <claude|codex> <Evento>`.
+Desde v0.5.1, abrir la app mantiene automáticamente hooks de usuario para
+Claude Code y Codex, en todos los proyectos, usando una copia estable de la CLI.
+No pide confirmación. **Hooks ✓ / Hooks: revisar** abre el estado y el control
+**Mantener hooks instalados** por harness. Desactivarlo o `integration uninstall`
+persiste una exclusión tras actualizar; reactivarlo o `integration install` la
+borra. Codex aún exige aceptar su confianza y confiar en el proyecto.
+`integration ensure` expone el mismo mantenimiento en JSON; no lo ejecutes con
+HOME real durante pruebas. La app llama solo a la API; estado/copia/PATH viven
+en el motor. Hooks no vinculados devuelven salida vacía y no afectan a sesiones
+ajenas. Para instalación manual, usa
 `agents-bridge integration install <claude|codex> --scope project --project DIR`
 o `--scope user` (predeterminado). Consulta/retira con `integration status` /
 `integration uninstall` y los mismos flags. `hook` solo procesa el evento.
@@ -277,7 +287,7 @@ Salida 3 sigue significando que la instancia ya no existe: detén el bucle e
 informa al usuario. Salida 8 significa lo contrario: la instancia sigue viva,
 solo el sandbox actual no llega a `127.0.0.1`.
 
-## App de escritorio (v0.5.0)
+## App de escritorio (v0.5.1)
 
 La app en `apps/desktop/` observa por `agents-bridge api` sin consumir mensajes.
 Sus intervenciones llegan con `source=human-operator`, igual que las de la TUI.

@@ -45,7 +45,7 @@
             "esperando",
             "trabajando",
             "callado",
-            "\u2014"
+            "—"
           ]
         },
         "hook_bound": {
@@ -617,6 +617,15 @@
         },
         {
           "$ref": "#/$defs/ExportRequest"
+        },
+        {
+          "$ref": "#/$defs/IntegrationStatusRequest"
+        },
+        {
+          "$ref": "#/$defs/IntegrationEnsureRequest"
+        },
+        {
+          "$ref": "#/$defs/IntegrationSetRequest"
         }
       ]
     },
@@ -795,6 +804,12 @@
             },
             {
               "$ref": "#/$defs/Health"
+            },
+            {
+              "$ref": "#/$defs/IntegrationStatusResult"
+            },
+            {
+              "$ref": "#/$defs/IntegrationEnsureResult"
             }
           ]
         }
@@ -1198,6 +1213,235 @@
         "sub",
         "event",
         "data"
+      ],
+      "additionalProperties": false
+    },
+    "Harness": {
+      "type": "string",
+      "enum": [
+        "claude",
+        "codex"
+      ]
+    },
+    "HarnessIntegration": {
+      "type": "object",
+      "properties": {
+        "installed": {
+          "type": "boolean"
+        },
+        "opted_out": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "trust_note": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "installed",
+        "opted_out",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "IntegrationStatusResult": {
+      "type": "object",
+      "properties": {
+        "harnesses": {
+          "type": "object",
+          "properties": {
+            "claude": {
+              "$ref": "#/$defs/HarnessIntegration"
+            },
+            "codex": {
+              "$ref": "#/$defs/HarnessIntegration"
+            }
+          },
+          "required": [
+            "claude",
+            "codex"
+          ],
+          "additionalProperties": false
+        },
+        "cli_path": {
+          "type": "string"
+        },
+        "cli_on_path": {
+          "type": "boolean"
+        },
+        "cli_current": {
+          "type": "boolean"
+        },
+        "cli_error": {
+          "type": "string"
+        },
+        "path_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "harnesses",
+        "cli_path",
+        "cli_on_path",
+        "cli_current"
+      ],
+      "additionalProperties": false
+    },
+    "IntegrationEnsureResult": {
+      "type": "object",
+      "properties": {
+        "harnesses": {
+          "type": "object",
+          "properties": {
+            "claude": {
+              "$ref": "#/$defs/HarnessIntegration"
+            },
+            "codex": {
+              "$ref": "#/$defs/HarnessIntegration"
+            }
+          },
+          "required": [
+            "claude",
+            "codex"
+          ],
+          "additionalProperties": false
+        },
+        "cli_path": {
+          "type": "string"
+        },
+        "cli_on_path": {
+          "type": "boolean"
+        },
+        "cli_current": {
+          "type": "boolean"
+        },
+        "cli_error": {
+          "type": "string"
+        },
+        "path_note": {
+          "type": "string"
+        },
+        "changed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "harnesses",
+        "cli_path",
+        "cli_on_path",
+        "cli_current",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "IntegrationStatusArgs": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "IntegrationStatusRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "integration_status"
+        },
+        "args": {
+          "$ref": "#/$defs/IntegrationStatusArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "IntegrationEnsureArgs": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "IntegrationEnsureRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "integration_ensure"
+        },
+        "args": {
+          "$ref": "#/$defs/IntegrationEnsureArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "IntegrationSetArgs": {
+      "type": "object",
+      "properties": {
+        "harness": {
+          "$ref": "#/$defs/Harness"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "harness",
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "IntegrationSetRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "integration_set"
+        },
+        "args": {
+          "$ref": "#/$defs/IntegrationSetArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
       ],
       "additionalProperties": false
     }

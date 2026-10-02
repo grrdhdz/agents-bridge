@@ -5,7 +5,7 @@ efímero, local o por Tailscale. Incluye CLI, TUI y app de escritorio; todo el
 historial vive en RAM. El humano puede observar e intervenir sin consumir la
 bandeja de los agentes.
 
-## Versión 0.5.0 (rama preparada; pendiente de publicación)
+## Versión 0.5.1 (rama preparada; pendiente de publicación)
 
 - Renombre a `agents-bridge` y monorepo: motor Go en `engine/`, interfaces en `apps/`.
 - Hooks de Claude Code/Codex: vinculación automática, latidos, avisos URGENTE,
@@ -104,6 +104,27 @@ exit 0. Por ello los agentes también siguen el bucle de la skill.
 harness, hora y código fijo de error, sin cuerpos, capabilities ni URLs de
 control. Por defecto no se crean logs. `hook` no modifica configuración global.
 
+### Instalación automática desde la app (v0.5.1)
+
+Cada arranque mantiene automáticamente los hooks **de usuario**, válidos para
+todos los proyectos, sin aviso previo. El motor copia la CLI a una ruta estable:
+`~/.local/bin/agents-bridge` en macOS/Linux y
+`%LOCALAPPDATA%\agents-bridge\bin\agents-bridge.exe` en Windows. Windows
+actualiza el PATH de usuario; abre una terminal nueva. En macOS no se tocan
+perfiles: los hooks siempre usan la ruta absoluta.
+
+El indicador **Hooks ✓ / Hooks: revisar** abre el estado y el control
+**Mantener hooks instalados** por harness. Desactivarlo o ejecutar
+`integration uninstall` conserva esa elección incluso tras actualizar;
+reactivarlo o `integration install` permite instalar de nuevo. Los errores son
+no bloqueantes y no se reintentan en bucle. Codex aún requiere aceptar los
+hooks y confiar en el proyecto; el motor no concede esa confianza.
+
+`agents-bridge integration ensure` expone el mismo mantenimiento con salida JSON.
+La app usa las operaciones públicas `integration_status`, `integration_ensure`
+y `integration_set`; la copia, el estado privado y el PATH viven en el motor.
+Las pruebas y el smoke se aíslan de la configuración real con HOME y PATH temporales.
+
 ### Instalar, consultar y retirar
 
 ```sh
@@ -117,7 +138,7 @@ agents-bridge integration uninstall claude --scope user
 `~/.codex/hooks.json`. `--scope project` usa los mismos nombres dentro del
 proyecto; `--project` por defecto es el directorio actual. Cada evento recibe
 un comando con la ruta absoluta del binario actual y timeout de 5 s; el motor
-mantiene su presupuesto interno de 2 s. Reinstala si mueves el binario. El nombre estándar permite reconocer también
+mantiene su presupuesto interno de 2 s. En instalaciones manuales, reinstala si mueves el binario; la app usa una ruta estable. El nombre estándar permite reconocer también
 instalaciones previas; con un nombre personalizado, retira las entradas desde
 el mismo binario antes de moverlo.
 
@@ -200,7 +221,7 @@ el binario `codex-bridge`. Compila este checkout para obtener el nombre nuevo.
   proceso Mac siga vivo. Una caída del proceso Mac no tiene recuperación.
 - El cuerpo canónico es texto UTF-8 intacto. No se admiten adjuntos.
 
-## App de escritorio (v0.5.0)
+## App de escritorio (v0.5.1)
 
 El cliente Tauri 2 + React vive en [`apps/desktop`](apps/desktop/README.md).
 Compila su propio sidecar y genera los tipos desde el contrato público; no
@@ -225,7 +246,7 @@ Playwright; el cliente simulado solo existe en desarrollo.
 `agents-bridge api` ofrece una sesión JSONL v1 por stdin/stdout. Las apps usan
 solo esta API o la CLI pública; el motor conserva descriptores, capabilities y
 lógica de coordinación. Incluye hello, list, subscribe/unsubscribe con replay
-observador, intervención humana, stop, create_local, health y export.
+observador, intervención humana, stop, create_local, health, export e integración automática de hooks.
 Cerrar stdin cancela las suscripciones y deja vivos los puentes.
 
 Contrato y ejemplos: [engine/api/README.md](engine/api/README.md).

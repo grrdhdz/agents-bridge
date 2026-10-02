@@ -29,7 +29,7 @@ import (
 
 const (
 	commandName = "agents-bridge"
-	appVersion  = "v0.5.0"
+	appVersion  = "v0.5.1"
 )
 
 func main() {
@@ -99,7 +99,7 @@ func main() {
 	} else if len(os.Args) > 1 && os.Args[1] == "tui" {
 		err = runTUIObserver(os.Args[2:], "")
 	} else if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
-		fmt.Println(appVersion)
+		fmt.Println("agents-bridge", appVersion)
 		return
 	} else if len(os.Args) > 1 && (os.Args[1] == "help" || os.Args[1] == "--help" || os.Args[1] == "-h") {
 		printUsage()
@@ -515,6 +515,7 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 
 func printUsage() {
 	fmt.Println("agents-bridge api                   API v1 JSONL por stdin/stdout; observadora, sin exponer credenciales")
+	fmt.Println("agents-bridge integration ensure           mantiene CLI y hooks globales")
 	fmt.Println("agents-bridge integration install|uninstall|status claude|codex [--scope user|project] [--project DIR]")
 	fmt.Println("agents-bridge hook claude|codex Evento   hook de coordinación: JSON por stdin, presupuesto 2s, falla abierto")
 	fmt.Println("agents-bridge bind --instance-id ID --role orchestrator|executor   valida el vínculo que registra el hook")
