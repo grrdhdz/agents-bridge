@@ -141,3 +141,18 @@ dialog { background:var(--panel); color:var(--text); border:1px solid var(--dot)
 @media(max-width:1150px) { .bridge-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }.home { padding:22px 2px; }.home h1 { font-size:31px; }.board-preview { height:60px; }.create-card { min-height:0; }.card-roles { gap:6px; margin:8px 0; }.project-title { padding-top:10px; }.card-footer { padding-top:7px; }.role-avatar { width:23px; height:23px; }.list-toolbar { margin:14px 0 12px; }.home-note { margin-top:18px; }.mini-note { width:52px; height:26px; padding:4px; }.mini-note span { margin-top:3px; }.mini-note-0 { left:25%; top:15%; }.mini-note-1 { left:55%; top:16%; }.mini-note-2 { left:35%; top:54%; }.mini-note-3 { left:66%; top:57%; }.engine-state { display:none; }.identity-pill { max-width:48%; gap:10px; }.brand { font-size:12px; }.actions-pill { gap:7px; }.bridge-layout { grid-template-columns:minmax(0,1fr) 230px; gap:18px; }.sidebar { padding:20px 15px 16px; }.message { padding:10px 12px; }.message-meta { gap:5px; font-size:8px; } }
 @media(max-width:760px) { .app-header { padding:10px 12px; flex-wrap:wrap; gap:8px; }.identity-pill { max-width:none; flex:1; min-height:48px; }.actions-pill { min-height:42px; margin-left:auto; }.brand { font-size:12px; }.board-identity > span,.demo-badge,.workspace-count { display:none; }.header-action span { display:none; }.tool-rail { left:8px; padding:5px; }.tool-rail .icon-button { width:30px; height:34px; }main { margin-left:60px; margin-right:12px; }.home { padding:14px 0; }.bridge-list { grid-template-columns:1fr; }.create-card { min-height:170px; }.list-toolbar { flex-wrap:wrap; gap:10px; }.search { width:100%; }.bridge-layout { grid-template-columns:minmax(0,1fr) 190px; gap:12px; }.sidebar { padding:18px 10px; }.participant-heading { gap:4px; }.participant-heading > span:last-child { display:none; }.message { max-width:70%; }.composer { padding:10px; }.composer-toolbar { flex-wrap:wrap; gap:6px; }.compose-input button { min-width:42px; padding:8px; }.compose-input button span { display:none; }.conversation { padding-right:4px; }.notice { margin-left:60px; margin-right:12px; }.conversation-search { flex-wrap:wrap; }.conversation-search > span { font-size:9px; }.home-note { align-items:flex-start; line-height:1.6; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+
+/* El panel solo muestra el contrato público; el motor gestiona la instalación. */
+.hooks-indicator span { display: inline-flex; align-items: center; gap: .3rem; }
+.integration-panel { display: grid; gap: .75rem; max-height: 65vh; overflow-y: auto; }
+.integration-panel p { margin: .25rem 0; }
+.integration-panel fieldset { border: 1px solid var(--border); border-radius: 10px; padding: .75rem; min-width: 0; }
+.integration-panel legend { font-weight: 700; padding: 0 .3rem; }
+.integration-toggle { display: flex; align-items: center; gap: .6rem; cursor: pointer; }
+.integration-toggle input { width: 1.1rem; height: 1.1rem; accent-color: var(--selection); }
+.integration-cli { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .4rem .8rem; }
+.integration-cli dt { font-weight: 600; }
+.integration-cli dd { margin: 0; min-width: 0; }
+.integration-path, .integration-cli code { font-size: .8rem; overflow-wrap: anywhere; }
+.integration-error { color: var(--danger); }
+@media (max-width: 1150px) { .hooks-indicator { font-size: .75rem; padding-inline: .4rem; } }

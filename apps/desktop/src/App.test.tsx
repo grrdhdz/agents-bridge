@@ -132,3 +132,36 @@ test('gallery previews reuse observed messages without subscribing to other brid
  expect(document.querySelectorAll('.mini-note.empty-note')).toHaveLength(8);
  expect(screen.getByRole('button',{name:'Abrir checkout-api'}).querySelector('.mini-note.human-note')).not.toBeNull();
 });
+
+
+test('startup ensures hooks once; indicator opens an accessible panel and toggles through API', async () => {
+  vi.useFakeTimers(); const api = createDemoClient(); const ensure = vi.spyOn(api, 'integrationEnsure'); const set = vi.spyOn(api, 'integrationSet');
+  await act(async () => { render(<App client={api}/>); });
+  expect(ensure).toHaveBeenCalledTimes(1);
+  await act(async () => { vi.advanceTimersByTime(6000); });
+  expect(ensure).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Hooks: revisar' }));
+  expect(screen.getByRole('dialog', { name: 'Hooks de usuario' })).toBeDefined();
+  expect(screen.getByText(/acepta los hooks como confiables/)).toBeDefined();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Mantener hooks instalados — Claude Code' }));
+  await act(async () => {});
+  expect(set).toHaveBeenCalledWith({ harness: 'claude', enabled: false });
+  expect((screen.getByRole('checkbox', { name: 'Mantener hooks instalados — Claude Code' }) as HTMLInputElement).checked).toBe(false);
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Cerrar panel de hooks' }), { key: 'Escape' });
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+test('failed automatic integration is nonblocking and does not retry in a loop', async () => {
+  vi.useFakeTimers(); const api = createDemoClient(); const ensure = vi.spyOn(api, 'integrationEnsure').mockRejectedValue(new Error('No se pudo preparar la integración'));
+  await act(async () => { render(<App client={api}/>); });
+  expect(screen.getByRole('button', { name: 'Abrir checkout-api' })).toBeDefined();
+  expect(screen.getByRole('button', { name: 'Hooks: revisar' })).toBeDefined();
+  expect(screen.getByText(/No se pudieron preparar los hooks/)).toBeDefined();
+  await act(async () => { vi.advanceTimersByTime(10000); });
+  expect(ensure).toHaveBeenCalledTimes(1);
+});
+
+test('integration startup runs even when hello fails', async () => {
+ const client=createDemoClient(); vi.spyOn(client,'hello').mockRejectedValue(new Error('Hello no disponible'));
+ const ensure=vi.spyOn(client,'integrationEnsure'); render(<App client={client}/>);
+ await waitFor(()=>expect(ensure).toHaveBeenCalledTimes(1));
+});

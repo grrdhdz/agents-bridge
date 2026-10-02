@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { realClient, type ApiClient, type EngineStatus } from './api/client';
-import type { HelloResult, Instance } from './api/types';
+import type { HelloResult, Instance, IntegrationStatusResult } from './api/types';
 import { applyTheme, type ThemeMode } from './theme';
 import { localRole, roleName } from './model';
 import { exportConversation } from './export';
@@ -10,9 +10,10 @@ import Confirm from './components/Confirm';
 import CommandPalette, { type CommandAction } from './components/CommandPalette';
 import ShortcutHelp from './components/ShortcutHelp';
 import { Toasts, useToasts } from './components/Toasts';
-import { ArrowLeftRight, Search, Download, X, SunMoon, Copy } from 'lucide-react';
+import { ArrowLeftRight, Search, Download, X, SunMoon, Copy, Plug, Check } from 'lucide-react';
 import ToolRail from './components/ToolRail';
 import IconButton from './components/IconButton';
+import IntegrationPanel, { hooksNeedReview } from './components/IntegrationPanel';
 import type { BoardPreviews, PreviewNote } from './components/BoardPreview';
 import { shortInstance } from './format';
 
@@ -30,6 +31,9 @@ export default function App({ client = realClient, demo = false, initialPreviews
   const [status, setStatus] = useState<EngineStatus>();
   const [theme, setTheme] = useState<ThemeMode>('auto');
   const [palette, setPalette] = useState(false);
+  const [hooksOpen, setHooksOpen] = useState(false);
+  const [integration, setIntegration] = useState<IntegrationStatusResult>();
+  const [integrationError, setIntegrationError] = useState('');
   const [help, setHelp] = useState(false);
   const [searchRequest, setSearchRequest] = useState(0);
   const [previews,setPreviews]=useState<BoardPreviews>(initialPreviews);
@@ -69,12 +73,26 @@ export default function App({ client = realClient, demo = false, initialPreviews
         });
         if (!active.current) { off(); return; }
         const result = await client.hello(); if (active.current) setEngine(result);
+
       } catch (e) { if (active.current) setNotice(String(e)); }
     })();
     const load = async () => { if (busy) return; busy = true; await refresh(); busy = false; };
     void load(); const timer = setInterval(() => void load(), 2000);
     return () => { active.current = false; clearInterval(timer); off?.(); };
   }, [client, refresh, notify]);
+  useEffect(() => {
+    let cancelled = false;
+    void client.integrationEnsure().then(hooks => {
+      if (cancelled) return;
+      setIntegration(hooks); setIntegrationError('');
+      if (hooks.cli_error || Object.values(hooks.harnesses).some(h => h.error)) notify('No se pudieron preparar todos los hooks. Revisa su estado en la barra superior.');
+    }).catch(() => {
+      if (cancelled) return;
+      setIntegrationError('No se pudo comprobar la integración de hooks.');
+      notify('No se pudieron preparar los hooks. La app sigue disponible.');
+    });
+    return () => { cancelled = true; };
+  }, [client, notify]);
   useEffect(() => {
     applyTheme(theme); const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const update = () => applyTheme(theme); mq.addEventListener('change', update);
@@ -83,13 +101,13 @@ export default function App({ client = realClient, demo = false, initialPreviews
   const current = instances.find(i => i.instance_id === selected?.instance_id) || selected;
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (confirm || help) return;
+      if (confirm || help || hooksOpen) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p); }
       else if (current && !palette && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); setSearchRequest(n => n + 1); }
       else if (e.key === '?' && !palette && !(e.target instanceof HTMLElement && (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)))) { e.preventDefault(); setHelp(true); }
     };
     window.addEventListener('keydown', down); return () => window.removeEventListener('keydown', down);
-  }, [confirm, help, current, palette]);
+  }, [confirm, help, hooksOpen, current, palette]);
   async function create() {
     if (creating) return; setCreating(true);
     try { const result = await client.createLocal({}); const list = await refresh(); const instance = list.find(i => i.instance_id === result.instance_id); if (instance) setSelected(instance); else setNotice('Puente creado. La lista se actualizará en unos segundos.'); }
@@ -119,6 +137,7 @@ export default function App({ client = realClient, demo = false, initialPreviews
     { id: 'export-jsonl', label: 'Exportar conversación · JSONL', disabled: !current, run: () => void exportBridge('jsonl') },
     { id: 'search', label: 'Buscar en la conversación', disabled: !current, run: () => setSearchRequest(n => n + 1) },
     ...(['light', 'dark', 'auto'] as const).map((mode, i) => ({ id: `theme-${mode}`, label: `Tema ${['claro', 'oscuro', 'automático'][i]}`, run: () => setTheme(mode) })),
+    { id: 'hooks', label: 'Hooks de usuario', run: () => setHooksOpen(true) },
     { id: 'help', label: 'Ayuda de teclado', run: () => setHelp(true) },
   ];
   return <div className={`app-shell ${current?'chat-background':''}`}>
@@ -127,6 +146,7 @@ export default function App({ client = realClient, demo = false, initialPreviews
         <div className="board-identity">{current?<><h1>{current.project||'Puente sin proyecto'}</h1><button className="copy-id instance-id" title="Copiar ID completo" aria-label="Copiar ID completo" onClick={()=>void copy(current)}>{shortInstance(current.instance_id)}<Copy size={10} aria-hidden="true"/> · {current.mode}</button></>:<><strong>Mi espacio</strong><span>Conversaciones entre agentes</span></>}</div>{demo&&<span className="demo-badge">Demo</span>}
       </div>
       <div className="actions-pill">{current&&<><button className="header-action" onClick={()=>setSearchRequest(n=>n+1)} aria-label="Buscar conversación"><Search size={16} aria-hidden="true"/><span>Buscar</span></button><label className="export-label"><Download size={16} aria-hidden="true"/><select aria-label="Formato de exportación" defaultValue="" onChange={e=>{if(e.target.value)void exportBridge(e.target.value as 'md'|'jsonl');e.target.value='';}}><option value="" disabled>Exportar</option><option value="md">Markdown</option><option value="jsonl">JSONL</option></select></label><IconButton icon={X} label="Cerrar puente" className="close-action" onClick={()=>askClose(current)}/><span className="identity-divider"/></>}
+        <button className="header-action hooks-indicator" onClick={() => setHooksOpen(true)} aria-label={hooksNeedReview(integration) || integrationError ? 'Hooks: revisar' : 'Hooks ✓'}><Plug size={16} aria-hidden="true"/><span>{hooksNeedReview(integration) || integrationError ? 'Hooks: revisar' : <>Hooks <Check size={14} aria-hidden="true"/></>}</span></button>
         <span className="engine-state" role="status"><span className={`live-dot ${status?.status==='restarting'?'restarting':''}`}/>{status?.status==='restarting'?'Reconectando…':engine?`Motor ${engine.engine_version}`:'Conectando…'}</span><label className="theme-control"><SunMoon size={16} aria-hidden="true"/><select aria-label="Tema" value={theme} onChange={e=>setTheme(e.target.value as ThemeMode)}><option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></label>
       </div>
     </header>
@@ -135,6 +155,7 @@ export default function App({ client = realClient, demo = false, initialPreviews
     {(notice || loadError || (status && status.status !== 'connected')) && <div className="notice" role="alert"><span>{notice || loadError || status?.message}</span>{notice && <button aria-label="Descartar aviso" onClick={() => setNotice('')}><X size={14} aria-hidden="true"/></button>}</div>}
     <main className={current ? 'main-bridge' : 'main-home'}>{current ? <BridgeView key={current.instance_id} client={client} instance={current} searchRequest={searchRequest} onToast={notify} onPreview={recordPreview} /> : <Home instances={instances} loading={loading} creating={creating} onOpen={setSelected} onCreate={() => void create()} onCopy={i => void copy(i)} onClose={askClose} previews={previews} />}</main>
     <CommandPalette open={palette} onOpenChange={setPalette} actions={actions}/>
+    {hooksOpen && <IntegrationPanel client={client} status={integration} error={integrationError} onUpdate={s => { setIntegration(s); setIntegrationError(''); }} onClose={() => setHooksOpen(false)}/>}
     {help && <ShortcutHelp onClose={() => setHelp(false)}/>}
     {confirm && <Confirm name={confirm.instance_id} busy={stopping} error={closeError} onCancel={() => setConfirm(undefined)} onConfirm={() => void stop()}/>}
     <Toasts items={toasts} onDismiss={dismiss}/>

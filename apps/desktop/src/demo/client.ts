@@ -1,5 +1,5 @@
 import type { ApiClient, EngineStatus } from '../api/client';
-import type { Instance, Message, Event, Health, Label } from '../api/types';
+import type { Instance, Message, Event, Health, Label, IntegrationStatusResult } from '../api/types';
 
 const marker = 'DEMO_DATA_ONLY';
 const beat = () => new Date(Date.now() - 8000).toISOString();
@@ -26,8 +26,21 @@ export function createDemoClient(): ApiClient {
   let instances = demoInstances(); let counter = 0; const history = new Map(instances.map(i => [i.instance_id, demoMessages(i.instance_id)]));
   const events = new Set<(e: Event) => void>(); const status = new Set<(s: EngineStatus) => void>(); const subs = new Map<string, string>();
   const health = (id: string): Health => { const i = instances.find(i => i.instance_id === id); if (!i) throw new Error('Puente cerrado'); return { instance_id: id, state: 'running', pid: i.pid, peer_connected: i.peer_connected, fin_received: false, latest_server_seq: i.latest_server_seq, role_states: i.role_states, unread: id.startsWith('demo-new') ? 0 : 2 }; };
+  let integration: IntegrationStatusResult = {
+    cli_path: '/Users/demo/.local/bin/agents-bridge', cli_on_path: true, cli_current: true,
+    harnesses: {
+      claude: { installed: true, opted_out: false, path: '/Users/demo/.claude/settings.json' },
+      codex: { installed: true, opted_out: false, path: '/Users/demo/.codex/hooks.json', trust_note: 'Codex: acepta los hooks como confiables y marca cada proyecto como trusted.' },
+    },
+  };
   return {
-    hello: async () => { void marker; return { engine_version: 'v0.5.0-demo', contract_version: 1 }; },
+    integrationStatus: async () => integration,
+    integrationEnsure: async () => ({ ...integration, changed: false }),
+    integrationSet: async ({ harness, enabled }) => {
+      integration = { ...integration, harnesses: { ...integration.harnesses, [harness]: { ...integration.harnesses[harness], installed: enabled, opted_out: !enabled } } };
+      return { ...integration, changed: true };
+    },
+    hello: async () => { void marker; return { engine_version: 'v0.5.1-demo', contract_version: 1 }; },
     list: async () => ({ instances: [...instances] }), health: async a => health(a.instance_id),
     subscribe: async a => { const sub = `demo-sub-${++counter}`; subs.set(sub, a.instance_id); (history.get(a.instance_id) || []).forEach((message, n) => { events.forEach(fn => fn({ v: 1, sub, event: 'message', data: { instance_id: a.instance_id, event_seq: n * 2 + 1, message, status: ['delivered', 'received', 'accepted', 'received', 'rejected', 'delivered', 'queued-ram'][n] } })); }); return { sub }; },
     unsubscribe: async a => { subs.delete(a.sub); return { unsubscribed: a.sub }; },

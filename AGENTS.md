@@ -56,11 +56,14 @@ cargo test --manifest-path src-tauri/Cargo.toml
 cargo check --manifest-path src-tauri/Cargo.toml
 npm run tauri build         # macOS .app/.dmg; Windows MSI/NSIS en Windows
 npm run smoke:native -- --release
-npm run screenshots         # 20 PNG; cierra Vite y Playwright propios
+npm run screenshots         # 24 PNG; cierra Vite y Playwright propios
 npm audit
 ```
 
-CLI Tauri local, sin instalaciones globales. Antes de cerrar cambios en la app,
+CLI Tauri de desarrollo local. Abrir la app v0.5.1 mantiene automáticamente
+hooks globales y CLI estable: todos los tests/smoke deben lanzar procesos con
+HOME, LOCALAPPDATA, APPDATA/UserConfigDir/XDG y PATH temporales. Nunca usar
+`integration install|ensure` contra el usuario real para verificar cambios. Antes de cerrar cambios en la app,
 verificar tipos/tests/build, fmt/test/check Cargo y build de Tauri. Capturas
 solo de desarrollo en `docs/screenshots/desktop/`. Los tokens, incluidos código
 y búsqueda, pasan contraste WCAG; los diálogos y atajos tienen pruebas de teclado.
@@ -93,7 +96,7 @@ de separación vive en `apps/desktop/scripts/separation.test.mjs`.
 - `engine/internal/bridges` — registro y listado de puentes.
 - `engine/internal/hooks` — vínculos, cursores, hooks del harness y coordinación,
   núcleo independiente de la TUI.
-- `engine/internal/integration` — configuración de hooks por usuario o proyecto.
+- `engine/internal/integration` — hooks por usuario/proyecto, CLI estable, exclusiones y PATH Windows.
 - `engine/internal/api` — cliente stdio JSONL v1 del núcleo; nunca importa la TUI.
 - `engine/internal/bridgeexport` — exportador compartido de CLI y API.
 - `engine/internal/tui` — TUI Bubble Tea, cliente del núcleo.
@@ -109,7 +112,7 @@ de separación vive en `apps/desktop/scripts/separation.test.mjs`.
 - `apps/desktop/src/demo/` — fixtures exclusivos de dev; guard de producción.
 - `apps/desktop/src-tauri/src/` — proxy stdio, timeouts y recuperación; sin negocio.
 - `apps/desktop/src-tauri/tauri*.conf.json`, `icons/` — bundles por plataforma,
-  metadatos 0.5.0 e iconos propios. Sin firma de distribución/notarización.
+  metadatos 0.5.1 e iconos propios. Sin firma de distribución/notarización.
 - `.github/workflows/desktop.yml` — builds macOS/Windows y artefactos; sin release.
 - `docs/REVIEW-2026-10-02.md` — entrega, cómo probar y pendientes de publicación.
 - `docs/`, `.agents/skills/` — documentación y skills compartidas en la raíz.

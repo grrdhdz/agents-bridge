@@ -1,8 +1,8 @@
 # agents-bridge: app de escritorio
 
-Versión **0.5.0**, identificador **dev.grrdhdz.agents-bridge**.
+Versión **0.5.1**, identificador **dev.grrdhdz.agents-bridge**.
 Cliente Tauri 2 + React + TypeScript + Vite. G2 mantiene un único proceso
-`agents-bridge api` por ventana. Los comandos Rust reflejan las nueve operaciones
+`agents-bridge api` por ventana. Los comandos Rust reflejan las operaciones
 públicas; no leen archivos del motor ni contienen reglas de negocio.
 
 El proxy correlaciona IDs, aplica un timeout (5 s para hello, 30 s para las otras
@@ -36,8 +36,8 @@ Las únicas referencias de compilación al motor son:
 ## Desarrollo
 
 Requisitos: Node compatible con Vite 8 (20.19+ o 22.12+), npm, Rust y las
-herramientas nativas de Tauri; Go 1.27+ para compilar el sidecar. No se instala
-nada globalmente.
+herramientas nativas de Tauri; Go 1.27+ para compilar el sidecar. Las dependencias se instalan localmente. **Abrir la app** mantiene automáticamente
+los hooks de usuario y una CLI estable; compilar y ejecutar tests no lo hace.
 
 ```sh
 cd apps/desktop
@@ -203,8 +203,8 @@ la interfaz respeta movimiento reducido y los diálogos mantienen el foco.
 
 Las pruebas cubren cada pieza y el recorrido con un cliente falso. Playwright
 comprueba además teclado y el foco del diálogo HTML. Los tokens de código
-pasan contraste ≥4.5:1 y los bordes ≥3:1 en ambos temas. Las 20 capturas actuales
-incluyen inicio, conversación, código, paleta y panel plegado en dos temas y dos
+pasan contraste ≥4.5:1 y los bordes ≥3:1 en ambos temas. Las 24 capturas actuales
+incluyen inicio, conversación, código, paleta, panel de hooks y panel plegado en dos temas y dos
 tamaños.
 
 ## G5: empaquetado
@@ -214,7 +214,7 @@ cd apps/desktop
 npm ci
 npm run tauri build          # release; compila motor, frontend y Rust
 # macOS: src-tauri/target/release/bundle/macos/agents-bridge.app
-# macOS: src-tauri/target/release/bundle/dmg/agents-bridge_0.5.0_aarch64.dmg
+# macOS: src-tauri/target/release/bundle/dmg/agents-bridge_0.5.1_aarch64.dmg
 # Windows (equipo Windows): .../bundle/msi/*.msi y .../bundle/nsis/*.exe
 npm run tauri icon -- src-tauri/icons/app.svg  # regenerar iconos desde SVG
 ```
@@ -222,7 +222,7 @@ npm run tauri icon -- src-tauri/icons/app.svg  # regenerar iconos desde SVG
 La base configura `.app`/`.dmg`; `tauri.windows.conf.json` se mezcla automáticamente
 para generar MSI y NSIS (por usuario, selector español/inglés). Iconos de flechas
 azul/verde distinguen los roles y se incluyen en PNG, ICNS e ICO. El paquete
-se llama agents-bridge y los tres manifiestos coinciden en 0.5.0.
+se llama agents-bridge y los tres manifiestos coinciden en 0.5.1.
 
 No hay identidad de firma configurada, certificado Developer ID/Windows ni
 notarización. Un binario Mach-O puede tener la firma ad hoc del enlazador; eso
@@ -243,24 +243,23 @@ la raíz y los comandos npm/Cargo desde apps/desktop.
 
 El demo es exclusivo de Vite dev. Producción ejecuta un guard de ausencia de
 fixtures y los paquetes incluyen únicamente el cliente real. La paleta,
-Markdown y resaltado no requieren red. El bundle JS actual mide 614.39 kB
-(191.47 kB gzip); Vite avisa del umbral de 500 kB, sin impedir el build.
+Markdown y resaltado no requieren red. El bundle JS actual mide 618.02 kB
+(192.59 kB gzip); Vite avisa del umbral de 500 kB, sin impedir el build.
 Los tamaños del release comprobado quedan registrados en el informe de revisión.
 
 ### Release verificado en macOS (2026-10-02)
 
 | Artefacto | Tamaño |
 |---|---:|
-| `src-tauri/target/release/bundle/macos/agents-bridge.app` | 34 777 340 bytes · 33.17 MiB |
-| `src-tauri/target/release/bundle/dmg/agents-bridge_0.5.0_aarch64.dmg` | 15 341 602 bytes · 14.63 MiB |
+| `src-tauri/target/release/bundle/macos/agents-bridge.app` | 34 887 836 bytes · 33.27 MiB |
+| `src-tauri/target/release/bundle/dmg/agents-bridge_0.5.1_aarch64.dmg` | 15 387 130 bytes · 14.67 MiB |
 
-SHA-256 del DMG: `67024ab9f2bcfbf94d9661c6e7f1643bbab6a215f9f8482b5ead09ed63179e0d`.
-Bundle `dev.grrdhdz.agents-bridge`, versión 0.5.0, sin `_CodeSignature` de bundle.
-Smoke del release: `Motor conectado: v0.5.0 · API v1`; procesos propios cerrados.
-Verificación del rediseño: 5 pruebas Node, 31 Vitest, 4 Rust, typecheck/build,
+SHA-256 del DMG: `b40c4adb4f0a8c1bcc82ab122d2ecd353126ec9be1eeb3582e2241a254c98a1c`.
+Bundle `dev.grrdhdz.agents-bridge`, versión 0.5.1, sin `_CodeSignature` de bundle.
+Smoke del release: `Motor conectado: v0.5.1 · API v1`; procesos propios cerrados.
+Verificación del rediseño: 6 pruebas Node, 36 Vitest, 4 Rust, typecheck/build,
 fmt/test/check Cargo, release Tauri y audit (0 vulnerabilidades), todos OK.
-Motor: gofmt, vet nativo/Windows, race y builds Darwin/Windows OK; sin cambios
-en sus fuentes. La intermitencia histórica de reconexión sigue documentada
+Motor: gofmt, vet nativo/Windows, race y builds Darwin/Windows OK; con pruebas nuevas de mantenimiento automático. La intermitencia histórica de reconexión sigue documentada
 en el informe de revisión.
 
 ## Presentación de escritorio
@@ -278,3 +277,26 @@ Tipografía del sistema y SVG de Lucide empaquetados, sin CDN. Contraste de text
 chips y código ≥4.5:1 sobre cada relleno y el fondo de chat en ambos temas;
 bordes/foco ≥3:1.
 Hover discreto y transiciones desactivadas con `prefers-reduced-motion`.
+
+## Hooks automáticos (0.5.1)
+
+Al arrancar, la app pide `integration_ensure` una vez, sin confirmación previa.
+Rust solo reenvía la operación; Go mantiene CLI, hooks y elecciones de usuario.
+No se reejecuta al refrescar puentes ni al reconectar el sidecar.
+El indicador **Hooks ✓ / Hooks: revisar** abre un diálogo accesible con estado
+por harness, CLI actual/PATH y **Mantener hooks instalados**. Desactivar guarda
+la exclusión y quita solo nuestros hooks; actualizar no revoca esa elección.
+Los fallos no bloquean el chat y se muestran sin reintento automático en bucle.
+
+Los hooks son de usuario, para todos los proyectos. La ruta estable evita
+cambiar el comando al actualizar. Codex requiere aceptar la confianza y
+confiar en el proyecto; no editamos `trusted_hash` ni `[hooks.state]`.
+Windows actualiza el PATH de usuario; abre una terminal nueva. En macOS los
+hooks usan rutas absolutas y no se modifican perfiles de shell.
+
+`smoke:native -- --release` crea HOME, LOCALAPPDATA, APPDATA/UserConfigDir,
+XDG y PATH temporales antes de lanzar la app. Espera hello e integration_ensure,
+comprueba la CLI v0.5.1 y los cinco hooks de ambos harnesses, y cierra únicamente
+su grupo de procesos. La app nunca lee archivos internos del motor: el smoke
+comprueba exclusivamente el ejecutable y configuración pública de los harnesses.
+No usar un HOME real al hacer smoke o pruebas manuales de instalación.

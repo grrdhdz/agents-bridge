@@ -292,5 +292,6 @@ solo el sandbox actual no llega a `127.0.0.1`.
 La app en `apps/desktop/` observa por `agents-bridge api` sin consumir mensajes.
 Sus intervenciones llegan con `source=human-operator`, igual que las de la TUI.
 Cerrar la ventana termina solo su sidecar; los puentes siguen vivos hasta Stop
-explícito o inactividad. Los hooks se configuran en el harness, no en la app;
+explícito o inactividad. Al abrirse, la app pide al motor mantener hooks globales
+en el harness; el panel permite desactivar esa instalación por harness;
 la compatibilidad de hooks de Codex/Claude Desktop (P4) sigue pendiente.

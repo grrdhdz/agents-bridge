@@ -1,5 +1,5 @@
 /* Generado desde engine/api/schema.json. No editar.
- * SHA256: 36f8b6398aa805894e79e0614e2dfe4cd08b40efb25dd0ec3fa4be2006d416e4
+ * SHA256: 49e94fd3ab56ff4b6068ba126640f9f9221ecac0eb65a489d791c5ed754a8b56
  * npm run generate:types
  */
 
@@ -13,8 +13,12 @@ export type Request =
   | StopRequest
   | CreateLocalRequest
   | HealthRequest
-  | ExportRequest;
+  | ExportRequest
+  | IntegrationStatusRequest
+  | IntegrationEnsureRequest
+  | IntegrationSetRequest;
 export type Label = 'TAREA' | 'PREGUNTA' | 'RESPUESTA' | 'RESULTADO' | 'FIN' | 'URGENTE' | 'PROGRESO';
+export type Harness = 'claude' | 'codex';
 export type Role = 'orchestrator' | 'executor';
 export type Event = MessageEvent | DeliveryEvent | StateEvent | TransportEvent | LifecycleEvent;
 
@@ -99,6 +103,30 @@ export interface ExportArgs {
   format: 'md' | 'jsonl';
   output: string;
 }
+export interface IntegrationStatusRequest {
+  v: 1;
+  id: string;
+  op: 'integration_status';
+  args: IntegrationStatusArgs;
+}
+export interface IntegrationStatusArgs {}
+export interface IntegrationEnsureRequest {
+  v: 1;
+  id: string;
+  op: 'integration_ensure';
+  args: IntegrationEnsureArgs;
+}
+export interface IntegrationEnsureArgs {}
+export interface IntegrationSetRequest {
+  v: 1;
+  id: string;
+  op: 'integration_set';
+  args: IntegrationSetArgs;
+}
+export interface IntegrationSetArgs {
+  harness: Harness;
+  enabled: boolean;
+}
 export interface Success {
   v: 1;
   id: string;
@@ -112,7 +140,9 @@ export interface Success {
     | StopResult
     | CreateLocalResult
     | ExportResult
-    | Health;
+    | Health
+    | IntegrationStatusResult
+    | IntegrationEnsureResult;
 }
 export interface HelloResult {
   engine_version: string;
@@ -179,6 +209,36 @@ export interface Health {
   latest_server_seq: number;
   role_states: RoleStates;
   unread?: number;
+}
+export interface IntegrationStatusResult {
+  harnesses: {
+    claude: HarnessIntegration;
+    codex: HarnessIntegration;
+  };
+  cli_path: string;
+  cli_on_path: boolean;
+  cli_current: boolean;
+  cli_error?: string;
+  path_note?: string;
+}
+export interface HarnessIntegration {
+  installed: boolean;
+  opted_out: boolean;
+  path: string;
+  trust_note?: string;
+  error?: string;
+}
+export interface IntegrationEnsureResult {
+  harnesses: {
+    claude: HarnessIntegration;
+    codex: HarnessIntegration;
+  };
+  cli_path: string;
+  cli_on_path: boolean;
+  cli_current: boolean;
+  cli_error?: string;
+  path_note?: string;
+  changed: boolean;
 }
 export interface Failure {
   v: 1;

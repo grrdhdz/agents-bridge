@@ -56,6 +56,9 @@ async fn request(
             result["engine_version"].as_str().unwrap()
         );
     }
+    if op == "integration_ensure" {
+        eprintln!("Integración de hooks comprobada");
+    }
     Ok(result)
 }
 macro_rules! operation {
@@ -71,6 +74,9 @@ macro_rules! operation {
     };
 }
 operation!(engine_hello, "hello");
+operation!(engine_integration_status, "integration_status");
+operation!(engine_integration_ensure, "integration_ensure");
+operation!(engine_integration_set, "integration_set");
 operation!(engine_list, "list");
 operation!(engine_subscribe, "subscribe");
 operation!(engine_unsubscribe, "unsubscribe");
@@ -86,6 +92,9 @@ pub fn run() {
         .manage(Windows::default())
         .invoke_handler(tauri::generate_handler![
             engine_hello,
+            engine_integration_status,
+            engine_integration_ensure,
+            engine_integration_set,
             engine_list,
             engine_subscribe,
             engine_unsubscribe,

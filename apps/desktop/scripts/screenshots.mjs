@@ -27,6 +27,10 @@ try {
       if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error('Inicio con overflow horizontal');
       const prefix = `${theme}-${width}x${height}`;
       await page.screenshot({ path: `${output}home-${prefix}.png` });
+      await page.getByRole('button', { name: 'Hooks: revisar' }).click();
+      await page.getByRole('dialog', { name: 'Hooks de usuario' }).waitFor();
+      await page.screenshot({ path: `${output}hooks-${prefix}.png` });
+      await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Abrir checkout-api' }).click();
       await page.getByText('Validación completa. Puedes cerrar esta tarea.').waitFor();
       if (await page.locator('.message').count() !== 7) throw new Error('Replay incompleto');
@@ -63,7 +67,7 @@ try {
       if (!await page.getByRole('button', { name: 'Cerrar puente', exact: true }).last().evaluate(el => el === document.activeElement)) throw new Error('Foco escapó del diálogo');
       await page.keyboard.press('Escape');
       if (await page.locator('dialog[open]').count()) throw new Error('Esc no canceló');
-      console.log(`Capturas ${prefix}: inicio, conversación, código, paleta y panel plegado OK`);
+      console.log(`Capturas ${prefix}: inicio, conversación, código, paleta, hooks y panel plegado OK`);
       // Comprueba teclado y vuelta a inicio antes de cerrar el contexto.
       await page.getByLabel('Mensaje', { exact: true }).fill('Intervención de prueba');
       await page.getByLabel('Mensaje', { exact: true }).press('Control+Enter');
