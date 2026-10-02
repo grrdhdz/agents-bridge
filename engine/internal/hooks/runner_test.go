@@ -425,3 +425,15 @@ func TestBindingVisibleBeforeFirstWaitAndUnbindClearsIt(t *testing.T) {
 		t.Fatal("unbind still visible")
 	}
 }
+
+func TestRebindingMovesVisibleHookRole(t *testing.T) {
+	h := newHookBridge(t)
+	runEvent(t, h, "codex", "PreToolUse", "agents-bridge ctl peek --instance-id "+h.owner.InstanceID()+" --role orchestrator", false)
+	runEvent(t, h, "codex", "PreToolUse", "agents-bridge ctl peek --instance-id "+h.owner.InstanceID()+" --role executor", false)
+	if h.ownerEndpoint.RoleSnapshots()[protocol.RoleOrchestrator].HookBound {
+		t.Fatal("previous role still marked bound")
+	}
+	if !h.workerEndpoint.RoleSnapshots()[protocol.RoleExecutor].HookBound {
+		t.Fatal("new role not marked bound")
+	}
+}

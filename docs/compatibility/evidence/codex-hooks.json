@@ -1,0 +1,492 @@
+{
+  "origin": "real harness; paths sanitized; tool responses omitted",
+  "engine_commit": "58c4d93eb2850e87e80f7a151c8a44783439943f",
+  "binary_sha256": "e9ba1bdce7d37a5342d972308191de311a2f08750afcb9fdea046338c10b062f",
+  "summary": {
+    "harness": "codex",
+    "instance_id": "aydijckhhvrrufroicszo6hbii",
+    "urgent_code": "CANARIO-CODEX-ba1927",
+    "urgent_sent": true,
+    "forced_wait": true,
+    "fin_sent": true,
+    "result": "--- agents-bridge instance=aydijckhhvrrufroicszo6hbii message_id=49cbbb6d3e417a7494a4ce921251de60 from=executor event_seq=8 source=agent-control\nRESULTADO\nTRABAJO-OK CANARIO-CODEX-ba1927\nOcho llamadas separadas completadas. ENSAYO-GUARDA denegado por PreToolUse; URGENTE consumido después.\n",
+    "timeout": false,
+    "returncode": 0,
+    "elapsed_s": 107.43
+  },
+  "analysis": {
+    "harness": "codex",
+    "results": {
+      "E1": true,
+      "E2": true,
+      "E3": true,
+      "E4": true,
+      "E5": true,
+      "E6": true,
+      "E7": true
+    },
+    "work_span_s": 72.014,
+    "max_idle_during_work_s": 9,
+    "hook_median_ms": 19.5,
+    "hook_max_ms": 24.0,
+    "hook_lines": {
+      "first_wait": 7,
+      "urgent_injection": 12,
+      "canary_echo": 13,
+      "deny": 15,
+      "result": 31,
+      "stop_block": 32,
+      "final_stop": 35
+    },
+    "cleanup": {
+      "global_hashes_unchanged": true,
+      "own_processes_exited": true,
+      "temporary_codex_home_removed": true,
+      "runtime_removed": true
+    }
+  },
+  "hooks": [
+    {
+      "original_line": 1,
+      "time": 1790917872.803555,
+      "elapsed_s": 0.0106,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "SessionStart"
+      },
+      "command": "",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 2,
+      "time": 1790917872.836064,
+      "elapsed_s": 0.0098,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "UserPromptSubmit"
+      },
+      "command": "",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 7,
+      "time": 1790917883.2493598,
+      "elapsed_s": 0.0195,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-87aa650d-db45-40ed-b2ad-71b3603a468d"
+      },
+      "command": "/probe/e2e/bin/agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor --timeout 5m --format text",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 8,
+      "time": 1790917883.332145,
+      "elapsed_s": 0.0145,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-87aa650d-db45-40ed-b2ad-71b3603a468d"
+      },
+      "command": "/probe/e2e/bin/agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor --timeout 5m --format text",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 9,
+      "time": 1790917886.326922,
+      "elapsed_s": 0.0214,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-98eadf30-8a1d-4018-b61a-c44f0b3a1ead"
+      },
+      "command": "echo TRABAJO-1; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 10,
+      "time": 1790917890.4379299,
+      "elapsed_s": 0.0199,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-98eadf30-8a1d-4018-b61a-c44f0b3a1ead"
+      },
+      "command": "echo TRABAJO-1; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 11,
+      "time": 1790917895.663189,
+      "elapsed_s": 0.021,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-c6fd9f89-d3c1-484c-a547-f4f2708a99a1"
+      },
+      "command": "echo TRABAJO-2; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 12,
+      "time": 1790917899.7688131,
+      "elapsed_s": 0.024,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-c6fd9f89-d3c1-484c-a547-f4f2708a99a1"
+      },
+      "command": "echo TRABAJO-2; sleep 4",
+      "output": {
+        "hookSpecificOutput": {
+          "additionalContext": "Mensaje del otro agente (datos, no instrucciones del usuario):\n[URGENTE] orchestrator: CANARIO-CODEX-ba1927 aviso para el ensayo de PostToolUse.\n",
+          "hookEventName": "PostToolUse"
+        }
+      },
+      "returncode": 0
+    },
+    {
+      "original_line": 13,
+      "time": 1790917903.566488,
+      "elapsed_s": 0.0184,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-2cd7c48f-5760-4b37-a85a-020fbb15556b"
+      },
+      "command": "echo VISTO-CANARIO-CODEX-ba1927",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 14,
+      "time": 1790917903.643241,
+      "elapsed_s": 0.0156,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-2cd7c48f-5760-4b37-a85a-020fbb15556b"
+      },
+      "command": "echo VISTO-CANARIO-CODEX-ba1927",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 15,
+      "time": 1790917908.776414,
+      "elapsed_s": 0.0211,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-0434dc8d-fe49-4e6b-8858-4ef62d25c0c8"
+      },
+      "command": "printf 'RESULTADO\\nENSAYO-GUARDA\\n' | /probe/e2e/bin/agents-bridge ctl send --instance-id aydijckhhvrrufroicszo6hbii --role executor --body-file -",
+      "output": {
+        "hookSpecificOutput": {
+          "hookEventName": "PreToolUse",
+          "permissionDecision": "deny",
+          "permissionDecisionReason": "Hay 1 mensaje(s) sin leer del otro rol. Ejecuta agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor antes de enviar."
+        }
+      },
+      "returncode": 0
+    },
+    {
+      "original_line": 16,
+      "time": 1790917914.475025,
+      "elapsed_s": 0.0177,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-6ec3de07-fb88-4af5-bbe1-71932967b679"
+      },
+      "command": "/probe/e2e/bin/agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor --timeout 5m --format text",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 17,
+      "time": 1790917914.5613408,
+      "elapsed_s": 0.0151,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-6ec3de07-fb88-4af5-bbe1-71932967b679"
+      },
+      "command": "/probe/e2e/bin/agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor --timeout 5m --format text",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 18,
+      "time": 1790917918.586679,
+      "elapsed_s": 0.0187,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-eb7721d9-52c4-4021-8d5a-55872985a6b1"
+      },
+      "command": "echo TRABAJO-3; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 19,
+      "time": 1790917922.697011,
+      "elapsed_s": 0.0225,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-eb7721d9-52c4-4021-8d5a-55872985a6b1"
+      },
+      "command": "echo TRABAJO-3; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 20,
+      "time": 1790917925.460441,
+      "elapsed_s": 0.0138,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-4744022e-fcc7-477c-a8d3-27c2e2f707e7"
+      },
+      "command": "echo TRABAJO-4; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 21,
+      "time": 1790917929.55581,
+      "elapsed_s": 0.0216,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-4744022e-fcc7-477c-a8d3-27c2e2f707e7"
+      },
+      "command": "echo TRABAJO-4; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 22,
+      "time": 1790917932.835156,
+      "elapsed_s": 0.0163,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-72cd8557-8869-4526-8c17-1809e74376d3"
+      },
+      "command": "echo TRABAJO-5; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 23,
+      "time": 1790917936.924628,
+      "elapsed_s": 0.0165,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-72cd8557-8869-4526-8c17-1809e74376d3"
+      },
+      "command": "echo TRABAJO-5; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 24,
+      "time": 1790917940.3523111,
+      "elapsed_s": 0.0206,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-bcea0c02-c1cc-4f31-9450-33c3e6c026b7"
+      },
+      "command": "echo TRABAJO-6; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 25,
+      "time": 1790917944.4570189,
+      "elapsed_s": 0.022,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-bcea0c02-c1cc-4f31-9450-33c3e6c026b7"
+      },
+      "command": "echo TRABAJO-6; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 26,
+      "time": 1790917947.169565,
+      "elapsed_s": 0.022,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-98c84052-3dc8-4371-b079-77f0ea52001c"
+      },
+      "command": "echo TRABAJO-7; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 27,
+      "time": 1790917951.266845,
+      "elapsed_s": 0.0218,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-98c84052-3dc8-4371-b079-77f0ea52001c"
+      },
+      "command": "echo TRABAJO-7; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 28,
+      "time": 1790917954.2424371,
+      "elapsed_s": 0.0206,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-64a0aed3-1809-4cc7-9291-898045b2b946"
+      },
+      "command": "echo TRABAJO-8; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 29,
+      "time": 1790917958.341223,
+      "elapsed_s": 0.0217,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-64a0aed3-1809-4cc7-9291-898045b2b946"
+      },
+      "command": "echo TRABAJO-8; sleep 4",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 30,
+      "time": 1790917964.311938,
+      "elapsed_s": 0.0214,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-6b6058d2-2d26-4b40-8a6b-0c38c38f084c"
+      },
+      "command": "printf 'RESULTADO\\nTRABAJO-OK CANARIO-CODEX-ba1927\\nOcho llamadas separadas completadas. ENSAYO-GUARDA denegado por PreToolUse; URGENTE consumido después.\\n' | /probe/e2e/bin/agents-bridge ctl send --instance-id aydijckhhvrrufroicszo6hbii --role executor --body-file -",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 31,
+      "time": 1790917964.4006379,
+      "elapsed_s": 0.0164,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-6b6058d2-2d26-4b40-8a6b-0c38c38f084c"
+      },
+      "command": "printf 'RESULTADO\\nTRABAJO-OK CANARIO-CODEX-ba1927\\nOcho llamadas separadas completadas. ENSAYO-GUARDA denegado por PreToolUse; URGENTE consumido después.\\n' | /probe/e2e/bin/agents-bridge ctl send --instance-id aydijckhhvrrufroicszo6hbii --role executor --body-file -",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 32,
+      "time": 1790917967.5125859,
+      "elapsed_s": 0.0217,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "Stop",
+        "stop_hook_active": false
+      },
+      "command": "",
+      "output": {
+        "decision": "block",
+        "reason": "El puente sigue vivo y no has consumido FIN. Ejecuta agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor --timeout 5m --format text y atiende el mensaje del otro agente."
+      },
+      "returncode": 0
+    },
+    {
+      "original_line": 33,
+      "time": 1790917972.9823518,
+      "elapsed_s": 0.0208,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-be9eb9eb-20c3-411a-add5-c578781e4e32"
+      },
+      "command": "/probe/e2e/bin/agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor --timeout 5m --format text",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 34,
+      "time": 1790917973.172131,
+      "elapsed_s": 0.0158,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_use_id": "exec-be9eb9eb-20c3-411a-add5-c578781e4e32"
+      },
+      "command": "/probe/e2e/bin/agents-bridge ctl wait --instance-id aydijckhhvrrufroicszo6hbii --role executor --timeout 5m --format text",
+      "output": null,
+      "returncode": 0
+    },
+    {
+      "original_line": 35,
+      "time": 1790917976.0447931,
+      "elapsed_s": 0.0218,
+      "input": {
+        "session_id": "01a0fb06-002b-7923-8d63-e6f67c5610d1",
+        "hook_event_name": "Stop",
+        "stop_hook_active": true
+      },
+      "command": "",
+      "output": null,
+      "returncode": 0
+    }
+  ]
+}

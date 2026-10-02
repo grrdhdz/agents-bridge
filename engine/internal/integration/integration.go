@@ -138,12 +138,6 @@ func Apply(action string, o Options) (Result, error) {
 	if action == "install" && (!filepath.IsAbs(o.Executable) && !windowsAbsolute(o.Executable)) {
 		return r, errors.New("el binario debe tener ruta absoluta")
 	}
-	// Ownership must remain identifiable on the next installation.
-	if action == "install" {
-		if _, ok := OwnedCommand(HookCommand(o.Executable, o.Harness, "Stop"), o.Harness, "Stop"); !ok {
-			return r, errors.New("el binario debe llamarse agents-bridge o agents-bridge.exe")
-		}
-	}
 	d, original, err := readObject(path)
 	if err != nil {
 		return r, err
@@ -180,6 +174,11 @@ func Apply(action string, o Options) (Result, error) {
 				}
 				cmd, _ := handler["command"].(string)
 				exe, owned := OwnedCommand(cmd, o.Harness, event)
+				// os.Executable may have a custom file name. Its exact command is
+				// ours; canonical names also identify previous installation paths.
+				if o.Executable != "" && cmd == HookCommand(o.Executable, o.Harness, event) {
+					exe, owned = o.Executable, true
+				}
 				if typ, _ := handler["type"].(string); typ != "command" {
 					owned = false
 				}

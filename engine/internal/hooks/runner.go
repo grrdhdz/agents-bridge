@@ -105,8 +105,14 @@ func (r Runner) run(ctx context.Context, harness, event string, input Input) ([]
 		if err := request(ctx, d, http.MethodGet, "/v1/peek", nil, &peek); err != nil {
 			return nil, err
 		}
+		previous, previousErr := r.Store.Lookup(ctx, harness, input.SessionID)
 		if err := r.Store.Bind(ctx, Binding{Harness: harness, SessionID: input.SessionID, InstanceID: cmd.InstanceID, Role: role}); err != nil {
 			return nil, err
+		}
+		if previousErr == nil && (previous.InstanceID != cmd.InstanceID || previous.Role != role) {
+			if old, err := control.FindDescriptor(r.Store.DescriptorRoot, previous.InstanceID, previous.Role); err == nil {
+				_ = heartbeat(ctx, old, harness, input.SessionID, "", false)
+			}
 		}
 	}
 	b, err := r.Store.Lookup(ctx, harness, input.SessionID)

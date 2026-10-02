@@ -167,13 +167,24 @@ de seguridad y desinstalación limpia; Windows en vet/build y prueba manual.
 
 | Fase | Estado | Evidencia / commit |
 |---|---|---|
-| 0 | Hecha en ambas CLI; P4/apps y P6/Windows pendientes | `agents-bridge-probe/RESULTADOS.md` y `evidence/` (fuera del repo; sin commit) |
+| 0 | Hecha en ambas CLI; P4/apps y P6/Windows pendientes | `agents-bridge-probe/RESULTADOS.md` y `evidence/` (fuera del repo; sin commit); SHA-256 del informe `07d9f8689b16a99d1457f4f3ef392cc9654e05e8db5d89cd08f21499ae14521d` |
 | 1 | Hecha | `20da9f0429129b995ba7fcbeb4e808efc210da8a` |
 | 1b | Monorepo hecho | `3ea802574294fdb6a6a9e671b3c1be3d5808322f` |
 | 2 | Hecha | `9878c4d126dd17c348af2ba354f05330c8e0a0f6` |
 | 3 | Hecha | `9a0c378409b8f450cf0dc393519cc141466facba` |
 | 4 | Hecha: instalación por usuario/proyecto y status de confianza en solo lectura | `0a7fb7c683a034e87e98249e755fa4ba66a6dcdc` |
-| 5 | Visibilidad y documentación hechas; validación real en curso | Commit de esta fase: `feat: expose hook bindings and heartbeat status` |
+| 5 | Hecha: visibilidad, documentación y E1–E7 en ambas CLI | `58c4d93eb2850e87e80f7a151c8a44783439943f`; evidencia en `docs/compatibility/hooks.md` y commit `test: validate hooks with real Claude and Codex executors` |
 
 La tarea autoriza implementar y verificar, sin instalar binarios ni crear tags.
 El release v0.5.0 y las comprobaciones de apps/Windows requieren una tarea posterior.
+
+### Validación final
+
+E1–E7 pasan en Claude Code 2.1.287 y Codex 0.159.3. Ensayos aislados sin hooks
+globales ni hashes de confianza persistidos. Codex usa CODEX_HOME temporal;
+los globals conservan sus hashes. Un primer ensayo de Codex confirmó que una
+pausa sin herramientas >20 s sí cierra el puente: los latidos no constituyen
+presencia permanente. El segundo ensayo, con esfuerzo low, completa el flujo.
+P4/apps, P6/ejecución Windows, aprobación persistida de confianza sin bypass y
+release siguen pendientes fuera de esta tarea. No se crean tags ni se instala
+un binario. La fase 5 de implementación/validación CLI está terminada.

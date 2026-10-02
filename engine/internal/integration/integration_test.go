@@ -169,3 +169,18 @@ func TestMixedGroupPreservesForeignHandler(t *testing.T) {
 		t.Fatal(string(raw))
 	}
 }
+
+func TestCurrentExecutableCanHaveCustomFileName(t *testing.T) {
+	o := Options{Home: t.TempDir(), Scope: "user", Harness: "claude", Executable: filepath.Join(t.TempDir(), "probe-engine")}
+	r, err := Apply("install", o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Entries) != 5 {
+		t.Fatal(r)
+	}
+	r, err = Apply("uninstall", o)
+	if err != nil || len(r.Entries) != 0 {
+		t.Fatal(err, r)
+	}
+}

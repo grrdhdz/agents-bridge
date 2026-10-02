@@ -101,8 +101,9 @@ agents-bridge integration uninstall claude --scope user
 `~/.codex/hooks.json`. `--scope project` usa los mismos nombres dentro del
 proyecto; `--project` por defecto es el directorio actual. Cada evento recibe
 un comando con la ruta absoluta del binario actual y timeout de 5 s; el motor
-mantiene su presupuesto interno de 2 s. El binario debe llamarse
-`agents-bridge` (o `agents-bridge.exe`). Reinstala si lo mueves.
+mantiene su presupuesto interno de 2 s. Reinstala si mueves el binario. El nombre estándar permite reconocer también
+instalaciones previas; con un nombre personalizado, retira las entradas desde
+el mismo binario antes de moverlo.
 
 El instalador reconoce únicamente comandos propios del harness seleccionado.
 Conserva los hooks de herdr y de otras herramientas, incluso dentro de un grupo
