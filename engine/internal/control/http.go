@@ -236,14 +236,19 @@ func (e *Endpoint) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		Tool string `json:"tool"`
+		Tool        string `json:"tool"`
+		HookSession string `json:"hook_session"`
+		HookBound   *bool  `json:"hook_bound"`
 	}
 	decoder := json.NewDecoder(io.LimitReader(r.Body, 4097))
 	err := decoder.Decode(&input)
 	var extra any
-	if err != nil || decoder.Decode(&extra) != io.EOF || len(input.Tool) > 128 || strings.IndexFunc(input.Tool, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
+	if err != nil || decoder.Decode(&extra) != io.EOF || len(input.HookSession) > 128 || (input.HookBound != nil && input.HookSession == "") || len(input.Tool) > 128 || strings.IndexFunc(input.Tool, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
 		writeError(w, requestID, "INVALID_JSON", "invalid heartbeat tool", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
 		return
+	}
+	if input.HookBound != nil {
+		e.roles.HookBinding(e.descriptor.LocalRole, input.HookSession, *input.HookBound)
 	}
 	e.roles.Heartbeat(e.descriptor.LocalRole, input.Tool)
 	e.activity.Touch()

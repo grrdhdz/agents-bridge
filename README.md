@@ -48,12 +48,12 @@ los latidos, no queda presencia que prolongue el `--idle-timeout`.
 `peek` y `health` exponen `fin_received`: solo se activa cuando el rol consume
 un FIN del otro rol mediante `wait`, nunca por mirar con `peek`.
 
-## Hooks de coordinación (Claude Code y Codex)
+## Hooks
 
 El comando `agents-bridge hook <claude|codex> <Evento>` recibe el JSON del
 harness por stdin y devuelve su respuesta JSON por stdout. La configuración
-del harness debe invocarlo para cada evento de esta tabla; este comando no
-instala hooks. Usa un motor actualizado que exponga `fin_received` en `peek`.
+del harness debe invocarlo para cada evento de esta tabla; `hook` procesa
+un evento y `integration` instala sus entradas. Usa un motor actualizado que exponga `fin_received` en `peek`.
 
 | Evento | Acción |
 |---|---|
@@ -86,12 +86,58 @@ respuesta incompatible, error o timeout deja continuar, sin salida y con
 exit 0. Por ello los agentes también siguen el bucle de la skill.
 `AGENTS_BRIDGE_HOOK_DIAGNOSTICS=1` activa diagnósticos privados con evento,
 harness, hora y código fijo de error, sin cuerpos, capabilities ni URLs de
-control. Por defecto no se crean logs. No se modifica configuración global.
+control. Por defecto no se crean logs. `hook` no modifica configuración global.
 
-Los fixtures reales de ambas CLI y los límites comprobados en la fase 0
-están descritos en `engine/internal/hooks/testdata/README.md`. La instalación
-se aborda en la fase 4; los hooks de apps de escritorio y la ejecución de
-hooks en Windows siguen pendientes de comprobar.
+### Instalar, consultar y retirar
+
+```sh
+agents-bridge integration install claude                    # scope user
+agents-bridge integration install codex --scope project --project /ruta/proyecto
+agents-bridge integration status codex --scope project --project /ruta/proyecto
+agents-bridge integration uninstall claude --scope user
+```
+
+`--scope user` es el valor predeterminado: usa `~/.claude/settings.json` o
+`~/.codex/hooks.json`. `--scope project` usa los mismos nombres dentro del
+proyecto; `--project` por defecto es el directorio actual. Cada evento recibe
+un comando con la ruta absoluta del binario actual y timeout de 5 s; el motor
+mantiene su presupuesto interno de 2 s. El binario debe llamarse
+`agents-bridge` (o `agents-bridge.exe`). Reinstala si lo mueves.
+
+El instalador reconoce únicamente comandos propios del harness seleccionado.
+Conserva los hooks de herdr y de otras herramientas, incluso dentro de un grupo
+mixto, y toda configuración ajena. Una edición crea una copia `.bak-<hora UTC>`,
+valida el JSON y sustituye el archivo de forma atómica. Instalar o retirar
+repetidamente no vuelve a escribir; un JSON existente inválido queda intacto y
+produce error de uso. `uninstall` conserva la configuración y los hooks ajenos.
+Las copias pueden contener configuración sensible: se crean con permisos privados.
+
+**Codex:** el instalador no escribe `trusted_hash` ni `[hooks.state]`.
+Habilita hooks si tu versión lo requiere, reinicia Codex y usa su revisión de
+hooks («Review Hooks», «Trust All and Continue», o `/hooks` y tecla `t`). Los
+hooks de proyecto requieren que el proyecto esté marcado como trusted.
+`status` lee `~/.codex/config.toml`, compara el hash de cada entrada con su
+`trusted_hash`, muestra `trusted`, `modified` o `untrusted`, y su habilitación.
+Si falta una opción, lo indica; los flags de sesión y políticas administradas
+pueden cambiar el estado efectivo. No concede confianza ni ejecuta comandos.
+
+`ps`, `/v1/health` y el panel lateral muestran «vinculado por hook», último
+latido y herramienta. Un latido cuenta como actividad finita para ambos roles:
+no evita el cierre por inactividad si dejan de llegar herramientas/latidos.
+`hook_bound` refleja sesiones observadas en este puente; `unbind` retira la
+sesión que el harness identifica, sin retirar vínculos de otras sesiones.
+
+Los hooks refuerzan la espera hasta FIN, los avisos y la guarda antes de enviar.
+El modelo sigue siendo responsable de leer el mensaje completo con `ctl wait`,
+realizar la tarea, interpretar prioridades y enviar RESULTADO: un resumen no
+consume la bandeja. Los comandos dinámicos no reconocidos y los errores fallan
+abiertos, y la protección anti-bucle permite parar después de tres bloqueos
+sin espera. Sigue el protocolo de la skill también cuando hay hooks.
+
+Los fixtures reales se describen en `engine/internal/hooks/testdata/README.md`;
+la compatibilidad y reproducción están en [docs/compatibility/hooks.md](docs/compatibility/hooks.md).
+Los hooks de apps de escritorio y su ejecución en Windows quedan pendientes;
+los builds y el análisis estático de Windows sí forman parte de la verificación.
 
 ## Migración desde codex-bridge
 

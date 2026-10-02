@@ -99,3 +99,20 @@ func TestFINIsRecordedOnlyAfterWaitConsumesPeerFIN(t *testing.T) {
 		t.Fatal("FIN leaked to other role")
 	}
 }
+
+func TestHookBindingVisibleAndIndependentSessions(t *testing.T) {
+	h := newLocalHarness(t)
+	for _, body := range []string{`{"tool":"Bash","hook_session":"one","hook_bound":true}`, `{"tool":"shell","hook_session":"two","hook_bound":true}`, `{"hook_session":"one","hook_bound":false}`} {
+		res, _ := controlHTTP(t, h.workerEndpoint, http.MethodPost, "/v1/heartbeat", body, h.workerEndpoint.capability)
+		if res.StatusCode != 200 {
+			t.Fatal(res.StatusCode)
+		}
+	}
+	if role := healthRoles(t, h.workerEndpoint)["executor"]; role["hook_bound"] != true {
+		t.Fatal("hook binding missing", role)
+	}
+	controlHTTP(t, h.workerEndpoint, http.MethodPost, "/v1/heartbeat", `{"hook_session":"two","hook_bound":false}`, h.workerEndpoint.capability)
+	if role := healthRoles(t, h.workerEndpoint)["executor"]; role["hook_bound"] != false {
+		t.Fatal("binding not cleared", role)
+	}
+}

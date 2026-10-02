@@ -31,6 +31,7 @@ type psRow struct {
 }
 
 type psRoleState struct {
+	HookBound             bool       `json:"hook_bound"`
 	Tool                  string     `json:"tool,omitempty"`
 	LastHeartbeatAt       *time.Time `json:"last_heartbeat_at,omitempty"`
 	State                 string     `json:"state"`
@@ -88,7 +89,7 @@ func buildPSRows(ctx context.Context, descriptors []control.Descriptor) []psRow 
 		if len(info.RoleStates) > 0 {
 			roleStates = make(map[string]psRoleState, len(info.RoleStates))
 			for key, role := range info.RoleStates {
-				state := psRoleState{State: role.State, Tool: role.Tool, LastHeartbeatAt: role.LastHeartbeatAt}
+				state := psRoleState{HookBound: role.HookBound, State: role.State, Tool: role.Tool, LastHeartbeatAt: role.LastHeartbeatAt}
 				if role.LastMessageAt != nil {
 					age := int64(time.Since(*role.LastMessageAt).Seconds())
 					if age < 0 {
@@ -174,5 +175,12 @@ func formatHeartbeatRole(role psRoleState) string {
 	if state == string(control.StateWorking) && role.Tool != "" {
 		state += " (" + role.Tool + ")"
 	}
-	return formatRoleCell(state, role.LastMessageAgeSeconds)
+	text := formatRoleCell(state, role.LastMessageAgeSeconds)
+	if role.HookBound {
+		text += " [vinculado por hook]"
+	}
+	if role.LastHeartbeatAt != nil {
+		text += " latido " + role.LastHeartbeatAt.UTC().Format("15:04:05Z")
+	}
+	return text
 }

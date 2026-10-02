@@ -412,3 +412,16 @@ func TestInjectedPreviewDoesNotExposePeerCredentialsOrBridgeTokens(t *testing.T)
 		}
 	}
 }
+
+func TestBindingVisibleBeforeFirstWaitAndUnbindClearsIt(t *testing.T) {
+	h := newHookBridge(t)
+	command := "agents-bridge ctl wait --instance-id " + h.owner.InstanceID() + " --role executor --timeout 5m --format text"
+	runEvent(t, h, "codex", "PreToolUse", command, false)
+	if !h.workerEndpoint.RoleSnapshots()[protocol.RoleExecutor].HookBound {
+		t.Fatal("first PreToolUse did not expose binding")
+	}
+	runEvent(t, h, "codex", "PostToolUse", "agents-bridge unbind", false)
+	if h.workerEndpoint.RoleSnapshots()[protocol.RoleExecutor].HookBound {
+		t.Fatal("unbind still visible")
+	}
+}

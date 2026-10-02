@@ -110,10 +110,17 @@ func roleStateText(roles map[protocol.Role]control.RoleSnapshot, role protocol.R
 	if !ok || snap.State == control.StateUnknown {
 		return ""
 	}
+	text := string(snap.State)
 	if snap.State == control.StateWorking && snap.Tool != "" {
-		return string(snap.State) + " (" + snap.Tool + ")"
+		text += " (" + snap.Tool + ")"
 	}
-	return string(snap.State)
+	if snap.HookBound {
+		text += "\n  vinculado por hook"
+	}
+	if snap.LastHeartbeatAt != nil {
+		text += "\n  latido " + snap.LastHeartbeatAt.UTC().Format("15:04:05Z")
+	}
+	return text
 }
 
 // projectName is the status bar/sidebar's project label (§6.2/§6.4): the

@@ -3,6 +3,7 @@ package hooks
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,6 +84,12 @@ func (r Runner) run(ctx context.Context, harness, event string, input Input) ([]
 	toolEvent := event == "PreToolUse" || event == "PostToolUse"
 	if toolEvent && parsed && cmd.Action == "unbind" {
 		if event == "PostToolUse" {
+			b, err := r.Store.Lookup(ctx, harness, input.SessionID)
+			if err == nil {
+				if d, e := control.FindDescriptor(r.Store.DescriptorRoot, b.InstanceID, b.Role); e == nil {
+					_ = heartbeat(ctx, d, harness, input.SessionID, "", false)
+				}
+			}
 			return nil, r.Store.Unbind(ctx, harness, input.SessionID)
 		}
 		return nil, nil
@@ -120,12 +127,16 @@ func (r Runner) run(ctx context.Context, harness, event string, input Input) ([]
 			return err
 		}
 		if event == "PostToolUse" {
-			raw, _ := json.Marshal(map[string]string{"tool": input.ToolName})
-			if err := request(ctx, d, http.MethodPost, "/v1/heartbeat", raw, nil); err != nil {
+			if err := heartbeat(ctx, d, harness, input.SessionID, input.ToolName, true); err != nil {
 				return err
 			}
 			if parsed && cmd.Action == "wait" {
 				b.StopBlocks = 0
+			}
+		}
+		if event == "PreToolUse" && parsed && cmd.InstanceID != "" {
+			if err := heartbeat(ctx, d, harness, input.SessionID, input.ToolName, true); err != nil {
+				return err
 			}
 		}
 		var peek peekResult
@@ -305,4 +316,10 @@ func redactPreview(text string) string {
 }
 func encodedByte(c byte) bool {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-'
+}
+
+func heartbeat(ctx context.Context, d control.Descriptor, harness, session, tool string, bound bool) error {
+	key := fmt.Sprintf("%x", sha256.Sum256([]byte(harness+"\x00"+session)))
+	raw, _ := json.Marshal(map[string]any{"tool": tool, "hook_session": key, "hook_bound": bound})
+	return request(ctx, d, http.MethodPost, "/v1/heartbeat", raw, nil)
 }

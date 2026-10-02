@@ -162,3 +162,18 @@ inactividad); hook por evento con JSON real capturado en la fase 0 como
 fixtures, en ambos formatos de salida; falla abierta y presupuesto de tiempo;
 `Stop` sin bucles; instalación idempotente que preserva entradas ajenas, copia
 de seguridad y desinstalación limpia; Windows en vet/build y prueba manual.
+
+## 11. Estado de ejecución
+
+| Fase | Estado | Evidencia / commit |
+|---|---|---|
+| 0 | Hecha en ambas CLI; P4/apps y P6/Windows pendientes | `agents-bridge-probe/RESULTADOS.md` y `evidence/` (fuera del repo; sin commit) |
+| 1 | Hecha | `20da9f0429129b995ba7fcbeb4e808efc210da8a` |
+| 1b | Monorepo hecho | `3ea802574294fdb6a6a9e671b3c1be3d5808322f` |
+| 2 | Hecha | `9878c4d126dd17c348af2ba354f05330c8e0a0f6` |
+| 3 | Hecha | `9a0c378409b8f450cf0dc393519cc141466facba` |
+| 4 | Hecha: instalación por usuario/proyecto y status de confianza en solo lectura | `0a7fb7c683a034e87e98249e755fa4ba66a6dcdc` |
+| 5 | Visibilidad y documentación hechas; validación real en curso | Commit de esta fase: `feat: expose hook bindings and heartbeat status` |
+
+La tarea autoriza implementar y verificar, sin instalar binarios ni crear tags.
+El release v0.5.0 y las comprobaciones de apps/Windows requieren una tarea posterior.

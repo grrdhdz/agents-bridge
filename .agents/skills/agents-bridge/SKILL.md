@@ -88,8 +88,13 @@ $OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEnco
 ## Hooks del harness (v0.5)
 
 Cuando estén configurados en Claude Code o Codex, los hooks se invocan con
-`agents-bridge hook <claude|codex> <Evento>`. La instalación se configura
-aparte; invocar el comando no instala hooks ni cambia configuración global.
+`agents-bridge hook <claude|codex> <Evento>`. Instala con
+`agents-bridge integration install <claude|codex> --scope project --project DIR`
+o `--scope user` (predeterminado). Consulta/retira con `integration status` /
+`integration uninstall` y los mismos flags. `hook` solo procesa el evento.
+El instalador conserva herdr y otros hooks; en Codex debes habilitarlos y
+aprobar su confianza desde Codex. El proyecto también debe estar trusted;
+el instalador nunca concede confianza.
 
 - El primer `agents-bridge ctl … --instance-id <id> --role <rol>` vincula
   automáticamente la sesión en `PreToolUse` o `PostToolUse`. El hook obtiene
@@ -116,7 +121,15 @@ aparte; invocar el comando no instala hooks ni cambia configuración global.
 
 No se persisten cuerpos de mensajes ni credenciales; solo el vínculo, el
 último evento avisado y el contador de Stop en el runtime privado del usuario.
-Los vínculos de puentes cerrados se eliminan. La ejecución de hooks está
+Los vínculos de puentes cerrados se eliminan. `ps`, health y la TUI muestran
+la vinculación, último latido y herramienta. Los latidos cuentan para
+idle-timeout solo mientras siguen llegando.
+
+El hook aplica Stop y la guarda de bandeja, pero el modelo sigue siendo
+responsable de leer los cuerpos completos con `wait`, realizar la TAREA,
+priorizar avisos y enviar RESULTADO. Los resúmenes no consumen mensajes.
+La falla abierta y el límite anti-bucle requieren que mantengas el protocolo
+de esta skill incluso con hooks instalados. La ejecución de hooks está
 comprobada en las CLI de la fase 0; apps de escritorio y Windows quedan
 pendientes de comprobación.
 

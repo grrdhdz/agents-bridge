@@ -56,6 +56,7 @@ type Info struct {
 
 // RoleInfo is one role's derived state and when it last sent a message.
 type RoleInfo struct {
+	HookBound       bool
 	Tool            string
 	LastHeartbeatAt *time.Time
 	State           string
@@ -149,6 +150,7 @@ func describe(ctx context.Context, ds []control.Descriptor) Info {
 			PeerConnected   bool   `json:"peer_connected"`
 			LatestServerSeq uint64 `json:"latest_server_seq"`
 			Roles           map[string]struct {
+				HookBound       bool       `json:"hook_bound"`
 				State           string     `json:"state"`
 				Tool            string     `json:"tool"`
 				LastHeartbeatAt *time.Time `json:"last_heartbeat_at"`
@@ -161,7 +163,7 @@ func describe(ctx context.Context, ds []control.Descriptor) Info {
 			if len(health.Roles) > 0 {
 				info.RoleStates = make(map[string]RoleInfo, len(health.Roles))
 				for key, role := range health.Roles {
-					info.RoleStates[key] = RoleInfo{State: role.State, LastMessageAt: role.LastMessageAt, Tool: role.Tool, LastHeartbeatAt: role.LastHeartbeatAt}
+					info.RoleStates[key] = RoleInfo{HookBound: role.HookBound, State: role.State, LastMessageAt: role.LastMessageAt, Tool: role.Tool, LastHeartbeatAt: role.LastHeartbeatAt}
 				}
 			}
 		}

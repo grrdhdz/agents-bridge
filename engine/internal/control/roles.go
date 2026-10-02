@@ -50,6 +50,7 @@ func RoleFromKey(key string) (protocol.Role, bool) {
 // RoleSnapshot is one role's derived state plus the two timestamps it came
 // from; the pointers are nil while nothing was recorded.
 type RoleSnapshot struct {
+	HookBound       bool       `json:"hook_bound"`
 	State           RoleState  `json:"state"`
 	LastHeartbeatAt *time.Time `json:"last_heartbeat_at,omitempty"`
 	Tool            string     `json:"tool,omitempty"`
@@ -58,11 +59,12 @@ type RoleSnapshot struct {
 }
 
 type roleRecord struct {
-	waiting  int
-	lastWait time.Time
-	lastMsg  time.Time
-	lastBeat time.Time
-	tool     string
+	hookSessions map[string]bool
+	waiting      int
+	lastWait     time.Time
+	lastMsg      time.Time
+	lastBeat     time.Time
+	tool         string
 }
 
 // Roles is the per-role state registry of one bridge instance (§3.4). In
@@ -157,7 +159,7 @@ func (r *Roles) Snapshot() map[protocol.Role]RoleSnapshot {
 	now := r.now()
 	out := make(map[protocol.Role]RoleSnapshot, len(r.tracked))
 	for role, rec := range r.tracked {
-		snap := RoleSnapshot{}
+		snap := RoleSnapshot{HookBound: len(rec.hookSessions) > 0}
 		latest := time.Time{}
 		if !rec.lastMsg.IsZero() {
 			t := rec.lastMsg
@@ -194,4 +196,23 @@ func (r *Roles) Snapshot() map[protocol.Role]RoleSnapshot {
 		out[role] = snap
 	}
 	return out
+}
+
+// HookBinding tracks independent bound sessions without persisting identities.
+func (r *Roles) HookBinding(role protocol.Role, session string, bound bool) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if rec := r.tracked[role]; rec != nil {
+		if rec.hookSessions == nil {
+			rec.hookSessions = map[string]bool{}
+		}
+		if bound {
+			rec.hookSessions[session] = true
+		} else {
+			delete(rec.hookSessions, session)
+		}
+	}
 }
