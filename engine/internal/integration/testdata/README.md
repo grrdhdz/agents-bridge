@@ -1,0 +1,1 @@
+La entrada SessionStart reproduce la estructura de herdr leída en ~/.claude/settings.json el 2026-10-01. Solo se sustituyó la ruta personal por /home/probe. Los otros campos comprueban que conservar configuración ajena y números grandes no pierde información.

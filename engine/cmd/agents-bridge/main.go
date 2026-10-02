@@ -34,7 +34,9 @@ const (
 
 func main() {
 	var err error
-	if len(os.Args) > 1 && os.Args[1] == "hook" {
+	if len(os.Args) > 1 && os.Args[1] == "integration" {
+		os.Exit(runIntegration(os.Args[2:], integrationEnv{stdout: os.Stdout, stderr: os.Stderr}))
+	} else if len(os.Args) > 1 && os.Args[1] == "hook" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		code := runHook(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr})
 		stop()
@@ -507,6 +509,7 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 }
 
 func printUsage() {
+	fmt.Println("agents-bridge integration install|uninstall|status claude|codex [--scope user|project] [--project DIR]")
 	fmt.Println("agents-bridge hook claude|codex Evento   hook de coordinación: JSON por stdin, presupuesto 2s, falla abierto")
 	fmt.Println("agents-bridge bind --instance-id ID --role orchestrator|executor   valida el vínculo que registra el hook")
 	fmt.Println("agents-bridge bind --list           lista vínculos de sesiones")
