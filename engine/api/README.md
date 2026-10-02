@@ -108,3 +108,7 @@ versión; campos nuevos requieren revisar schema y regenerar tipos de las apps.
 El esquema enumera peticiones/resultados de cada operación y variantes de eventos.
 Su validador Go estructural implementa solo los keywords publicados, rechaza
 keywords desconocidos y valida los paquetes de los tests sin dependencias nuevas.
+
+`health` incluye `unread` cuando el peek del endpoint está disponible: cuenta
+la bandeja del rol local sin consumirla. Es opcional para mantener compatibilidad
+con motores v1 anteriores y omitir un dato desconocido si peek falla.

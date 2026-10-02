@@ -39,9 +39,11 @@ ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 
 ## App de escritorio
 
-Desde `apps/desktop/`: `npm ci`, `npm test`, `npm run build`,
+Desde `apps/desktop/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`,
 `npm run check:types`, `cargo check --manifest-path src-tauri/Cargo.toml` y
 `npm run tauri build -- --debug`. CLI Tauri local, sin instalaciones globales.
+`npm run screenshots` genera evidencia con fixtures solo de desarrollo y cierra
+Vite/Playwright. Los tokens de tema pasan contraste WCAG por prueba.
 Los tipos se regeneran con `npm run generate:types`; solo se permite leer el
 contrato público para generarlos y compilar el motor como sidecar. El runtime
 nunca accede a archivos internos del motor. La prueba de separación de la app

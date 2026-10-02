@@ -1,5 +1,5 @@
 /* Generado desde engine/api/schema.json. No editar.
- * SHA256: cd978fba41e793704e3c61cae520ff801d94ae5eb18cff7639e8889605ca9d55
+ * SHA256: 36f8b6398aa805894e79e0614e2dfe4cd08b40efb25dd0ec3fa4be2006d416e4
  * npm run generate:types
  */
 
@@ -178,6 +178,7 @@ export interface Health {
   fin_received: boolean;
   latest_server_seq: number;
   role_states: RoleStates;
+  unread?: number;
 }
 export interface Failure {
   v: 1;

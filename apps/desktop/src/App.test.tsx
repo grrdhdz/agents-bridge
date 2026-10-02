@@ -1,24 +1,51 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
-import { invoke } from '@tauri-apps/api/core';
+import { cleanup, render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import App from './App';
+import { createDemoClient } from './demo/client';
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
-afterEach(() => { cleanup(); vi.resetAllMocks(); });
-
-test('the window invokes public hello and displays the real response version', async () => {
-  vi.mocked(invoke).mockResolvedValue({ engine_version: 'v9.8.7', contract_version: 1 });
-  render(<App />);
-  expect(screen.getByText('Conectando con el motor…')).toBeDefined();
-  expect(await screen.findByText('agents-bridge v9.8.7 · API v1')).toBeDefined();
-  expect(screen.getByText('Motor conectado')).toBeDefined();
-  expect(invoke).toHaveBeenCalledExactlyOnceWith('engine_hello');
+afterEach(() => { cleanup(); vi.useRealTimers(); });
+test('home filters, opens a bridge and receives replay without consuming it', async () => {
+  const api = createDemoClient(); const unbind = vi.spyOn(api, 'unsubscribe');
+  render(<App client={api} />);
+  expect(await screen.findByRole('button', { name: 'Abrir checkout-api' })).toBeDefined();
+  fireEvent.change(screen.getByLabelText('Filtrar puentes'), { target: { value: 'checkout' } });
+  expect(screen.queryByRole('button', { name: 'Abrir docs-site' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir checkout-api' }));
+  expect(await screen.findByText('Revisa el proxy y entrega las pruebas de integración.')).toBeDefined();
+  expect(screen.getByLabelText('Estado del puente')).toBeDefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Volver a inicio' }));
+  expect(await screen.findByRole('heading', { name: 'Tus puentes' })).toBeDefined();
+  expect(unbind).toHaveBeenCalled();
+});
+test('creating uses the API and stop requires a confirmation', async () => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+  const api = createDemoClient(); const create = vi.spyOn(api, 'createLocal'); const stop = vi.spyOn(api, 'stop');
+  render(<App client={api} />);
+  fireEvent.click(await screen.findByRole('button', { name: /Nuevo puente local/ }));
+  expect(create).toHaveBeenCalled();
+  await screen.findByRole('button', { name: 'Volver a inicio' });
+  fireEvent.click(screen.getByRole('button', { name: 'Volver a inicio' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Cerrar checkout-api' }));
+  expect(stop).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cerrar puente' }));
+  await screen.findByRole('button', { name: 'Abrir docs-site' });
+  expect(stop).toHaveBeenCalledWith({ instance_id: 'demo-checkout-001' });
 });
 
-test('a failed hello is visible without a fabricated version', async () => {
-  vi.mocked(invoke).mockRejectedValue('El motor no respondió a tiempo');
-  render(<App />);
-  expect(await screen.findByText('No se pudo conectar')).toBeDefined();
-  expect(screen.getByText('El motor no respondió a tiempo')).toBeDefined();
-  expect(screen.queryByText('Motor conectado')).toBeNull();
+test('home refreshes every two seconds without changing the client', async () => {
+  vi.useFakeTimers(); const api = createDemoClient(); const list = vi.spyOn(api, 'list');
+  await act(async () => { render(<App client={api}/>); });
+  expect(list).toHaveBeenCalledTimes(1);
+  await act(async () => { vi.advanceTimersByTime(2000); });
+  expect(list).toHaveBeenCalledTimes(2);
+});
+test('a rejected intervention remains visible and keeps the composer draft', async () => {
+  const api = createDemoClient(); vi.spyOn(api, 'send').mockRejectedValue('Canal temporalmente cerrado');
+  render(<App client={api}/>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Abrir checkout-api' }));
+  await screen.findByText('Revisa el proxy y entrega las pruebas de integración.');
+  fireEvent.change(screen.getByLabelText('Mensaje'), { target: { value: 'Reintentar esta prueba' } });
+  fireEvent.keyDown(screen.getByLabelText('Mensaje'), { key: 'Enter', ctrlKey: true });
+  await waitFor(() => expect(screen.getByRole('article', { name: 'Orquestador, RESPUESTA, Rechazado' })).toBeDefined());
+  expect((screen.getByLabelText('Mensaje') as HTMLTextAreaElement).value).toBe('Reintentar esta prueba');
 });

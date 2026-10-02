@@ -184,9 +184,9 @@ el binario `codex-bridge`. Compila este checkout para obtener el nombre nuevo.
   proceso Mac siga vivo. Una caída del proceso Mac no tiene recuperación.
 - El cuerpo canónico es texto UTF-8 intacto. No se admiten adjuntos.
 
-## App de escritorio (G0)
+## App de escritorio (G2/G3)
 
-El esqueleto Tauri 2 + React vive en [`apps/desktop`](apps/desktop/README.md).
+El cliente Tauri 2 + React vive en [`apps/desktop`](apps/desktop/README.md).
 Compila su propio sidecar y genera los tipos desde el contrato público; no
 importa código ni lee archivos internos del motor.
 
@@ -196,8 +196,11 @@ npm ci
 npm run tauri build -- --debug
 ```
 
-La ventana comprueba `hello` y muestra la versión del motor. Las pantallas de
-puentes y el proxy persistente se implementarán en las siguientes fases.
+Incluye lista de puentes, conversación con replay, intervención humana,
+estado por rol y temas claro/oscuro/automático. Mantiene un sidecar por ventana,
+lo reinicia y restaura suscripciones; cerrar la app termina solo ese sidecar.
+Las [capturas del demo](docs/screenshots/desktop/README.md) se generan con
+Playwright; el cliente simulado solo existe en desarrollo.
 
 ## API para apps
 

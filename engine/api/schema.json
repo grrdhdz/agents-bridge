@@ -45,7 +45,7 @@
             "esperando",
             "trabajando",
             "callado",
-            "—"
+            "\u2014"
           ]
         },
         "hook_bound": {
@@ -158,6 +158,10 @@
         },
         "role_states": {
           "$ref": "#/$defs/RoleStates"
+        },
+        "unread": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "required": [

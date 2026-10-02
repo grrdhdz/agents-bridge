@@ -9,7 +9,9 @@ operaciones) y emite `agents-bridge-event` / `agents-bridge-status` únicamente 
 la ventana propietaria. Al caer el proceso cancela las peticiones pendientes,
 notifica a la UI y reinicia con espera creciente (250 ms–5 s). Solo restaura las
 suscripciones, con IDs estables para la ventana; nunca repite envíos, creaciones
-ni cierres. El replay se deduplica en la interfaz por `message_id`.
+ni cierres. El replay se deduplica en la interfaz por `message_id`. Un unsubscribe durante
+la caída elimina la intención antes del reinicio, evitando restaurar vistas
+abandonadas.
 
 Al destruir la ventana o salir de la app, el proxy cierra stdin y, si el sidecar
 no termina, finaliza solo ese proceso. Nunca envía Stop por su cuenta: los
@@ -56,7 +58,7 @@ npm run check:types           # falla si cambia el contrato sin regenerar
 npm test                     # scripts, hello real + EOF y componentes React
 npm run build                # tipos, TypeScript y Vite
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
-cargo test --manifest-path src-tauri/Cargo.toml --lib
+cargo test --manifest-path src-tauri/Cargo.toml
 cargo check --manifest-path src-tauri/Cargo.toml
 npm run tauri build -- --debug
 npm run smoke:native         # paquete macOS → React → Rust → Go
@@ -79,7 +81,7 @@ El sidecar Go puede compilarse desde macOS. Las herramientas de Windows para
 Rust/WebView y el empaquetado deben verificarse en Windows; no se instala un
 SDK ni se fuerza una cadena cruzada en esta fase.
 
-## Resultado de G0 (2026-10-01)
+## Resultado histórico de G0 (2026-10-01)
 
 | Comprobación | Resultado |
 |---|---|
@@ -111,3 +113,57 @@ prueba ejecutable del paquete confirma la carga de la WebView y el recorrido
 del `invoke` real; el render de la versión se comprueba en DOM con Testing
 Library. La prueba cierra únicamente su grupo de procesos y usa un runtime
 temporal; no deja la app ni su sidecar vivos.
+
+## G3: pantallas y demo de desarrollo
+
+Inicio muestra los puentes con filtro, estado por rol, mensajes e inactividad;
+refresca cada 2 s. Crear usa `create_local` y cerrar requiere un diálogo modal
+con Cancelar como acción inicial. La conversación usa replay observador,
+alineación por el rol local, bordes por rol, etiquetas, origen y estados
+`·` / `✓` / `✓✓` / `✗`. El panel muestra hooks, herramientas, latido y métricas.
+
+`Sin leer (agente local)` viene del campo opcional `health.unread`, mediante
+peek sin consumo. Si no está disponible se muestra `—`. `Sin confirmar (local)`
+cuenta mensajes locales enviados/aceptados sin confirmación de entrega en la
+vista; no se presenta como bandeja del otro agente.
+
+El composer conserva hasta 20 envíos de su vista en memoria, recuperables desde
+Historial; Ctrl/Cmd+Enter envía. Los fallos conservan el borrador y muestran el
+mensaje rechazado. Una suscripción inicial fallida se reintenta; las ya activas
+las restaura Rust. Los eventos que llegan antes de responder subscribe se
+almacenan temporalmente hasta conocer el ID. Al volver a Inicio se cancela la
+suscripción. Los temas Claro/Oscuro/Automático responden al tema del sistema,
+y sus tokens pasan contraste WCAG de texto ≥4.5:1 y bordes ≥3:1.
+
+```sh
+npm run typecheck
+npm test
+npm run build
+# Solo desarrollo: abrir http://localhost:1420/?demo=1 tras npm run dev
+npx playwright install chromium  # si no está en caché
+npm run screenshots
+```
+
+El demo se carga únicamente dentro de `import.meta.env.DEV`, por import dinámico.
+Producción elimina su cliente y sus datos. El build ejecuta un guard que busca
+marcadores de los fixtures y falla si aparecen; una prueba verifica que el guard
+rechaza datos simulados. No existe un modo demo activable por URL en producción.
+
+Las [ocho capturas](../../docs/screenshots/desktop/README.md) muestran tres
+puentes y una conversación con las siete etiquetas, los cuatro estados de
+entrega, intervención humana y panel completo. Playwright crea y cierra su
+servidor Vite y navegador propios; el script también comprueba Ctrl+Enter,
+ausencia de errores del frontend y de desbordamiento horizontal.
+
+### Verificación G2/G3 (2026-10-02)
+
+- Rust: 3 pruebas con proceso falso, `cargo fmt`, `cargo test` y `cargo check` OK.
+- Node: 4 pruebas (sidecar real/EOF, nombres, separación, exclusión de demo).
+- Vitest/Testing Library: 10 pruebas, incluidos pantallas, composer, mensajes,
+  sidebar, replay y contraste.
+- `npm run typecheck`, `npm run build`, screenshots y `npm audit` OK.
+- Motor: gofmt vacío, vet nativo/Windows, race y builds darwin/Windows OK.
+  Se observó fallar la prueba de unread antes de implementar el campo.
+- `tauri build --debug` macOS y smoke nativo OK; ruta `.app` indicada arriba.
+- Sin capturas nativas: esta fase usa las capturas Playwright solicitadas.
+  La limitación de Windows por `llvm-rc` sigue siendo la documentada en G0.

@@ -1,30 +1,23 @@
-import { useEffect, useState } from 'react';
-import { hello } from './api/client';
-import type { HelloResult } from './api/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { realClient, type ApiClient, type EngineStatus } from './api/client';
+import type { HelloResult, Instance } from './api/types';
+import { applyTheme, type ThemeMode } from './theme';
+import Home from './screens/Home';
+import BridgeView from './screens/BridgeView';
+import Confirm from './components/Confirm';
 
-export default function App() {
-  const [engine, setEngine] = useState<HelloResult>();
-  const [error, setError] = useState<string>();
-  useEffect(() => {
-    let ignore = false;
-    hello().then(result => { if (!ignore) setEngine(result); })
-      .catch(reason => { if (!ignore) setError(String(reason)); });
-    return () => { ignore = true; };
-  }, []);
-
-  return <main>
-    <header><span className="mark" aria-hidden="true">↔</span><span>agents-bridge</span><span className="badge">Escritorio</span></header>
-    <section aria-labelledby="title">
-      <p className="eyebrow">CONEXIÓN LOCAL</p>
-      <h1 id="title">Un motor.<br />Todos tus agentes.</h1>
-      <p className="description">El punto de encuentro para tus agentes de código.</p>
-      <div className="status" role="status" aria-live="polite">
-        <span className={error ? 'dot error' : engine ? 'dot ready' : 'dot'} />
-        <div><strong>{error ? 'No se pudo conectar' : engine ? 'Motor conectado' : 'Conectando con el motor…'}</strong>
-          <p>{error || (engine ? `agents-bridge ${engine.engine_version} · API v${engine.contract_version}` : 'Iniciando agents-bridge')}</p>
-        </div>
-      </div>
-    </section>
-    <footer>agents-bridge · Vista inicial del escritorio</footer>
-  </main>;
+export default function App({ client = realClient, demo = false }: { client?: ApiClient; demo?: boolean }) {
+  const [engine, setEngine] = useState<HelloResult>(); const [instances, setInstances] = useState<Instance[]>([]); const [loading, setLoading] = useState(true); const [selected, setSelected] = useState<Instance>(); const [confirm, setConfirm] = useState<Instance>(); const [creating, setCreating] = useState(false); const [stopping, setStopping] = useState(false); const [closeError, setCloseError] = useState(''); const [notice, setNotice] = useState(''); const [loadError, setLoadError] = useState(''); const [status, setStatus] = useState<EngineStatus>(); const [theme, setTheme] = useState<ThemeMode>('auto');
+  const generation = useRef(0); const active = useRef(true);
+  const refresh = useCallback(async () => { const n = ++generation.current; try { const result = await client.list(); if (active.current && n === generation.current) { setInstances(result.instances); setLoadError(''); } return result.instances; } catch (e) { if (active.current) setLoadError(String(e)); return []; } finally { if (active.current) setLoading(false); } }, [client]);
+  useEffect(() => { active.current = true; let off: (() => void) | undefined; let busy = false; void (async () => { try { off = await client.onStatus(s => { if (!active.current) return; setStatus(s); if (s.status === 'connected') void client.hello().then(r => { if (active.current) setEngine(r); }).catch(() => {}); }); if (!active.current) { off(); return; } const result = await client.hello(); if (active.current) setEngine(result); } catch (e) { if (active.current) setNotice(String(e)); } })(); const load = async () => { if (busy) return; busy = true; await refresh(); busy = false; }; void load(); const timer = setInterval(() => void load(), 2000); return () => { active.current = false; clearInterval(timer); off?.(); }; }, [client, refresh]);
+  useEffect(() => { applyTheme(theme); const mq = window.matchMedia('(prefers-color-scheme: dark)'); const update = () => applyTheme(theme); mq.addEventListener('change', update); return () => mq.removeEventListener('change', update); }, [theme]);
+  async function create() { if (creating) return; setCreating(true); try { const result = await client.createLocal({}); const list = await refresh(); const instance = list.find(i => i.instance_id === result.instance_id); if (instance) setSelected(instance); else setNotice('Puente creado. La lista se actualizará en unos segundos.'); } catch (e) { setNotice(String(e)); } finally { setCreating(false); } }
+  async function stop() { if (!confirm || stopping) return; setStopping(true); setCloseError(''); try { await client.stop({ instance_id: confirm.instance_id }); if (selected?.instance_id === confirm.instance_id) setSelected(undefined); setConfirm(undefined); await refresh(); } catch (e) { setCloseError(String(e)); } finally { setStopping(false); } }
+  const current = instances.find(i => i.instance_id === selected?.instance_id) || selected;
+  return <div className="app-shell"><header className="app-header"><span className="brand-mark" aria-hidden>↔</span><strong className="brand">agents-bridge</strong><span className="app-name">Escritorio</span>{demo && <span className="demo-badge">Demostración</span>}<div className="header-right"><span className="engine-state" role="status">{status?.status === 'restarting' ? '◌ Reconectando…' : engine ? `● Motor ${engine.engine_version}` : '◌ Conectando…'}</span><label>Tema <select aria-label="Tema" value={theme} onChange={e => setTheme(e.target.value as ThemeMode)}><option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></label></div></header>
+    {(notice || loadError || (status && status.status !== 'connected')) && <div className="notice" role="alert"><span>{notice || loadError || status?.message}</span>{notice && <button aria-label="Descartar aviso" onClick={() => setNotice('')}>×</button>}</div>}
+    <main className={current ? 'main-bridge' : 'main-home'}>{current ? <BridgeView key={current.instance_id} client={client} instance={current} onBack={() => setSelected(undefined)} onClose={() => { setCloseError(''); setConfirm(current); }} /> : <Home instances={instances} loading={loading} creating={creating} onOpen={setSelected} onCreate={() => void create()} onClose={i => { setCloseError(''); setConfirm(i); }} />}</main>
+    {confirm && <Confirm name={confirm.instance_id} busy={stopping} error={closeError} onCancel={() => setConfirm(undefined)} onConfirm={() => void stop()} />}
+  </div>;
 }

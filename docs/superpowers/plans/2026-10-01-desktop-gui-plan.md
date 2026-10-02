@@ -17,8 +17,16 @@ nocturna por el orquestador con Luna (Codex) en Herdr. Base: rama
   (`NotAttempted("llvm-rc")`). Sidecar Go Windows OK. Sin forzar el entorno.
 - Revisión visual nativa pendiente: Computer Use rechazó el acceso a la app.
   El smoke test nativo y las pruebas de render de React pasan.
-- G2–G5 pendientes. G0 realiza un handshake acotado y cierra ese sidecar;
-  el proxy persistente de sesión se implementará en G2.
+- G2 completada: `933730af87ce05da135057996293d65ba70bbcba`.
+  Proxy persistente por ventana, correlación, eventos, timeout, recuperación de
+  suscripciones e intención de unsubscribe durante una caída. Pruebas con un
+  proceso falso, cargo/npm/build y smoke nativo OK.
+- G3 completada en `feat: add desktop bridge screens and development screenshots`.
+  Inicio, conversación, panel, composer/historial, temas con contraste comprobado,
+  demo excluido de producción y [ocho capturas](../../screenshots/desktop/README.md).
+  `health.unread` es un campo opcional/aditivo, obtenido por peek sin consumo.
+  Motor completo, npm, Rust, build macOS y Playwright verificados.
+- G4/G5 pendientes.
 
 ## 1. Objetivo
 

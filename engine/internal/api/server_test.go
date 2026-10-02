@@ -156,11 +156,30 @@ func TestRealOperationsReplayNoAckUnsubscribeAndPrivacy(t *testing.T) {
 	if _, err := h.worker.PublishWithID("prior", "RESULTADO\nantes de observar"); err != nil {
 		t.Fatal(err)
 	}
+	watch, err := h.owner.Subscribe(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	for {
+		e, err := watch.Next(wctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if e.Envelope != nil && e.Envelope.MessageID == "prior" {
+			break
+		}
+	}
+	cancel()
+	watch.Close()
 	r := s.request(t, "list", "list", map[string]any{})
 	if r["ok"] != true || len(r["result"].(map[string]any)["instances"].([]any)) != 1 {
 		t.Fatal(r)
 	}
 	r = s.request(t, "health", "health", args)
+	if r["result"].(map[string]any)["unread"] != float64(1) {
+		t.Fatal("missing real unread count", r)
+	}
 	if r["ok"] != true {
 		t.Fatal(r)
 	}

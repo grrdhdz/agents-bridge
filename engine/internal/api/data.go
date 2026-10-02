@@ -30,6 +30,7 @@ func instance(i bridges.Info) Instance {
 }
 
 type Health struct {
+	Unread          *int                            `json:"unread,omitempty"`
 	InstanceID      string                          `json:"instance_id"`
 	State           string                          `json:"state"`
 	PID             int                             `json:"pid"`
@@ -53,5 +54,14 @@ func (s *Server) health(ctx context.Context, d control.Descriptor) (Health, erro
 	if wire.Roles == nil {
 		wire.Roles = map[string]control.RoleSnapshot{}
 	}
-	return Health{wire.InstanceID, wire.State, wire.PID, wire.PeerConnected, wire.FinReceived, wire.LatestServerSeq, wire.Roles}, err
+	h := Health{InstanceID: wire.InstanceID, State: wire.State, PID: wire.PID, PeerConnected: wire.PeerConnected, FinReceived: wire.FinReceived, LatestServerSeq: wire.LatestServerSeq, RoleStates: wire.Roles}
+	if err == nil {
+		var peek struct {
+			Unread int `json:"unread"`
+		}
+		if s.call(ctx, d, http.MethodGet, "/v1/peek", nil, &peek) == nil {
+			h.Unread = &peek.Unread
+		}
+	}
+	return h, err
 }
