@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -66,7 +67,7 @@ func TestInstallScopesPreserveBackupAndUninstall(t *testing.T) {
 	}
 }
 func TestInvalidJSONUntouched(t *testing.T) {
-	o := Options{Home: t.TempDir(), Scope: "user", Harness: "claude", Executable: "/tmp/agents-bridge"}
+	o := Options{Home: t.TempDir(), Scope: "user", Harness: "claude", Executable: testExe("/tmp/agents-bridge")}
 	path, _ := o.Path()
 	os.MkdirAll(filepath.Dir(path), 0700)
 	for _, raw := range []string{"{", "null", "[]", `{"hooks":4}`} {
@@ -85,7 +86,12 @@ func TestInvalidJSONUntouched(t *testing.T) {
 	}
 }
 func TestOwnershipAndCommandQuoting(t *testing.T) {
-	for _, exe := range []string{"/tmp/a b/agents-bridge", `C:\Program Files\agents-bridge.exe`, "/tmp/a'$`\"/agents-bridge"} {
+	exes := []string{testExe("/tmp/a b/agents-bridge"), `C:\Program Files\agents-bridge.exe`}
+	if runtime.GOOS != "windows" {
+		// Shell metacharacters only need POSIX quoting; Windows paths cannot contain quotes.
+		exes = append(exes, "/tmp/a'$`\"/agents-bridge")
+	}
+	for _, exe := range exes {
 		command := HookCommand(exe, "claude", "Stop")
 		if got, ok := OwnedCommand(command, "claude", "Stop"); !ok || got != exe {
 			t.Fatalf("roundtrip %q => %q %v", command, got, ok)
@@ -101,7 +107,7 @@ func TestOwnershipAndCommandQuoting(t *testing.T) {
 	}
 }
 func TestCodexReadOnlyTrust(t *testing.T) {
-	o := Options{Home: t.TempDir(), Project: t.TempDir(), Scope: "project", Harness: "codex", Executable: "/tmp/agents-bridge"}
+	o := Options{Home: t.TempDir(), Project: t.TempDir(), Scope: "project", Harness: "codex", Executable: testExe("/tmp/agents-bridge")}
 	r, err := Apply("install", o)
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +139,7 @@ func TestCodexReadOnlyTrust(t *testing.T) {
 	if !bytes.Equal(original, got) {
 		t.Fatal("wrote trust")
 	}
-	o.Executable = "/other/agents-bridge"
+	o.Executable = testExe("/other/agents-bridge")
 	Apply("install", o)
 	r, _ = Apply("status", o)
 	for _, e := range r.Entries {
@@ -144,7 +150,7 @@ func TestCodexReadOnlyTrust(t *testing.T) {
 }
 
 func TestMixedGroupPreservesForeignHandler(t *testing.T) {
-	o := Options{Home: t.TempDir(), Scope: "user", Harness: "claude", Executable: "/old/agents-bridge"}
+	o := Options{Home: t.TempDir(), Scope: "user", Harness: "claude", Executable: testExe("/old/agents-bridge")}
 	r, err := Apply("install", o)
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +161,7 @@ func TestMixedGroupPreservesForeignHandler(t *testing.T) {
 	g["matcher"] = "custom"
 	raw, _ := json.Marshal(d)
 	os.WriteFile(r.Path, raw, 0600)
-	o.Executable = "/new/agents-bridge"
+	o.Executable = testExe("/new/agents-bridge")
 	r, err = Apply("install", o)
 	if err != nil || len(r.Entries) != 5 {
 		t.Fatal(err, r)
@@ -165,7 +171,7 @@ func TestMixedGroupPreservesForeignHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw, _ = os.ReadFile(r.Path)
-	if !bytes.Contains(raw, []byte("echo foreign")) || !bytes.Contains(raw, []byte("custom")) || bytes.Contains(raw, []byte("/old/agents-bridge")) {
+	if !bytes.Contains(raw, []byte("echo foreign")) || !bytes.Contains(raw, []byte("custom")) || bytes.Contains(raw, []byte(testExe("/old/agents-bridge"))) {
 		t.Fatal(string(raw))
 	}
 }
@@ -183,4 +189,12 @@ func TestCurrentExecutableCanHaveCustomFileName(t *testing.T) {
 	if err != nil || len(r.Entries) != 0 {
 		t.Fatal(err, r)
 	}
+}
+
+// testExe returns an absolute path on the current platform; Windows needs a drive.
+func testExe(p string) string {
+	if runtime.GOOS == "windows" {
+		return "C:" + p
+	}
+	return p
 }
