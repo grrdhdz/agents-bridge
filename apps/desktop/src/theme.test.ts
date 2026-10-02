@@ -4,7 +4,7 @@ function luminance(hex: string) { const c = hex.slice(1).match(/../g)!.map(v => 
 function ratio(a: string, b: string) { const x=luminance(a),y=luminance(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); }
 test('all theme text and role tokens meet 4.5:1 and borders meet 3:1', () => {
   for (const p of Object.values(palettes)) {
-    for (const bg of [p.surface,p.panel,p.card]) {
+    for (const bg of [p.surface,p.panel,p.card,p.chatBg]) {
       for (const color of [p.text,p.muted,p.orchestrator,p.executor,p.human,p.info,p.warning,p.danger,p.notice,p.codeKeyword,p.codeString,p.codeNumber,p.codeComment,p.codeAttr,p.codeLiteral]) expect(ratio(color,bg)).toBeGreaterThanOrEqual(4.5);
       expect(ratio(p.border,bg)).toBeGreaterThanOrEqual(3);
       expect(ratio(p.focus,bg)).toBeGreaterThanOrEqual(3);
@@ -15,7 +15,7 @@ test('all theme text and role tokens meet 4.5:1 and borders meet 3:1', () => {
   }
 });
 
-test('canvas notes, code and primary actions keep accessible contrast in both themes', () => {
+test('chat notes, code and primary actions keep accessible contrast in both themes', () => {
   for (const palette of Object.values(palettes)) {
     for (const fill of [palette.noteOrchestrator,palette.noteExecutor,palette.noteHuman,palette.noteEmpty,palette.codeBg]) {
       for (const color of [palette.text,palette.muted,palette.orchestrator,palette.executor,palette.human,palette.info,palette.warning,palette.danger,palette.notice,palette.codeKeyword,palette.codeString,palette.codeNumber,palette.codeComment,palette.codeAttr,palette.codeLiteral]) expect(ratio(color,fill)).toBeGreaterThanOrEqual(4.5);

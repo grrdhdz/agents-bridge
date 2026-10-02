@@ -1,8 +1,8 @@
 # Capturas de escritorio
 
-Rediseño del lienzo: fondo de puntos CSS, barras flotantes, galería de tableros
-con miniaturas, notas pastel por rol y origen humano, panel plegable e iconos SVG
-offline. Evidencia de desarrollo con tres puentes simulados; el cliente demo
+Fondos lisos: inicio limpio y conversación crema en claro / gris azulado
+profundo en oscuro. Barras flotantes, galería con miniaturas sin puntos, notas
+pastel por rol y origen humano, panel plegable e iconos SVG offline. Evidencia de desarrollo con tres puentes simulados; el cliente demo
 nunca se incluye en producción.
 
 | Tema y tamaño | Inicio | Conversación | Código | Paleta | Panel plegado |
@@ -14,9 +14,9 @@ nunca se incluye en producción.
 
 **20 PNG**, en dos temas y dos tamaños. La conversación comienza por TAREA;
 la captura de código muestra las últimas notas y FIN. La captura plegada
-conserva la conversación y el composer, ampliando el lienzo.
+conserva la conversación y el composer, ampliando el espacio de conversación.
 
 Para regenerar: `cd apps/desktop && npm run screenshots` (Chromium de Playwright
 en caché; `npx playwright install chromium` si falta). El script cierra Vite y
 el navegador propios y comprueba teclado, foco modal, historial visible,
-plegado sin perder mensajes y ausencia de overflow horizontal.
+plegado sin perder mensajes, fondos sin cuadrícula y ausencia de overflow horizontal.

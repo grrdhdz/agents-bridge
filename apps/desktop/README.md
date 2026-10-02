@@ -243,8 +243,8 @@ la raíz y los comandos npm/Cargo desde apps/desktop.
 
 El demo es exclusivo de Vite dev. Producción ejecuta un guard de ausencia de
 fixtures y los paquetes incluyen únicamente el cliente real. La paleta,
-Markdown y resaltado no requieren red. El bundle JS actual mide 614.33 kB
-(191.42 kB gzip); Vite avisa del umbral de 500 kB, sin impedir el build.
+Markdown y resaltado no requieren red. El bundle JS actual mide 614.39 kB
+(191.47 kB gzip); Vite avisa del umbral de 500 kB, sin impedir el build.
 Los tamaños del release comprobado quedan registrados en el informe de revisión.
 
 ### Release verificado en macOS (2026-10-02)
@@ -252,9 +252,9 @@ Los tamaños del release comprobado quedan registrados en el informe de revisió
 | Artefacto | Tamaño |
 |---|---:|
 | `src-tauri/target/release/bundle/macos/agents-bridge.app` | 34 777 340 bytes · 33.17 MiB |
-| `src-tauri/target/release/bundle/dmg/agents-bridge_0.5.0_aarch64.dmg` | 15 341 496 bytes · 14.63 MiB |
+| `src-tauri/target/release/bundle/dmg/agents-bridge_0.5.0_aarch64.dmg` | 15 341 602 bytes · 14.63 MiB |
 
-SHA-256 del DMG: `84c94a9a134f4721cb82b16d217bdfe09cea172debded62098d787b8edb5f6db`.
+SHA-256 del DMG: `67024ab9f2bcfbf94d9661c6e7f1643bbab6a215f9f8482b5ead09ed63179e0d`.
 Bundle `dev.grrdhdz.agents-bridge`, versión 0.5.0, sin `_CodeSignature` de bundle.
 Smoke del release: `Motor conectado: v0.5.0 · API v1`; procesos propios cerrados.
 Verificación del rediseño: 5 pruebas Node, 31 Vitest, 4 Rust, typecheck/build,
@@ -263,15 +263,18 @@ Motor: gofmt, vet nativo/Windows, race y builds Darwin/Windows OK; sin cambios
 en sus fuentes. La intermitencia histórica de reconexión sigue documentada
 en el informe de revisión.
 
-## Lienzo de escritorio
+## Presentación de escritorio
 
-Fondo de puntos CSS, controles flotantes y notas pastel: azul para orquestador,
-verde para ejecutor y amarillo para intervención humana. La galería abre con
+Inicio liso y conversación con fondo crema suave en claro y gris azulado
+profundo en oscuro (`--chatBg`), sin cuadrícula ni imágenes externas. Controles
+flotantes y notas pastel: azul para orquestador, verde para ejecutor y amarillo
+para intervención humana. La galería abre con
 «Nuevo puente local»; las miniaturas reutilizan los últimos mensajes recibidos
 en la vista, sin nuevas llamadas al motor, o muestran notas grises si no hay datos.
 El panel lateral se puede plegar sin perder mensajes ni borrador. La barra de
 herramientas tiene nombres accesibles y tooltips; todos los atajos siguen activos.
 
 Tipografía del sistema y SVG de Lucide empaquetados, sin CDN. Contraste de texto,
-chips y código ≥4.5:1 sobre cada relleno en ambos temas; bordes/foco ≥3:1.
+chips y código ≥4.5:1 sobre cada relleno y el fondo de chat en ambos temas;
+bordes/foco ≥3:1.
 Hover discreto y transiciones desactivadas con `prefers-reduced-motion`.

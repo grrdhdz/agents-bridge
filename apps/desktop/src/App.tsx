@@ -121,7 +121,7 @@ export default function App({ client = realClient, demo = false, initialPreviews
     ...(['light', 'dark', 'auto'] as const).map((mode, i) => ({ id: `theme-${mode}`, label: `Tema ${['claro', 'oscuro', 'automático'][i]}`, run: () => setTheme(mode) })),
     { id: 'help', label: 'Ayuda de teclado', run: () => setHelp(true) },
   ];
-  return <div className="app-shell">
+  return <div className={`app-shell ${current?'chat-background':''}`}>
     <header className="app-header">
       <div className="identity-pill"><span className="brand-mark" aria-hidden="true"><ArrowLeftRight size={23} strokeWidth={2}/></span><strong className="brand">agents-bridge</strong><span className="identity-divider"/>
         <div className="board-identity">{current?<><h1>{current.project||'Puente sin proyecto'}</h1><button className="copy-id instance-id" title="Copiar ID completo" aria-label="Copiar ID completo" onClick={()=>void copy(current)}>{shortInstance(current.instance_id)}<Copy size={10} aria-hidden="true"/> · {current.mode}</button></>:<><strong>Mi espacio</strong><span>Conversaciones entre agentes</span></>}</div>{demo&&<span className="demo-badge">Demo</span>}

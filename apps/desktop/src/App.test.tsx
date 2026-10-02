@@ -103,6 +103,7 @@ test('reconnection and peer changes generate readable notifications', async () =
 
 test('gallery starts with create card and tools are named keyboard controls',async()=>{
  render(<App client={createDemoClient()}/>);await screen.findByRole('button',{name:'Abrir checkout-api'});
+ expect(document.querySelector('.app-shell')?.classList.contains('chat-background')).toBe(false);
  expect(document.querySelector('.bridge-list')?.firstElementChild?.className).toContain('create-card');
  expect(screen.getByRole('navigation',{name:'Herramientas del lienzo'})).toBeDefined();
  fireEvent.click(screen.getByRole('button',{name:'Buscar puentes'}));expect(document.activeElement).toBe(screen.getByLabelText('Filtrar puentes'));
@@ -110,6 +111,7 @@ test('gallery starts with create card and tools are named keyboard controls',asy
 test('folding sidebar preserves subscription, conversation and draft',async()=>{
  const api=createDemoClient(), subscribe=vi.spyOn(api,'subscribe');render(<App client={api}/>);
  fireEvent.click(await screen.findByRole('button',{name:'Abrir checkout-api'}));await screen.findByText('Revisa el proxy y entrega las pruebas de integración.');
+ expect(document.querySelector('.app-shell')?.classList.contains('chat-background')).toBe(true);
  fireEvent.change(screen.getByLabelText('Mensaje'),{target:{value:'Borrador sin enviar'}});
  fireEvent.click(screen.getByRole('button',{name:'Plegar panel lateral'}));
  expect(screen.queryByLabelText('Estado del puente')).toBeNull();expect(subscribe).toHaveBeenCalledTimes(1);

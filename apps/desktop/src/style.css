@@ -1,6 +1,6 @@
-:root { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-synthesis:none; color:var(--text); background:var(--surface); --surface:#f7f5ef; --panel:#fff; --card:#fff; --text:#202124; --muted:#4b4f58; --border:#747a85; --accent:#f4c844; --onAccent:#272218; --focus:#2455d6; --dot:#dedbd2; }
+:root { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-synthesis:none; color:var(--text); background:var(--surface); --surface:#f7f5ef; --chatBg:#efe9df; --panel:#fff; --card:#fff; --text:#202124; --muted:#4b4f58; --border:#747a85; --accent:#f4c844; --onAccent:#272218; --focus:#2455d6; --dot:#dedbd2; }
 * { box-sizing:border-box; }
-body { margin:0; min-width:400px; background:radial-gradient(circle,var(--dot) 1px,transparent 1px) 0 0/22px 22px; }
+body { margin:0; min-width:400px; background:var(--surface); }
 button,input,textarea,select { font:inherit; color:inherit; }
 button,select { cursor:pointer; }
 button { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--border); background:var(--card); border-radius:9px; padding:8px 12px; font-size:12px; transition:background .16s,box-shadow .16s,transform .16s; }
@@ -15,6 +15,7 @@ input,textarea,select { font-size:12px; border:1px solid var(--border); border-r
 h1,h2,p { margin:0; }
 svg { flex-shrink:0; }
 .app-shell { height:100dvh; min-height:500px; display:flex; flex-direction:column; }
+.chat-background { background:var(--chatBg); }
 .app-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:16px 24px 0 16px; flex:none; position:relative; z-index:10; }
 .identity-pill,.actions-pill { display:flex; align-items:center; gap:14px; min-height:58px; background:var(--panel); border:1px solid var(--dot); box-shadow:0 3px 8px #24221d08,0 10px 32px #24221d0d; border-radius:14px; padding:9px 14px; }
 .identity-pill { min-width:0; max-width:48%; }
@@ -66,7 +67,7 @@ main { flex:1; min-height:0; margin-left:88px; margin-right:24px; }
 .board-open { display:block; position:relative; border:0; background:none; padding:0; text-align:left; width:100%; border-radius:0; }
 .board-open:hover:not(:disabled) { background:transparent; }
 .board-open:focus-visible { outline-offset:-4px; }
-.board-preview { height:126px; position:relative; overflow:hidden; background:radial-gradient(circle,var(--dot) .75px,transparent .75px) 3px 5px/12px 12px,var(--surface); border-bottom:1px solid var(--dot); }
+.board-preview { height:126px; position:relative; overflow:hidden; background:var(--chatBg); border-bottom:1px solid var(--dot); }
 .board-overlay { position:absolute; top:11px; left:12px; right:12px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); }
 .mode { padding:3px 7px; font-size:9px; font-weight:600; border-radius:5px; background:var(--card); border:1px solid var(--dot); }
 .project-title { display:block; font-size:17px; letter-spacing:-.025em; font-weight:600; padding:14px 15px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

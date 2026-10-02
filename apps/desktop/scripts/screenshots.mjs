@@ -23,6 +23,7 @@ try {
       if (await page.getByRole('button', { name: 'Abrir checkout-api' }).evaluate(el => getComputedStyle(el.closest('.bridge-card')).transitionDuration !== '0s')) throw new Error('Movimiento reducido ignorado');
       await page.getByRole('heading', { name: 'Tus puentes' }).click();
       if (await page.locator('.bridge-card').count() !== 3) throw new Error('Demo sin tres puentes');
+      if (!await page.locator('body,.board-preview').evaluateAll(elements => elements.every(el => getComputedStyle(el).backgroundImage === 'none'))) throw new Error('Inicio o miniaturas con patrón de fondo');
       if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error('Inicio con overflow horizontal');
       const prefix = `${theme}-${width}x${height}`;
       await page.screenshot({ path: `${output}home-${prefix}.png` });
@@ -30,6 +31,12 @@ try {
       await page.getByText('Validación completa. Puedes cerrar esta tarea.').waitFor();
       if (await page.locator('.message').count() !== 7) throw new Error('Replay incompleto');
       await page.getByLabel('Estado del puente').waitFor();
+      if (!await page.locator('.app-shell').evaluate(el => {
+        const sample = document.createElement('div');
+        sample.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--chatBg');
+        const style = getComputedStyle(el);
+        return style.backgroundImage === 'none' && style.backgroundColor === sample.style.backgroundColor;
+      })) throw new Error('La conversación no usa el fondo liso de chat');
       if (!await page.getByLabel('Historial de mensajes').isVisible()) throw new Error('Historial oculto en este tamaño');
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       if (overflow || errors.length) throw new Error(`Overflow o errores: ${errors.join(', ')}`);
