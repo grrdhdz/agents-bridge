@@ -184,6 +184,17 @@ el binario `codex-bridge`. Compila este checkout para obtener el nombre nuevo.
   proceso Mac siga vivo. Una caída del proceso Mac no tiene recuperación.
 - El cuerpo canónico es texto UTF-8 intacto. No se admiten adjuntos.
 
+## API para apps
+
+`agents-bridge api` ofrece una sesión JSONL v1 por stdin/stdout. Las apps usan
+solo esta API o la CLI pública; el motor conserva descriptores, capabilities y
+lógica de coordinación. Incluye hello, list, subscribe/unsubscribe con replay
+observador, intervención humana, stop, create_local, health y export.
+Cerrar stdin cancela las suscripciones y deja vivos los puentes.
+
+Contrato y ejemplos: [engine/api/README.md](engine/api/README.md).
+Esquema generable desde cualquier plataforma: [engine/api/schema.json](engine/api/schema.json).
+
 ## Estructura del monorepo
 
 - `engine/`: módulo Go del motor, núcleo, CLI y TUI; `engine/api/` contiene el

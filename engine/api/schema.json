@@ -1,0 +1,1201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agents-bridge.local/api/v1/schema.json",
+  "title": "AgentsBridgePacket",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Request"
+    },
+    {
+      "$ref": "#/$defs/Success"
+    },
+    {
+      "$ref": "#/$defs/Failure"
+    },
+    {
+      "$ref": "#/$defs/Event"
+    }
+  ],
+  "$defs": {
+    "Role": {
+      "type": "string",
+      "enum": [
+        "orchestrator",
+        "executor"
+      ]
+    },
+    "Label": {
+      "type": "string",
+      "enum": [
+        "TAREA",
+        "PREGUNTA",
+        "RESPUESTA",
+        "RESULTADO",
+        "FIN",
+        "URGENTE",
+        "PROGRESO"
+      ]
+    },
+    "RoleState": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "esperando",
+            "trabajando",
+            "callado",
+            "—"
+          ]
+        },
+        "hook_bound": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "last_heartbeat_at": {
+          "type": "string"
+        },
+        "last_message_at": {
+          "type": "string"
+        },
+        "last_wait_at": {
+          "type": "string"
+        },
+        "last_message_age_seconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "state",
+        "hook_bound"
+      ],
+      "additionalProperties": false
+    },
+    "RoleStates": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/RoleState"
+      }
+    },
+    "Instance": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Role"
+          }
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "idle_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peer_connected": {
+          "type": "boolean"
+        },
+        "latest_server_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role_states": {
+          "$ref": "#/$defs/RoleStates"
+        }
+      },
+      "required": [
+        "instance_id",
+        "mode",
+        "roles",
+        "pid",
+        "started_at",
+        "project",
+        "peer_connected",
+        "latest_server_seq",
+        "role_states"
+      ],
+      "additionalProperties": false
+    },
+    "Health": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peer_connected": {
+          "type": "boolean"
+        },
+        "fin_received": {
+          "type": "boolean"
+        },
+        "latest_server_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role_states": {
+          "$ref": "#/$defs/RoleStates"
+        }
+      },
+      "required": [
+        "instance_id",
+        "state",
+        "pid",
+        "peer_connected",
+        "fin_received",
+        "latest_server_seq",
+        "role_states"
+      ],
+      "additionalProperties": false
+    },
+    "Message": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "const": 1
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "message_id": {
+          "type": "string"
+        },
+        "client_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "server_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sender_id": {
+          "type": "string"
+        },
+        "sender_role": {
+          "type": "string",
+          "enum": [
+            "mac-orchestrator",
+            "win-executor"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "body_sha256": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "accepted_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "instance_id",
+        "message_id",
+        "client_seq",
+        "server_seq",
+        "sender_id",
+        "sender_role",
+        "kind",
+        "body",
+        "body_sha256",
+        "source",
+        "created_at",
+        "accepted_at"
+      ],
+      "additionalProperties": false
+    },
+    "HelloArgs": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "HelloRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "hello"
+        },
+        "args": {
+          "$ref": "#/$defs/HelloArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "ListArgs": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "ListRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "list"
+        },
+        "args": {
+          "$ref": "#/$defs/ListArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "SubscribeArgs": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "instance_id"
+      ],
+      "additionalProperties": false
+    },
+    "SubscribeRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "subscribe"
+        },
+        "args": {
+          "$ref": "#/$defs/SubscribeArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "UnsubscribeArgs": {
+      "type": "object",
+      "properties": {
+        "sub": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sub"
+      ],
+      "additionalProperties": false
+    },
+    "UnsubscribeRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "unsubscribe"
+        },
+        "args": {
+          "$ref": "#/$defs/UnsubscribeArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "SendArgs": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 262144
+        },
+        "label": {
+          "$ref": "#/$defs/Label"
+        }
+      },
+      "required": [
+        "instance_id",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "SendRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "send"
+        },
+        "args": {
+          "$ref": "#/$defs/SendArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "StopArgs": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "instance_id"
+      ],
+      "additionalProperties": false
+    },
+    "StopRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "stop"
+        },
+        "args": {
+          "$ref": "#/$defs/StopArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "CreateLocalArgs": {
+      "type": "object",
+      "properties": {
+        "idle_timeout": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "CreateLocalRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "create_local"
+        },
+        "args": {
+          "$ref": "#/$defs/CreateLocalArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "HealthArgs": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "instance_id"
+      ],
+      "additionalProperties": false
+    },
+    "HealthRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "health"
+        },
+        "args": {
+          "$ref": "#/$defs/HealthArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "ExportArgs": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "md",
+            "jsonl"
+          ]
+        },
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "instance_id",
+        "format",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "ExportRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "export"
+        },
+        "args": {
+          "$ref": "#/$defs/ExportArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "Request": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/HelloRequest"
+        },
+        {
+          "$ref": "#/$defs/ListRequest"
+        },
+        {
+          "$ref": "#/$defs/SubscribeRequest"
+        },
+        {
+          "$ref": "#/$defs/UnsubscribeRequest"
+        },
+        {
+          "$ref": "#/$defs/SendRequest"
+        },
+        {
+          "$ref": "#/$defs/StopRequest"
+        },
+        {
+          "$ref": "#/$defs/CreateLocalRequest"
+        },
+        {
+          "$ref": "#/$defs/HealthRequest"
+        },
+        {
+          "$ref": "#/$defs/ExportRequest"
+        }
+      ]
+    },
+    "HelloResult": {
+      "type": "object",
+      "properties": {
+        "engine_version": {
+          "type": "string"
+        },
+        "contract_version": {
+          "const": 1
+        }
+      },
+      "required": [
+        "engine_version",
+        "contract_version"
+      ],
+      "additionalProperties": false
+    },
+    "ListResult": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Instance"
+          }
+        }
+      },
+      "required": [
+        "instances"
+      ],
+      "additionalProperties": false
+    },
+    "SubscribeResult": {
+      "type": "object",
+      "properties": {
+        "sub": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sub"
+      ],
+      "additionalProperties": false
+    },
+    "UnsubscribeResult": {
+      "type": "object",
+      "properties": {
+        "unsubscribed": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "unsubscribed"
+      ],
+      "additionalProperties": false
+    },
+    "SendResult": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "message_id": {
+          "type": "string"
+        },
+        "source": {
+          "const": "human-operator"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        }
+      },
+      "required": [
+        "instance_id",
+        "message_id",
+        "source",
+        "role"
+      ],
+      "additionalProperties": false
+    },
+    "StopResult": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "state": {
+          "const": "stopping"
+        }
+      },
+      "required": [
+        "instance_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "CreateLocalResult": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "state": {
+          "const": "running"
+        }
+      },
+      "required": [
+        "instance_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "ExportResult": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "md",
+            "jsonl"
+          ]
+        },
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "instance_id",
+        "format",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "Success": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string"
+        },
+        "ok": {
+          "const": true
+        },
+        "result": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HelloResult"
+            },
+            {
+              "$ref": "#/$defs/ListResult"
+            },
+            {
+              "$ref": "#/$defs/SubscribeResult"
+            },
+            {
+              "$ref": "#/$defs/UnsubscribeResult"
+            },
+            {
+              "$ref": "#/$defs/SendResult"
+            },
+            {
+              "$ref": "#/$defs/StopResult"
+            },
+            {
+              "$ref": "#/$defs/CreateLocalResult"
+            },
+            {
+              "$ref": "#/$defs/ExportResult"
+            },
+            {
+              "$ref": "#/$defs/Health"
+            }
+          ]
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "ok",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "Failure": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string"
+        },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "ok",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "EventData": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "event_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "server_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        },
+        "health": {
+          "$ref": "#/$defs/Health"
+        }
+      },
+      "required": [
+        "instance_id"
+      ],
+      "additionalProperties": false
+    },
+    "Event": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/MessageEvent"
+        },
+        {
+          "$ref": "#/$defs/DeliveryEvent"
+        },
+        {
+          "$ref": "#/$defs/StateEvent"
+        },
+        {
+          "$ref": "#/$defs/TransportEvent"
+        },
+        {
+          "$ref": "#/$defs/LifecycleEvent"
+        }
+      ]
+    },
+    "MessageEvent": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "sub": {
+          "type": "string"
+        },
+        "event": {
+          "const": "message"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "event_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "server_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "message_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "message": {
+              "$ref": "#/$defs/Message"
+            },
+            "health": {
+              "$ref": "#/$defs/Health"
+            }
+          },
+          "required": [
+            "instance_id",
+            "event_seq",
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "v",
+        "sub",
+        "event",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "DeliveryEvent": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "sub": {
+          "type": "string"
+        },
+        "event": {
+          "const": "delivery"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "event_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "server_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "message_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "message": {
+              "$ref": "#/$defs/Message"
+            },
+            "health": {
+              "$ref": "#/$defs/Health"
+            }
+          },
+          "required": [
+            "instance_id",
+            "event_seq",
+            "message_id",
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "v",
+        "sub",
+        "event",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "StateEvent": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "sub": {
+          "type": "string"
+        },
+        "event": {
+          "const": "state"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "event_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "server_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "message_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "message": {
+              "$ref": "#/$defs/Message"
+            },
+            "health": {
+              "$ref": "#/$defs/Health"
+            }
+          },
+          "required": [
+            "instance_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "v",
+        "sub",
+        "event",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "TransportEvent": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "sub": {
+          "type": "string"
+        },
+        "event": {
+          "const": "transport"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "event_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "server_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "message_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "message": {
+              "$ref": "#/$defs/Message"
+            },
+            "health": {
+              "$ref": "#/$defs/Health"
+            }
+          },
+          "required": [
+            "instance_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "v",
+        "sub",
+        "event",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "LifecycleEvent": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "sub": {
+          "type": "string"
+        },
+        "event": {
+          "const": "lifecycle"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "event_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "server_seq": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "message_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "message": {
+              "$ref": "#/$defs/Message"
+            },
+            "health": {
+              "$ref": "#/$defs/Health"
+            }
+          },
+          "required": [
+            "instance_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "v",
+        "sub",
+        "event",
+        "data"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

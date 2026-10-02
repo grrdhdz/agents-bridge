@@ -54,7 +54,7 @@ ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 
 - `engine/` — módulo Go `github.com/grrdhdz/agents-bridge/engine`.
 - `engine/cmd/agents-bridge` — CLI: host, `join`, `local`, `ctl`, `ps`, `stop`,
-  `tui`, `bind`, `unbind`, `hook`, `integration` y `codex open`.
+  `tui`, `bind`, `unbind`, `hook`, `integration`, `api` y `codex open`.
 - `engine/internal/protocol` — frames, envelopes y validación.
 - `engine/internal/bridge` — `Server`, `Client`, `EventHub` (fan-out + journal).
 - `engine/internal/control` — endpoint HTTP loopback y descriptores.
@@ -62,10 +62,12 @@ ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 - `engine/internal/hooks` — vínculos, cursores, hooks del harness y coordinación,
   núcleo independiente de la TUI.
 - `engine/internal/integration` — configuración de hooks por usuario o proyecto.
+- `engine/internal/api` — cliente stdio JSONL v1 del núcleo; nunca importa la TUI.
+- `engine/internal/bridgeexport` — exportador compartido de CLI y API.
 - `engine/internal/tui` — TUI Bubble Tea, cliente del núcleo.
 - `engine/internal/tailscale`, `engine/internal/clipboard` — integración de
   plataforma.
-- `engine/api/` — contrato de la API del motor (marcador; API aún sin implementar).
+- `engine/api/` — esquema JSON v1, documentación y validador estructural del contrato.
 - `engine/architecture_test.go` — verifica la separación de dependencias con
   `go list -deps`.
 - `apps/` — interfaces independientes; la app de escritorio irá en `apps/desktop/`.

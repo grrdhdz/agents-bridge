@@ -122,13 +122,21 @@ func launchLocalBridge(ctx context.Context) (string, error) {
 // (the directory is gone) and exits, and one that is still around after a
 // failed wait is killed, so no orphan is left behind by a failed creation.
 func launchLocalBridgeWith(ctx context.Context, exe string, start func(*exec.Cmd) (proc, error)) (string, error) {
+	return launchLocalBridgeWithIdle(ctx, exe, "", start)
+}
+
+func launchLocalBridgeWithIdle(ctx context.Context, exe, idle string, start func(*exec.Cmd) (proc, error)) (string, error) {
 	dir, err := os.MkdirTemp("", "agents-bridge-ready-")
 	if err != nil {
 		return "", fmt.Errorf("directorio temporal: %w", err)
 	}
 	defer os.RemoveAll(dir)
 	readyPath := filepath.Join(dir, "ready.json")
-	child, err := start(buildLocalCommand(exe, readyPath))
+	cmd := buildLocalCommand(exe, readyPath)
+	if idle != "" {
+		cmd.Args = append(cmd.Args, "--idle-timeout", idle)
+	}
+	child, err := start(cmd)
 	if err != nil {
 		return "", fmt.Errorf("no se pudo lanzar el puente: %w", err)
 	}

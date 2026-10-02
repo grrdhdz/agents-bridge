@@ -48,6 +48,7 @@ func TestCoreDoesNotDependOnClients(t *testing.T) {
 		t.Fatalf("inspect dependency graph: %v\n%s", err, stderr.String())
 	}
 
+	seenClients := make(map[string]bool)
 	seen := make(map[string]bool)
 	decoder := json.NewDecoder(bytes.NewReader(output))
 	for {
@@ -60,6 +61,11 @@ func TestCoreDoesNotDependOnClients(t *testing.T) {
 		} else if err != nil {
 			t.Fatalf("decode dependency graph: %v", err)
 		}
+		for _, client := range []string{module + "/internal/tui", module + "/internal/api", module + "/api"} {
+			if pkg.ImportPath == client {
+				seenClients[client] = true
+			}
+		}
 		if !isCore(pkg.ImportPath) {
 			continue
 		}
@@ -70,6 +76,11 @@ func TestCoreDoesNotDependOnClients(t *testing.T) {
 					t.Errorf("core package %s depends on client %s", pkg.ImportPath, dependency)
 				}
 			}
+		}
+	}
+	for _, client := range []string{module + "/internal/tui", module + "/internal/api", module + "/api"} {
+		if !seenClients[client] {
+			t.Errorf("client %s was not inspected", client)
 		}
 	}
 	for _, root := range coreRoots {
