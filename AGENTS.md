@@ -37,6 +37,16 @@ Requiere Go 1.27+. Antes de declarar un cambio terminado: `gofmt -l .` vacío,
 `go vet ./...`, `GOOS=windows go vet ./...`, `go test -race -count=1 ./...` y
 ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 
+## App de escritorio
+
+Desde `apps/desktop/`: `npm ci`, `npm test`, `npm run build`,
+`npm run check:types`, `cargo check --manifest-path src-tauri/Cargo.toml` y
+`npm run tauri build -- --debug`. CLI Tauri local, sin instalaciones globales.
+Los tipos se regeneran con `npm run generate:types`; solo se permite leer el
+contrato público para generarlos y compilar el motor como sidecar. El runtime
+nunca accede a archivos internos del motor. La prueba de separación de la app
+vive en `apps/desktop/scripts/separation.test.mjs`.
+
 ## Invariantes del proyecto
 
 - Todo estado de chat vive en RAM: sin SQLite, archivos de historial ni logs de
@@ -70,7 +80,7 @@ ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 - `engine/api/` — esquema JSON v1, documentación y validador estructural del contrato.
 - `engine/architecture_test.go` — verifica la separación de dependencias con
   `go list -deps`.
-- `apps/` — interfaces independientes; la app de escritorio irá en `apps/desktop/`.
+- `apps/` — interfaces independientes; la app Tauri 2 + React vive en `apps/desktop/`.
 - `docs/`, `.agents/skills/` — documentación y skills compartidas en la raíz.
 
 ## Separación del motor y las apps

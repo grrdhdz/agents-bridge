@@ -4,6 +4,22 @@ Estado: aprobado por el usuario (Tauri + React, 2026-10-01). Ejecución autónom
 nocturna por el orquestador con Luna (Codex) en Herdr. Base: rama
 `feat/agents-bridge-v0.5` una vez cerrado el plan de hooks.
 
+## Avance G1 y G0 (2026-10-01)
+
+- G1 completada primero: `e4752d5d6f4e65f881fd023c7dc5634e957f7eb5`.
+  API JSONL v1, contrato público, exportador y observador compartidos, pruebas
+  con puentes reales, red/green y verificación completa del motor.
+- G0 completada en el commit `Add desktop skeleton with engine sidecar handshake`.
+  Tauri 2 + React + TypeScript + Vite, sidecars por target, tipos generados,
+  lockfiles npm/Cargo y handshake real desde la app empaquetada. Evidencia y
+  comandos en [`apps/desktop/README.md`](../../../apps/desktop/README.md).
+- Windows Rust comprobado hasta el build script: falta `llvm-rc`
+  (`NotAttempted("llvm-rc")`). Sidecar Go Windows OK. Sin forzar el entorno.
+- Revisión visual nativa pendiente: Computer Use rechazó el acceso a la app.
+  El smoke test nativo y las pruebas de render de React pasan.
+- G2–G5 pendientes. G0 realiza un handshake acotado y cierra ese sidecar;
+  el proxy persistente de sesión se implementará en G2.
+
 ## 1. Objetivo
 
 Una app gráfica para macOS y Windows que haga todo lo que hoy hace la TUI para
