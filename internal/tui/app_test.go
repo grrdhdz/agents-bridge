@@ -10,8 +10,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 func newTUITestClient(t *testing.T) (*bridge.Server, *bridge.Client) {
@@ -82,7 +82,7 @@ func TestModelStartsFocusedAndAcceptsImmediateInput(t *testing.T) {
 func TestOrchestratorCopiesJoinCommandAndKeepsCredentialOutOfView(t *testing.T) {
 	_, client := newTUITestClient(t)
 	token := strings.Repeat("secret-token-", 4)
-	joinCommand := "codex-bridge join --host mac.tailnet --port 4242 --instance instance-a --token " + token
+	joinCommand := "agents-bridge join --host mac.tailnet --port 4242 --instance instance-a --token " + token
 	var copied []string
 	model := New(Options{
 		Client:       client,
@@ -102,7 +102,7 @@ func TestOrchestratorCopiesJoinCommandAndKeepsCredentialOutOfView(t *testing.T) 
 	if len(copied) != 1 || copied[0] != joinCommand {
 		t.Fatalf("startup should copy the exact join command once, got %#v", copied)
 	}
-	if !strings.Contains(view, "codex-bridge") || !strings.Contains(view, "copiado") {
+	if !strings.Contains(view, "agents-bridge") || !strings.Contains(view, "copiado") {
 		t.Fatalf("status/copy instruction should be visible at 120x30: %q", view)
 	}
 	if strings.Contains(view, "--token") || strings.Contains(view, token) || strings.Contains(view, "mac.tailnet") {
@@ -156,8 +156,8 @@ func TestJoinCannotPairAndF5DoesNothing(t *testing.T) {
 
 func TestPairRegenerationRecopiesNewCommandAndCopyFailureHasFallback(t *testing.T) {
 	_, client := newTUITestClient(t)
-	oldCommand := "codex-bridge join --host mac.tailnet --port 4242 --instance instance-a --token old"
-	newCommand := "codex-bridge join --host mac.tailnet --port 4242 --instance instance-a --token new"
+	oldCommand := "agents-bridge join --host mac.tailnet --port 4242 --instance instance-a --token old"
+	newCommand := "agents-bridge join --host mac.tailnet --port 4242 --instance instance-a --token new"
 	var copied []string
 	model := New(Options{
 		Client:       client,

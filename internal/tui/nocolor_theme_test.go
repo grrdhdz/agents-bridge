@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // TestToggleThemeUnderNoColorExplainsInsteadOfDoingNothing: with NO_COLOR no

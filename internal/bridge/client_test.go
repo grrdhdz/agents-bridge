@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 func TestClientEmitNeverBlocksWithoutLegacyReader(t *testing.T) {

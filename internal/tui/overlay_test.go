@@ -10,7 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // TestPaletteIsAFloatingWindowOverTheBackdrop covers spec item 4: the
@@ -47,7 +47,7 @@ func TestPaletteIsAFloatingWindowOverTheBackdrop(t *testing.T) {
 			t.Fatalf("line %d is wider than the terminal (120): got %d: %q", i, w, l)
 		}
 	}
-	if !strings.Contains(content, "codex-bridge") {
+	if !strings.Contains(content, "agents-bridge") {
 		t.Fatal("the status bar (backdrop) should still be visible around the floating palette")
 	}
 	if !strings.Contains(content, "cuerpo 4") {
@@ -73,7 +73,7 @@ func TestDialogIsAFloatingWindowOverTheBackdrop(t *testing.T) {
 	m := updated.(*Model)
 	m.openConfirmCloseDialog()
 	content := m.View().Content
-	if !strings.Contains(content, "codex-bridge") {
+	if !strings.Contains(content, "agents-bridge") {
 		t.Fatal("the status bar should still be visible around the floating dialog")
 	}
 	if !strings.Contains(content, "Cerrar puente") {
@@ -94,7 +94,7 @@ func TestHelpIsAFloatingWindowOverTheBackdrop(t *testing.T) {
 	m := updated.(*Model)
 	m.openHelp()
 	content := m.View().Content
-	if !strings.Contains(content, "codex-bridge") {
+	if !strings.Contains(content, "agents-bridge") {
 		t.Fatal("the status bar should still be visible around the floating help window")
 	}
 	if !strings.Contains(content, "Ayuda") {

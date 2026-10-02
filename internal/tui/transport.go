@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // BridgeStatus is what an optional StatusProvider reports (spec §7): enough
@@ -46,7 +46,7 @@ type StatusProvider interface {
 // nothing here mirrors the whole of *bridge.Client. Two implementations
 // exist: clientTransport, wrapping the direct TCP *bridge.Client used by the
 // Mac/Windows TUI today, and the observing TUI's control-plane client
-// (watch + send + health over control.Do), added alongside `codex-bridge tui`.
+// (watch + send + health over control.Do), added alongside `agents-bridge tui`.
 //
 // The observing TUI never confirms a peer message on the agent's behalf —
 // the agent's own ctl wait must still receive and ACK it — so its Ack is a

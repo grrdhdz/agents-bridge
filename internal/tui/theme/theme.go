@@ -37,7 +37,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // Mode selects which palette a Theme uses.
@@ -50,7 +50,7 @@ const (
 )
 
 // ResolveMode picks the theme mode from an explicit --theme flag value
-// (highest priority) or CODEX_BRIDGE_THEME; "auto" is the default when
+// (highest priority) or AGENTS_BRIDGE_THEME; "auto" is the default when
 // neither is set. An unrecognized value is rejected so a typo in the flag
 // or the environment variable is never silently ignored.
 func ResolveMode(flagValue, envValue string) (Mode, error) {

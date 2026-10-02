@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // fastPolicy keeps the reconnect loop's cadence in milliseconds so the tests
@@ -152,7 +152,7 @@ func TestJoinHeadlessEndsCleanlyWhenHostCloses(t *testing.T) {
 	}
 
 	// The host formats the command for PowerShell: drop its line-continuation
-	// backticks, then the "codex-bridge join" prefix.
+	// backticks, then the "agents-bridge join" prefix.
 	var args []string
 	for _, field := range strings.Fields(joinCommand)[2:] {
 		if field != "`" {

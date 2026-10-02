@@ -10,8 +10,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // selectedIndex resolves m.selected to a message index, defaulting to the

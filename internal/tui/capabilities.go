@@ -3,7 +3,7 @@ package tui
 // Capabilities is what the shell (Model) consults instead of branching
 // Update on which of the four modes it is running in (spec §4 and §3:
 // "las diferencias entre modos se expresan como capacidades, nunca con
-// ramas de Update por modo"). Each mode in cmd/codex-bridge builds one of
+// ramas de Update por modo"). Each mode in cmd/agents-bridge builds one of
 // these with the constructors below; Model itself never asks "which mode
 // am I" — only "can I do X".
 type Capabilities struct {
@@ -38,14 +38,14 @@ func CapabilitiesForHost() Capabilities {
 	return Capabilities{Mode: "host", Ack: true, CloseOnQuit: true, StopConfirm: false, Pair: true, ReturnHome: false}
 }
 
-// CapabilitiesForJoin is `codex-bridge join`'s executor (§4 col. 2): it
+// CapabilitiesForJoin is `agents-bridge join`'s executor (§4 col. 2): it
 // also owns its side of the bridge (closing the window closes the bridge,
 // per §4 "sí (solo join)"), but it can never pair — only Mac can.
 func CapabilitiesForJoin() Capabilities {
 	return Capabilities{Mode: "join", Ack: true, CloseOnQuit: true, StopConfirm: false, Pair: false, ReturnHome: false}
 }
 
-// CapabilitiesForLocal is the observer TUI embedded in `codex-bridge local`
+// CapabilitiesForLocal is the observer TUI embedded in `agents-bridge local`
 // (§4 col. 3, §7.1): it watches over the control plane like the standalone
 // observer (no ACK, stop needs confirmation), but here the TUI *is* the
 // process, so /quit closes the whole bridge.
@@ -53,7 +53,7 @@ func CapabilitiesForLocal() Capabilities {
 	return Capabilities{Mode: "local", Ack: false, CloseOnQuit: true, StopConfirm: true, Pair: false, ReturnHome: false}
 }
 
-// CapabilitiesForObserver is standalone `codex-bridge tui --instance-id`
+// CapabilitiesForObserver is standalone `agents-bridge tui --instance-id`
 // (§4 col. 4): pure observer, never confirms, never closes the bridge on
 // exit, and — once phase 3 adds the home screen — can return to it.
 func CapabilitiesForObserver() Capabilities {

@@ -17,8 +17,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 const DescriptorVersion = 1
@@ -352,9 +352,9 @@ func platformDescriptorRoot() (string, error) {
 		if user == "" {
 			user = "current-user"
 		}
-		return filepath.Join(base, "Temp", "codex-bridge", user, "instances"), nil
+		return filepath.Join(base, "Temp", "agents-bridge", user, "instances"), nil
 	}
-	return filepath.Join(os.TempDir(), "codex-bridge", strconv.Itoa(os.Getuid()), "instances"), nil
+	return filepath.Join(os.TempDir(), "agents-bridge", strconv.Itoa(os.Getuid()), "instances"), nil
 }
 
 func readDescriptor(path string) (Descriptor, error) {
@@ -454,7 +454,7 @@ func cleanupStaleDescriptors(root string, now time.Time) error {
 		request, err := http.NewRequest(http.MethodGet, descriptor.ControlURL+"/v1/health", nil)
 		if err == nil && isLoopbackURL(descriptor.ControlURL) {
 			request.Header.Set("Authorization", "Bearer "+descriptor.Capability)
-			request.Header.Set("X-Codex-Bridge-Request-ID", "stale-check")
+			request.Header.Set("X-Agents-Bridge-Request-ID", "stale-check")
 			response, requestErr := client.Do(request)
 			if requestErr == nil {
 				_ = response.Body.Close()

@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 func TestProjectNameTakesBaseOfCwd(t *testing.T) {
 	cases := map[string]string{
-		"/Users/x/proyectos/codex-agents-bridge": "codex-agents-bridge",
-		"":                                       "",
-		"/":                                      "",
-		".":                                      "",
+		"/Users/x/proyectos/agents-bridge": "agents-bridge",
+		"":                                 "",
+		"/":                                "",
+		".":                                "",
 	}
 	for in, want := range cases {
 		if got := projectName(in); got != want {

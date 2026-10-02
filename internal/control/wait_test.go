@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 type localHarness struct {
@@ -64,7 +64,7 @@ func postWait(ctx context.Context, endpoint *Endpoint, timeoutMS int) waitResult
 		return waitResult{err: err}
 	}
 	request.Header.Set("Authorization", "Bearer "+endpoint.capability)
-	request.Header.Set("X-Codex-Bridge-Request-ID", "wait-request")
+	request.Header.Set("X-Agents-Bridge-Request-ID", "wait-request")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return waitResult{err: err}

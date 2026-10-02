@@ -113,7 +113,7 @@ func verifyPrivateDir(dir string) error {
 		return errors.New("is not a directory")
 	}
 	if err := verifyOwnerOnlyACL(dir); err != nil {
-		return fmt.Errorf("%w; bórralo para que codex-bridge lo recree con permisos privados", err)
+		return fmt.Errorf("%w; bórralo para que agents-bridge lo recree con permisos privados", err)
 	}
 	return nil
 }

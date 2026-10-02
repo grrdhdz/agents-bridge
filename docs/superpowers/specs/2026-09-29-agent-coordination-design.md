@@ -1,5 +1,9 @@
 # Especificación: coordinación entre agentes (v0.4.0)
 
+> Documento histórico anterior al renombre de 2026-10-01. Las referencias a
+> `codex-bridge` describen esa versión; para el uso actual consulta la sección
+> «Migración desde codex-bridge» del [README](../../../README.md).
+
 Estado: aprobada (2026-09-29)
 
 Origen: retroalimentación de un orquestador que usó codex-bridge con un

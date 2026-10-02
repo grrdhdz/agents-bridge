@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 const (

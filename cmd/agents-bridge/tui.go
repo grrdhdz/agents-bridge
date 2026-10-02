@@ -11,22 +11,22 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/tui"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
-// runTUIObserver implements `codex-bridge tui` (§5, §6): without
+// runTUIObserver implements `agents-bridge tui` (§5, §6): without
 // --instance-id the home screen (list of live bridges); with it, an
 // observing TUI that attaches to a live bridge purely through the control
 // plane (watch/send/health), never the TCP protocol, so it works the same
 // for local, tailscale-host and tailscale-join.
 func runTUIObserver(args []string, root string) error {
-	flags := flag.NewFlagSet("codex-bridge tui", flag.ContinueOnError)
+	flags := flag.NewFlagSet("agents-bridge tui", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	instanceID := flags.String("instance-id", "", "instance_id to observe")
-	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
+	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto AGENTS_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}

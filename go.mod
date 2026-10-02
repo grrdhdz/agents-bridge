@@ -1,4 +1,4 @@
-module github.com/grrdhdz/codex-agents-bridge
+module github.com/grrdhdz/agents-bridge
 
 go 1.27
 

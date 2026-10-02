@@ -1,6 +1,6 @@
 # Build outputs
-/codex-bridge
-/codex-bridge.exe
+/agents-bridge
+/agents-bridge.exe
 /bin/
 /dist/
 /release/
@@ -15,5 +15,5 @@ coverage.out
 .claude/settings.local.json
 
 # Builds locales de desarrollo
-/codex-bridge-dev
-/codex-bridge-dev.exe
+/agents-bridge-dev
+/agents-bridge-dev.exe

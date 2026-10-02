@@ -1,5 +1,8 @@
 # Plan: hooks de harness y renombre a agents-bridge (v0.5.0)
 
+> Las menciones al nombre anterior en este plan documentan la migración y la
+> convivencia con v0.4 (§1.1); los comandos vigentes usan `agents-bridge`.
+
 Estado: aprobado con decisiones del usuario (§9). Fecha: 2026-10-01. Base: `v0.4.0`.
 
 ## 1. Objetivo

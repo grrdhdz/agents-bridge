@@ -7,8 +7,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // compactWidthThreshold is spec §6.1's "< 60 columnas" breakpoint: below it

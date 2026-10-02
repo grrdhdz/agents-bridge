@@ -1,5 +1,5 @@
-// Package tui provides codex-bridge's terminal UI, shared by all four modes
-// (host, join, local's embedded observer and standalone `codex-bridge tui`).
+// Package tui provides agents-bridge's terminal UI, shared by all four modes
+// (host, join, local's embedded observer and standalone `agents-bridge tui`).
 // A single Model drives every mode; the differences between them are
 // expressed as Capabilities (capabilities.go), never as branches keyed on
 // which mode is running (spec §3, §4).
@@ -19,11 +19,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/keys"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/keys"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // focusTarget is which pane receives keyboard input (§6.1: "tab alterna
@@ -948,7 +948,7 @@ func (m *Model) command(command string) {
 // close ends this Model's own window. It also asks the endpoint to tear
 // down the whole bridge exactly when Capabilities.CloseOnQuit says so
 // (§4's "cerrar el puente al salir"): true for host, join and the local
-// embedded observer, false for the standalone `codex-bridge tui`, which
+// embedded observer, false for the standalone `agents-bridge tui`, which
 // only ever closes its own view.
 func (m *Model) close() {
 	if m.caps.CloseOnQuit && m.onStop != nil {

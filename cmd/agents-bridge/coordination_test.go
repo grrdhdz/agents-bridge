@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 func TestInboxNotEmptyExitsWithForbiddenCode(t *testing.T) {
@@ -90,7 +90,7 @@ func TestCtlPeekDoesNotConsumeAndFormatsText(t *testing.T) {
 		t.Fatalf("peek record = %+v", record)
 	}
 	code, stdout, stderr := run.ctlID("", id, "peek", "--role", "executor", "--format", "text")
-	want := "--- codex-bridge instance=" + id + " unread=1 urgent=sí latest=URGENTE\n"
+	want := "--- agents-bridge instance=" + id + " unread=1 urgent=sí latest=URGENTE\n"
 	if code != 0 || stdout != want {
 		t.Fatalf("text peek = %d %q (%s), want %q", code, stdout, stderr, want)
 	}
@@ -99,7 +99,7 @@ func TestCtlPeekDoesNotConsumeAndFormatsText(t *testing.T) {
 		t.Fatalf("wait after peek must still receive the message: %d %q", code, stdout)
 	}
 	_, stdout, _ = run.ctlID("", id, "peek", "--role", "executor", "--format", "text")
-	if stdout != "--- codex-bridge instance="+id+" unread=0 urgent=no latest=ninguna\n" {
+	if stdout != "--- agents-bridge instance="+id+" unread=0 urgent=no latest=ninguna\n" {
 		t.Fatalf("peek after consuming = %q", stdout)
 	}
 }

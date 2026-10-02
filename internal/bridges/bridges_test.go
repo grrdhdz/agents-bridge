@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 type liveBridge struct {
@@ -21,7 +21,7 @@ type liveBridge struct {
 }
 
 // startBridge runs a real loopback server with both roles' control
-// endpoints, like `codex-bridge local` does.
+// endpoints, like `agents-bridge local` does.
 func startBridge(t *testing.T, root, cwd string) liveBridge {
 	t.Helper()
 	server, err := bridge.NewServer("127.0.0.1", bridge.DefaultOptions())

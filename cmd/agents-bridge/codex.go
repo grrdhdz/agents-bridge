@@ -17,15 +17,15 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // codexOpenPromptPrefix is always written into the Codex message box, with
 // the target instance_id appended: it points the executor at the same skill
 // this bridge already documents, and ties its activation to one instance so
 // the executor never has to guess or switch instances on its own.
-const codexOpenPromptPrefix = "usa la skill codex-bridge como ejecutor con --instance-id "
+const codexOpenPromptPrefix = "usa la skill agents-bridge como ejecutor con --instance-id "
 
 // maxCodexOpenPromptBytes bounds --prompt-file input so a runaway file
 // cannot end up as an oversized deeplink.
@@ -60,10 +60,10 @@ func dispatchCodex(_ context.Context, args []string, env codexEnv) error {
 		return failure("USAGE", "unknown codex operation %q", operation)
 	}
 
-	flags := flag.NewFlagSet("codex-bridge codex open", flag.ContinueOnError)
+	flags := flag.NewFlagSet("agents-bridge codex open", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	thread := flags.String("thread", "", "codex://threads/<id> deeplink, or the bare thread id")
-	instanceID := flags.String("instance-id", "", "codex-bridge instance_id the executor must activate against")
+	instanceID := flags.String("instance-id", "", "agents-bridge instance_id the executor must activate against")
 	promptFile := flags.String("prompt-file", "", "UTF-8 prompt file, or - for stdin")
 	if err := flags.Parse(args); err != nil {
 		return failure("USAGE", "%v", err)

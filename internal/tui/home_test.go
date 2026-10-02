@@ -12,9 +12,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // fakeSource is the injectable HomeSource: tests script the bridges it
@@ -164,7 +164,7 @@ func plainView(h *HomeModel) string { return ansi.Strip(h.View().Content) }
 func TestHomeEmptyStateShowsInstructions(t *testing.T) {
 	h := newHomeTest(t, &fakeSource{}, 100, 24, theme.ModeDark)
 	view := plainView(h)
-	for _, want := range []string{"0 puentes", "No hay puentes", "n  crea", "codex-bridge local"} {
+	for _, want := range []string{"0 puentes", "No hay puentes", "n  crea", "agents-bridge local"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("empty state should mention %q:\n%s", want, view)
 		}
@@ -177,7 +177,7 @@ func TestHomeListsBridgesWithTheirColumns(t *testing.T) {
 	h := newHomeTest(t, src, 140, 24, theme.ModeDark)
 	view := plainView(h)
 	for _, want := range []string{
-		"codex-bridge · 3 puentes",
+		"agents-bridge · 3 puentes",
 		"aaaa1111", "api-server", "local", "●", "12s", "09:30",
 		"bbbb2222", "web", "host", "○", "1h", "10:30",
 		"cccc3333", "join",
@@ -664,7 +664,7 @@ func TestHomeStatusBarIsFirstRow(t *testing.T) {
 	src.set(threeBridges()...)
 	h := newHomeTest(t, src, 100, 24, theme.ModeDark)
 	first := strings.Split(plainView(h), "\n")[0]
-	if !strings.Contains(first, "codex-bridge · 3 puentes") {
+	if !strings.Contains(first, "agents-bridge · 3 puentes") {
 		t.Fatalf("status bar title, got %q", first)
 	}
 }

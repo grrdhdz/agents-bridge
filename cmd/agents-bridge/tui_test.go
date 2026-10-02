@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // TestSelectObserverDescriptorPrefersOrchestratorThenExecutor covers §6:
@@ -62,7 +62,7 @@ func TestSelectObserverDescriptorNotFound(t *testing.T) {
 	}
 }
 
-// TestTUIWithoutInstanceIDOpensTheHomeScreen covers spec §5: `codex-bridge
+// TestTUIWithoutInstanceIDOpensTheHomeScreen covers spec §5: `agents-bridge
 // tui` with no --instance-id is the list of bridges (phase 3), not a usage
 // error; --instance-id still goes straight to that bridge.
 func TestTUIWithoutInstanceIDOpensTheHomeScreen(t *testing.T) {

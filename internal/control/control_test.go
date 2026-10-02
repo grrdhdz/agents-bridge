@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 type controlHarness struct {
@@ -63,7 +63,7 @@ func controlHTTP(t *testing.T, endpoint *Endpoint, method, path, body string, ca
 		t.Fatal(err)
 	}
 	request.Header.Set("Authorization", "Bearer "+capability)
-	request.Header.Set("X-Codex-Bridge-Request-ID", "test-request-1")
+	request.Header.Set("X-Agents-Bridge-Request-ID", "test-request-1")
 	if body != "" {
 		request.Header.Set("Content-Type", controlContentType)
 	}
@@ -148,7 +148,7 @@ func TestControlWatchFlushesReplayAndCancels(t *testing.T) {
 		t.Fatal(err)
 	}
 	request.Header.Set("Authorization", "Bearer "+h.endpoint.capability)
-	request.Header.Set("X-Codex-Bridge-Request-ID", "watch-request")
+	request.Header.Set("X-Agents-Bridge-Request-ID", "watch-request")
 	response, err := (&http.Client{}).Do(request)
 	if err != nil {
 		t.Fatal(err)
@@ -500,7 +500,7 @@ func TestWatchConcurrencyLimitReturnsBackpressure(t *testing.T) {
 			t.Fatal(err)
 		}
 		request.Header.Set("Authorization", "Bearer "+h.endpoint.capability)
-		request.Header.Set("X-Codex-Bridge-Request-ID", "watch-"+strconv.Itoa(i))
+		request.Header.Set("X-Agents-Bridge-Request-ID", "watch-"+strconv.Itoa(i))
 		response, err := http.DefaultClient.Do(request)
 		if err != nil {
 			t.Fatal(err)
@@ -532,7 +532,7 @@ func TestWatchConcurrencyLimitReturnsBackpressure(t *testing.T) {
 		t.Fatal(err)
 	}
 	request.Header.Set("Authorization", "Bearer "+h.endpoint.capability)
-	request.Header.Set("X-Codex-Bridge-Request-ID", "watch-after-free")
+	request.Header.Set("X-Agents-Bridge-Request-ID", "watch-after-free")
 	freedResponse, err := (&http.Client{Timeout: 2 * time.Second}).Do(request)
 	if err != nil {
 		t.Fatal(err)

@@ -12,9 +12,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/tui"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // launchFunc starts a new bridge in the background and returns its
@@ -122,7 +122,7 @@ func launchLocalBridge(ctx context.Context) (string, error) {
 // (the directory is gone) and exits, and one that is still around after a
 // failed wait is killed, so no orphan is left behind by a failed creation.
 func launchLocalBridgeWith(ctx context.Context, exe string, start func(*exec.Cmd) (proc, error)) (string, error) {
-	dir, err := os.MkdirTemp("", "codex-bridge-ready-")
+	dir, err := os.MkdirTemp("", "agents-bridge-ready-")
 	if err != nil {
 		return "", fmt.Errorf("directorio temporal: %w", err)
 	}
@@ -181,7 +181,7 @@ func waitReadyFile(ctx context.Context, path string, exited <-chan struct{}, tim
 
 // --- running the home TUI -----------------------------------------------
 
-// runTUIHome runs `codex-bridge tui` without --instance-id: the App shell
+// runTUIHome runs `agents-bridge tui` without --instance-id: the App shell
 // over source. run drives the program (production: bubbletea; tests: a
 // fake). Once the TUI is gone and the terminal restored, it prints on
 // stdout the bridges created in this session that are still alive and how

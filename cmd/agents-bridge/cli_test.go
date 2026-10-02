@@ -13,7 +13,7 @@ import (
 // the tests, so a test can exercise everything main() does before reaching
 // runLocal and friends (theme resolution, flag parsing, signal setup) —
 // the path the in-process tests skip, and where v0.3.0–v0.3.2 hung.
-const runMainEnv = "CODEX_BRIDGE_TEST_RUN_MAIN"
+const runMainEnv = "AGENTS_BRIDGE_TEST_RUN_MAIN"
 
 func TestMain(m *testing.M) {
 	if os.Getenv(runMainEnv) == "1" {
@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// runCLI starts this test binary as `codex-bridge args...` with its
+// runCLI starts this test binary as `agents-bridge args...` with its
 // descriptors in a temporary directory, and kills it when the test ends.
 func runCLI(t *testing.T, args ...string) *bufio.Reader {
 	t.Helper()
@@ -33,9 +33,9 @@ func runCLI(t *testing.T, args ...string) *bufio.Reader {
 	}
 	tmp := t.TempDir()
 	cmd := exec.Command(exe, args...)
-	// CODEX_BRIDGE_THEME empty leaves the theme on "auto", the default that
+	// AGENTS_BRIDGE_THEME empty leaves the theme on "auto", the default that
 	// used to query the terminal's background even without a TUI.
-	cmd.Env = append(os.Environ(), runMainEnv+"=1", "LOCALAPPDATA="+tmp, "TMPDIR="+tmp, "CODEX_BRIDGE_THEME=")
+	cmd.Env = append(os.Environ(), runMainEnv+"=1", "LOCALAPPDATA="+tmp, "TMPDIR="+tmp, "AGENTS_BRIDGE_THEME=")
 	detachConsole(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

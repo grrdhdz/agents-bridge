@@ -30,7 +30,7 @@ func Do(ctx context.Context, d Descriptor, method, path string, body io.Reader) 
 		return nil, err
 	}
 	request.Header.Set("Authorization", "Bearer "+d.Capability)
-	request.Header.Set("X-Codex-Bridge-Request-ID", requestID)
+	request.Header.Set("X-Agents-Bridge-Request-ID", requestID)
 	if body != nil {
 		request.Header.Set("Content-Type", controlContentType)
 	}

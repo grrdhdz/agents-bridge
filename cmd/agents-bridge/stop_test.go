@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/control"
 )
 
 func (r *localRun) stop(instanceID string) (int, string, string) {

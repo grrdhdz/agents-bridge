@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // TestPruneToastsDropsExpiredKeepsLive covers §6.7's 4-second lifetime with

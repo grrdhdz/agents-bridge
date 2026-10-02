@@ -9,8 +9,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/control"
 )
 
 // psRow is one line of `ps` output: every live bridge grouped by instance_id
@@ -53,7 +53,7 @@ func runPS(ctx context.Context, args []string, env ctlEnv) int {
 }
 
 func dispatchPS(ctx context.Context, args []string, env ctlEnv) error {
-	flags := flag.NewFlagSet("codex-bridge ps", flag.ContinueOnError)
+	flags := flag.NewFlagSet("agents-bridge ps", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	format := flags.String("format", "table", "table o jsonl")
 	if err := flags.Parse(args); err != nil {

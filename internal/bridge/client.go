@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 var ErrClientQueueFull = errors.New("client RAM queue limit reached")

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 func testEventEnvelope(t *testing.T, id, body string, seq uint64) protocol.Envelope {

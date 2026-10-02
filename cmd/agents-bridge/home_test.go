@@ -15,9 +15,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/tui"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // TestBuildLocalCommandIsAnArgvNeverAShell covers spec §5's launch rules:
@@ -25,12 +25,12 @@ import (
 // (nothing goes through a shell), headless, with the ready file, and with
 // no --idle-timeout so the default applies.
 func TestBuildLocalCommandIsAnArgvNeverAShell(t *testing.T) {
-	cmd := buildLocalCommand("/opt/codex-bridge", "/tmp/private/ready.json")
-	want := []string{"/opt/codex-bridge", "local", "--headless", "--ready-file", "/tmp/private/ready.json"}
+	cmd := buildLocalCommand("/opt/agents-bridge", "/tmp/private/ready.json")
+	want := []string{"/opt/agents-bridge", "local", "--headless", "--ready-file", "/tmp/private/ready.json"}
 	if strings.Join(cmd.Args, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("argv = %q, want %q", cmd.Args, want)
 	}
-	if cmd.Path != "/opt/codex-bridge" {
+	if cmd.Path != "/opt/agents-bridge" {
 		t.Fatalf("the executable is run directly, got Path %q", cmd.Path)
 	}
 	for _, arg := range cmd.Args {
@@ -103,7 +103,7 @@ func (f *fakeProc) start(cmd *exec.Cmd) (proc, error) {
 
 func TestLaunchLocalBridgeUsesAPrivateTempDirAndCleansUp(t *testing.T) {
 	f := &fakeProc{id: "dddd4444"}
-	id, err := launchLocalBridgeWith(context.Background(), "/opt/codex-bridge", f.start)
+	id, err := launchLocalBridgeWith(context.Background(), "/opt/agents-bridge", f.start)
 	if err != nil || id != "dddd4444" {
 		t.Fatalf("got %q, %v", id, err)
 	}
@@ -117,7 +117,7 @@ func TestLaunchLocalBridgeUsesAPrivateTempDirAndCleansUp(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		// The dir was 0700 when it existed: MkdirTemp guarantees it; assert
 		// the intent through the base name instead.
-		if !strings.HasPrefix(filepath.Base(filepath.Dir(readyPath)), "codex-bridge-ready-") {
+		if !strings.HasPrefix(filepath.Base(filepath.Dir(readyPath)), "agents-bridge-ready-") {
 			t.Fatalf("unexpected temp dir %q", readyPath)
 		}
 	}
@@ -193,7 +193,7 @@ func TestRunTUIHomePrintsTheExitNoticeAfterTheTUIEnds(t *testing.T) {
 		t.Fatalf("setup: expected one program run and one creation, got %v / %d", order, src.creates)
 	}
 	text := out.String()
-	for _, want := range []string{"dddd4444-0000", "codex-bridge stop --instance-id dddd4444-0000"} {
+	for _, want := range []string{"dddd4444-0000", "agents-bridge stop --instance-id dddd4444-0000"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("stdout should mention %q:\n%s", want, text)
 		}

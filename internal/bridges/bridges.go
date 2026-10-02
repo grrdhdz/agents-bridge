@@ -1,7 +1,7 @@
 // Package bridges is the one place that turns this user's live control
 // descriptors into "the list of running bridges" (plus the two things you
 // can do to one from outside: pick the endpoint to stop it and stop it). It
-// exists so `codex-bridge ps`, `codex-bridge stop` and the TUI's home screen
+// exists so `agents-bridge ps`, `agents-bridge stop` and the TUI's home screen
 // (spec §5: "misma fuente que ps") share one implementation instead of two
 // copies that could drift apart. It only ever reads descriptor metadata and
 // /v1/health, and never exposes control_url or capability; cwd is reduced
@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // ErrNotFound reports that no live descriptor of this user has the
@@ -202,7 +202,7 @@ func ObserverDescriptor(root, instanceID string) (control.Descriptor, error) {
 }
 
 // Stop asks the instance to close through its control endpoint (POST
-// /v1/stop, §4.2), the same request `codex-bridge stop` makes. It returns
+// /v1/stop, §4.2), the same request `agents-bridge stop` makes. It returns
 // ErrNotFound when this user has no live descriptor for instanceID.
 func Stop(ctx context.Context, root, instanceID string) error {
 	descriptors, err := control.ListDescriptors(root)

@@ -1,10 +1,10 @@
-# Codex Agents Bridge
+# Agents Bridge
 
-`codex-bridge` es una miniaplicación TUI de texto para mantener un canal redundante
+`agents-bridge` es una miniaplicación TUI de texto para mantener un canal redundante
 entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
 envía primero por Codex y después se copia y pega exactamente igual en la TUI.
 La primera versión no automatiza ni inspecciona Codex.
-La versión actual es `v0.4.0`: además de lo siguiente, el tema `auto` ya no
+La base funcional de este checkout es `v0.4.0`: además de lo siguiente, el tema `auto` ya no
 lee stdin fuera de Bubble Tea y el composer descarta caracteres de control
 (corrige texto de reportes de ratón en el composer y la barra de estado
 cortada en el panel xterm.js); coordinación entre agentes (ver «Coordinación
@@ -24,20 +24,44 @@ cumplan contraste WCAG ≥ 4.5:1 en los temas claro y oscuro. `v0.3.1` corrigió
 `join --headless` quedara vivo al cerrarse el host (ver `--reconnect-timeout`). `v0.3.0` trajo el
 rediseño de la TUI (temas claro/oscuro, Markdown
 con código resaltado, ratón, paleta de comandos, panel lateral) y una pantalla
-de inicio con la lista de tus puentes (`codex-bridge tui`). La última versión
+de inicio con la lista de tus puentes (`agents-bridge tui`). La última versión
 publicada anterior, `v0.2.1`, corrigió en Windows lo encontrado al verificar
 `v0.2.0`, que añadió el modo local entre agentes del mismo equipo y el control
 no gráfico `ctl`.
 
+## Migración desde codex-bridge
+
+El binario ahora se llama `agents-bridge`, sin alias del nombre anterior. El
+módulo es `github.com/grrdhdz/agents-bridge` y el paquete del comando es
+`cmd/agents-bridge`. Actualiza los scripts y comandos que lo invocan; el
+subcomando específico de Codex sigue siendo `agents-bridge codex open`.
+
+- Añade para el nuevo binario la regla de Codex
+  `prefix_rule(pattern=["agents-bridge", "ctl"], decision="allow")` en
+  `~/.codex/rules/default.rules`.
+- Cambia `CODEX_BRIDGE_THEME` por `AGENTS_BRIDGE_THEME`. Las variables
+  `CODEX_BRIDGE_*` dejan de leerse; no hay compatibilidad con los nombres antiguos.
+- Usa la skill [`agents-bridge`](.agents/skills/agents-bridge/SKILL.md) y cambia
+  los prompts de activación al nuevo nombre. La copia global antigua
+  `~/.agents/skills/codex-bridge` puede conservarse para proyectos en v0.4.
+- El directorio de descriptores pasa de `codex-bridge/` a `agents-bridge/`
+  tanto en macOS como en Windows. Las dos versiones pueden convivir y no
+  descubren ni controlan los puentes de la otra; no se migran puentes vivos.
+- La cabecera HTTP es `X-Agents-Bridge-Request-ID` y las cabeceras de texto de
+  `ctl wait` y `ctl peek` empiezan por `--- agents-bridge instance=…`.
+
+Este cambio prepara v0.5; las versiones publicadas anteriormente conservan
+el binario `codex-bridge`. Compila este checkout para obtener el nombre nuevo.
+
 ## Propiedades del MVP
 
-- Cada ejecución de `codex-bridge` en Mac crea un proceso/instancia aislada con un
+- Cada ejecución de `agents-bridge` en Mac crea un proceso/instancia aislada con un
   `instance_id`, un puerto TCP efímero y un token de emparejamiento de un solo
   uso.
 - El servidor vive en el proceso Mac. Windows se une como único ejecutor.
 - Tailscale se usa únicamente para conectividad: la Mac obtiene su IPv4 con
   `tailscale ip --4` y su nombre MagicDNS desde `tailscale status --json`.
-  `codex-bridge` busca primero `tailscale` en PATH y, en macOS, también reconoce el
+  `agents-bridge` busca primero `tailscale` en PATH y, en macOS, también reconoce el
   CLI oficial del bundle `/Applications/Tailscale.app/Contents/MacOS/Tailscale`
   (o el bundle equivalente dentro de `~/Applications`). En Windows conserva
   PATH y añade las ubicaciones estándar de `Program Files`; no modifica la
@@ -58,38 +82,38 @@ no necesita el CLI de Tailscale.
 ```sh
 go mod tidy
 go test ./...
-go build -o codex-bridge ./cmd/codex-bridge
-GOOS=windows GOARCH=amd64 go build -o codex-bridge.exe ./cmd/codex-bridge
+go build -o agents-bridge ./cmd/agents-bridge
+GOOS=windows GOARCH=amd64 go build -o agents-bridge.exe ./cmd/agents-bridge
 ```
 
-Comprueba la versión del binario con `codex-bridge --version`.
+Comprueba la versión del binario con `agents-bridge --version`.
 
 ## Instalación Windows
 
 La opción reproducible desde código fuente es instalar el paquete del módulo:
 
 ```powershell
-go install github.com/grrdhdz/codex-agents-bridge/cmd/codex-bridge@latest
-codex-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
+go install github.com/grrdhdz/agents-bridge/cmd/agents-bridge@latest
+agents-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
 ```
 
 `go install` coloca el ejecutable en `%GOBIN%` o, por defecto,
 `%USERPROFILE%\go\bin`; agrega esa carpeta al PATH de tu sesión si Windows no
 la encuentra automáticamente.
 
-También hay un binario Windows amd64 y su checksum en la [última release](https://github.com/grrdhdz/codex-agents-bridge/releases/latest):
+También hay un binario Windows amd64 y su checksum en la [última release](https://github.com/grrdhdz/agents-bridge/releases/latest):
 
 ```powershell
-Invoke-WebRequest https://github.com/grrdhdz/codex-agents-bridge/releases/latest/download/codex-bridge-windows-amd64.exe -OutFile .\codex-bridge.exe
-Invoke-WebRequest https://github.com/grrdhdz/codex-agents-bridge/releases/latest/download/SHA256SUMS -OutFile .\SHA256SUMS
-$expected = ((Select-String -Path .\SHA256SUMS -Pattern 'codex-bridge-windows-amd64.exe').Line -split '\s+')[0].ToLowerInvariant()
-$actual = (Get-FileHash .\codex-bridge.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+Invoke-WebRequest https://github.com/grrdhdz/agents-bridge/releases/latest/download/agents-bridge-windows-amd64.exe -OutFile .\agents-bridge.exe
+Invoke-WebRequest https://github.com/grrdhdz/agents-bridge/releases/latest/download/SHA256SUMS -OutFile .\SHA256SUMS
+$expected = ((Select-String -Path .\SHA256SUMS -Pattern 'agents-bridge-windows-amd64.exe').Line -split '\s+')[0].ToLowerInvariant()
+$actual = (Get-FileHash .\agents-bridge.exe -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actual -ne $expected) { throw 'SHA256 no coincide' }
-.\codex-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
+.\agents-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
 ```
 
 Consulta también [`docs/INSTALL-WINDOWS.md`](docs/INSTALL-WINDOWS.md). El
-comando de unión completo lo imprime `codex-bridge` en la Mac; no configures
+comando de unión completo lo imprime `agents-bridge` en la Mac; no configures
 proyectos ni `project_id` en ningún repositorio.
 
 ## Flujo de emparejamiento
@@ -97,11 +121,11 @@ proyectos ni `project_id` en ningún repositorio.
 En la Mac del orquestador:
 
 ```sh
-./codex-bridge
+./agents-bridge
 ```
 
 La aplicación detecta la IPv4 Tailscale, crea la instancia y copia
-automáticamente el comando completo `codex-bridge join ...` al portapapeles de
+automáticamente el comando completo `agents-bridge join ...` al portapapeles de
 la Mac. Pégalo en Codex o PowerShell para el agente Windows. La salida inicial
 de la terminal conserva el comando completo como fallback seguro si la copia
 falla; no se muestra el token en la vista normal de la TUI. Pulsa `F5` para
@@ -110,7 +134,7 @@ volver a copiarlo. `/pair` genera y copia del mismo modo un comando nuevo.
 En Windows:
 
 ```powershell
-codex-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
+agents-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
 ```
 
 El token se consume una sola vez. Después del emparejamiento el cliente usa un
@@ -126,7 +150,7 @@ lado puede arrancar sin TUI y hablar solo por `ctl`:
 En la Mac (orquestador/host):
 
 ```sh
-codex-bridge --headless --ready-file /ruta/ready.json
+agents-bridge --headless --ready-file /ruta/ready.json
 ```
 
 `--headless` en el host exige `--ready-file` (si falta, es un error de uso,
@@ -142,14 +166,14 @@ por inactividad.
 En el otro equipo, un agente ejecutor se une igual sin TUI:
 
 ```sh
-codex-bridge join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token> --headless
+agents-bridge join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token> --headless
 ```
 
 (los cuatro flags salen de `join_command`, tal cual, o un humano se los pasa a
 mano). Publica su propio descriptor `tailscale-join`, imprime la línea `ready`
 en stdout (y en `--ready-file` si se indica) y solo reconecta en segundo
 plano; un agente en ese equipo usa
-`codex-bridge ctl --instance-id <id> --role executor ...` normalmente.
+`agents-bridge ctl --instance-id <id> --role executor ...` normalmente.
 
 El join headless termina solo, sin necesidad de `stop`:
 
@@ -166,8 +190,8 @@ El join headless termina solo, sin necesidad de `stop`:
 `--reconnect-timeout` solo afecta a `--headless`; la TUI de `join` no cambia.
 
 En cualquiera de los dos equipos, el usuario observa e interviene en la
-conversación con `codex-bridge tui --instance-id <id>` (ver más abajo) sin
-tocar el flujo de los agentes; y `codex-bridge stop --instance-id <id>` cierra
+conversación con `agents-bridge tui --instance-id <id>` (ver más abajo) sin
+tocar el flujo de los agentes; y `agents-bridge stop --instance-id <id>` cierra
 el proceso local de ese equipo (el host o el join), no el otro lado.
 
 ## La TUI (v0.3.0)
@@ -182,8 +206,8 @@ la terminal queda como estaba.
 
 ### Inicio: la lista de tus puentes
 
-`codex-bridge tui` **sin** `--instance-id` abre la pantalla de inicio: la lista
-de los puentes vivos de tu usuario (la misma fuente que `codex-bridge ps`:
+`agents-bridge tui` **sin** `--instance-id` abre la pantalla de inicio: la lista
+de los puentes vivos de tu usuario (la misma fuente que `agents-bridge ps`:
 descriptores y `/v1/health`), refrescada cada 2 s. Cada fila muestra la
 instancia (corta), el proyecto (directorio de trabajo del puente), el modo,
 los roles, si el otro lado está conectado (●/○), la inactividad, el número de
@@ -191,17 +215,17 @@ mensajes y la hora de inicio.
 
 - `enter` (o doble clic): entra en el puente como observador.
 - `s`: cierra el puente seleccionado, con un diálogo de confirmación (el mismo
-  camino que `codex-bridge stop`).
+  camino que `agents-bridge stop`).
 - `n`: crea un puente `local --headless` nuevo y entra en él. Es un proceso en
   segundo plano desacoplado de la TUI (el propio ejecutable, con el
   `--idle-timeout` por defecto de 30 min): sigue vivo al salir de la TUI,
   aparece en `ps` y se cierra con `stop` o por inactividad. Al salir, la TUI
   imprime en la terminal los que sigas teniendo vivos, con el comando para
-  cerrarlos (`codex-bridge stop --instance-id <id>`); nunca los cierra sola.
+  cerrarlos (`agents-bridge stop --instance-id <id>`); nunca los cierra sola.
 - `r`: refresca ahora. `/`: filtra por instancia, proyecto o modo (`esc` quita
   el filtro). `q` o `Ctrl+C`: sale. `Ctrl+P`: paleta. `?`: ayuda.
 - Sin puentes, el inicio explica cómo crear uno (`n`) o lanzarlo tú
-  (`codex-bridge local`).
+  (`agents-bridge local`).
 
 Con `--instance-id ID` la TUI entra directo a ese puente, como antes (y no hay
 inicio al que volver).
@@ -252,7 +276,7 @@ mientras arrastras: así el terminal se queda el ratón en lugar de la TUI.
 
 ### Temas
 
-`--theme dark|light|auto` (o `CODEX_BRIDGE_THEME`) en host, `join`, `local` y
+`--theme dark|light|auto` (o `AGENTS_BRIDGE_THEME`) en host, `join`, `local` y
 `tui`; por defecto `auto`: arranca en oscuro y, desde dentro de la TUI
 (`tea.RequestBackgroundColor`, respuesta leída por el lector de entrada de
 Bubble Tea), pasa a claro si la terminal responde con un fondo claro; si no
@@ -273,18 +297,18 @@ un agente de la app Codex como ejecutor) no hace falta Tailscale, TUI ni
 emparejamiento:
 
 ```sh
-codex-bridge local
+agents-bridge local
 ```
 
 El proceso escucha solo en `127.0.0.1` y aloja ambos roles. Si su stdout es
 una terminal real y no se pasa `--headless`, muestra directamente su propia
-TUI observadora (igual que `codex-bridge tui`, ver abajo, pero sobre su
+TUI observadora (igual que `agents-bridge tui`, ver abajo, pero sobre su
 propio endpoint de orquestador) en vez de quedarse en silencio; aquí la TUI
 **es** el proceso: cerrarla con `Ctrl+C`, `/quit` o un `/stop` confirmado
-cierra el puente entero (a diferencia de una `codex-bridge tui` separada,
+cierra el puente entero (a diferencia de una `agents-bridge tui` separada,
 donde `/quit` solo cierra esa ventana y deja el puente vivo). Para
-distinguirlas, esta TUI se titula `CODEX-BRIDGE LOCAL` y su pie dice
-`/quit cierra el puente`; la separada se titula `CODEX-BRIDGE OBSERVADOR` y
+distinguirlas, esta TUI se titula `AGENTS-BRIDGE LOCAL` y su pie dice
+`/quit cierra el puente`; la separada se titula `AGENTS-BRIDGE OBSERVADOR` y
 dice `/quit cierra esta ventana`. En ese modo no
 se imprime la línea `ready` en stdout —usa `--ready-file` para conocer el
 `instance_id` desde otro lado—. Con `--headless`, o si stdout no es una
@@ -292,7 +316,7 @@ terminal (el caso normal cuando un agente lo lanza), imprime la línea
 `{"type":"ready","instance_id":...}` sin secretos y queda en segundo plano.
 
 Cualquiera de los dos modos se cierra con `Ctrl+C`, `SIGTERM`,
-`codex-bridge stop` (ver abajo) o tras `--idle-timeout` (por defecto `30m`;
+`agents-bridge stop` (ver abajo) o tras `--idle-timeout` (por defecto `30m`;
 `0` lo desactiva) sin actividad, y borra todo su estado. Actividad es
 cualquier mensaje publicado o recibido, o un `ctl wait`/`watch` en curso del
 lado orquestador (la propia TUI, embebida o separada, cuenta así, porque usa
@@ -312,24 +336,24 @@ usuario puede tener varios puentes a la vez, así que `--instance-id` es
 obligatorio en todo comando salvo `ctl list`:
 
 ```sh
-printf 'TAREA\n...\n' | codex-bridge ctl send --instance-id <id> --role orchestrator --body-file -
-codex-bridge ctl wait --instance-id <id> --role executor --timeout 5m --format text
-codex-bridge ctl read --instance-id <id> --role orchestrator --after-event-seq 0
-codex-bridge ctl watch --instance-id <id> --role executor
-codex-bridge ctl peek --instance-id <id> --role executor --format text
-codex-bridge ctl export --instance-id <id> --role orchestrator --output conversacion.md
-codex-bridge ctl list
+printf 'TAREA\n...\n' | agents-bridge ctl send --instance-id <id> --role orchestrator --body-file -
+agents-bridge ctl wait --instance-id <id> --role executor --timeout 5m --format text
+agents-bridge ctl read --instance-id <id> --role orchestrator --after-event-seq 0
+agents-bridge ctl watch --instance-id <id> --role executor
+agents-bridge ctl peek --instance-id <id> --role executor --format text
+agents-bridge ctl export --instance-id <id> --role orchestrator --output conversacion.md
+agents-bridge ctl list
 ```
 
 En Windows PowerShell 5.1, lo que se canaliza a un programa llega con la
 codificación de `$OutputEncoding` (por defecto ASCII: `ó` y `ñ` se convierten
-en `?` **antes** de llegar a `codex-bridge`). Configura UTF-8 sin BOM en la
+en `?` **antes** de llegar a `agents-bridge`). Configura UTF-8 sin BOM en la
 sesión antes de enviar:
 
 ```powershell
 $utf8 = New-Object Text.UTF8Encoding $false
 $OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8
-"TAREA`nDescripción…" | codex-bridge ctl send --instance-id <id> --role orchestrator --body-file -
+"TAREA`nDescripción…" | agents-bridge ctl send --instance-id <id> --role orchestrator --body-file -
 ```
 
 `ctl send` quita los BOM UTF-8 iniciales, convierte CRLF en LF y acepta un
@@ -355,7 +379,7 @@ así que `ctl` funciona igual en Mac y Windows.
   otro rol hay sin leer, si alguno es `URGENTE`, y la etiqueta y `message_id`
   del más reciente. No confirma, no mueve el cursor y no cuenta como presencia
   (no mantiene vivo un `--idle-timeout`). Texto:
-  `--- codex-bridge instance=ID unread=N urgent=sí|no latest=ETIQUETA`.
+  `--- agents-bridge instance=ID unread=N urgent=sí|no latest=ETIQUETA`.
 - **Etiquetas nuevas**: `URGENTE` (interrumpe; el ejecutor la atiende en su
   siguiente `peek`) y `PROGRESO` (nota breve de avance).
 - **Estado por rol.** Cada endpoint registra si hay un `wait` en curso, la hora
@@ -380,15 +404,15 @@ Cuando el ejecutor es un agente de la app de Codex, el orquestador puede abrir
 su chat con el prompt ya escrito (el usuario pulsa Enter):
 
 ```sh
-codex-bridge codex open --thread 'codex://threads/<id>' --instance-id <id> --prompt-file -
+agents-bridge codex open --thread 'codex://threads/<id>' --instance-id <id> --prompt-file -
 ```
 
 Para ver y cerrar los puentes del usuario, sin depender de `ctl`:
 
 ```sh
-codex-bridge ps                       # tabla: instancia, modo, roles, pid, inicio, inactividad, peer, mensajes, estado ORQ/EJEC
-codex-bridge ps --format jsonl
-codex-bridge stop --instance-id <id>  # cierre limpio, equivalente a Ctrl+C en ese proceso
+agents-bridge ps                       # tabla: instancia, modo, roles, pid, inicio, inactividad, peer, mensajes, estado ORQ/EJEC
+agents-bridge ps --format jsonl
+agents-bridge stop --instance-id <id>  # cierre limpio, equivalente a Ctrl+C en ese proceso
 ```
 
 `ps` agrupa por `instance_id` (un puente `local` aporta una sola fila con
@@ -401,12 +425,12 @@ orquestador en `local`; el rol del ejecutor no puede cerrarlo y responde
 `FORBIDDEN`); si la instancia no existe, sale con código 3, y si su puerto no
 responde, con código 8 e imprime el PID por si hace falta un `kill` manual.
 
-Para ver la conversación en vivo e intervenir sin ser un agente, `codex-bridge
+Para ver la conversación en vivo e intervenir sin ser un agente, `agents-bridge
 tui` (sin argumentos) abre la lista de tus puentes y desde ahí se entra en uno;
 o directamente:
 
 ```sh
-codex-bridge tui --instance-id <id>
+agents-bridge tui --instance-id <id>
 ```
 
 Se conecta por el plano de control (nunca por el protocolo TCP), así que
@@ -425,14 +449,14 @@ prioridad. Esta TUI **nunca confirma mensajes**: usa `watch`, así que el
 pantalla alternativa de la terminal, así que al salir la deja como estaba.
 
 Los descriptores de control viven en un directorio privado del usuario
-(`0700`; en Windows, `%LOCALAPPDATA%\Temp\codex-bridge\<usuario>\instances`
+(`0700`; en Windows, `%LOCALAPPDATA%\Temp\agents-bridge\<usuario>\instances`
 con una ACL protegida solo para el usuario actual). Un directorio de Windows
 creado por v0.2.0, con la ACL heredada de `%TEMP%`, se endurece solo la
 primera vez; si pertenece a otro usuario, `ctl` se desactiva con un error que
 pide borrarlo.
 
 El flujo completo para agentes está en la skill
-[`.agents/skills/codex-bridge`](.agents/skills/codex-bridge/SKILL.md) y el
+[`.agents/skills/agents-bridge`](.agents/skills/agents-bridge/SKILL.md) y el
 diseño en
 [`docs/superpowers/specs/2026-09-27-local-agents-design.md`](docs/superpowers/specs/2026-09-27-local-agents-design.md).
 

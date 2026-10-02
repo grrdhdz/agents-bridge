@@ -1,5 +1,9 @@
 # Plan: rediseño de la TUI (v0.3.0)
 
+> Documento histórico anterior al renombre de 2026-10-01. Las referencias a
+> `codex-bridge` describen esa versión; para el uso actual consulta la sección
+> «Migración desde codex-bridge» del [README](../../../README.md).
+
 Spec: `docs/superpowers/specs/2026-09-27-tui-redesign-design.md` (aprobada).
 Estado: **fases 1–3 completadas** (versión `v0.3.0`).
 Ejecución delegada a un subagente por `codex-bridge`; el orquestador revisa,

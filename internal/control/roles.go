@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // RoleState is what a role is doing, as far as this bridge can tell (§3.4 of

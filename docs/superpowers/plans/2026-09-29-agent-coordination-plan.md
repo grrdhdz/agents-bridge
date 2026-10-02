@@ -1,5 +1,9 @@
 # Plan: coordinación entre agentes (v0.4.0)
 
+> Documento histórico anterior al renombre de 2026-10-01. Las referencias a
+> `codex-bridge` describen esa versión; para el uso actual consulta la sección
+> «Migración desde codex-bridge» del [README](../../../README.md).
+
 Spec: `docs/superpowers/specs/2026-09-29-agent-coordination-design.md` (aprobada).
 Cada paso: prueba que falla → implementación mínima → `go test -race ./...`.
 

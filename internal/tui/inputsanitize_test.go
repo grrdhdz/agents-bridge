@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 func hasControl(s string) bool {
@@ -67,7 +67,7 @@ func TestViewKeepsTerminalHeightEvenWithAnomalousComposerContent(t *testing.T) {
 		if len(lines) != h {
 			t.Fatalf("height %d: View() has %d lines", h, len(lines))
 		}
-		if !strings.Contains(lines[0], "codex-bridge") {
+		if !strings.Contains(lines[0], "agents-bridge") {
 			t.Fatalf("height %d: status bar must stay first, got %q", h, lines[0])
 		}
 	}

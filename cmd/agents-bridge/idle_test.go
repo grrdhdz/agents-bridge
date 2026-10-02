@@ -99,28 +99,28 @@ func TestIdleTimeoutMessageResetsClock(t *testing.T) {
 // TestParseIdleTimeoutFlag covers the small flag parser shared by `local`
 // and the host command.
 func TestParseIdleTimeoutFlag(t *testing.T) {
-	got, err := parseIdleTimeoutFlag("codex-bridge local", []string{"--idle-timeout", "45s"}, defaultLocalIdleTimeout)
+	got, err := parseIdleTimeoutFlag("agents-bridge local", []string{"--idle-timeout", "45s"}, defaultLocalIdleTimeout)
 	if err != nil || got != 45*time.Second {
 		t.Fatalf("expected 45s, got %v err=%v", got, err)
 	}
-	got, err = parseIdleTimeoutFlag("codex-bridge local", nil, defaultLocalIdleTimeout)
+	got, err = parseIdleTimeoutFlag("agents-bridge local", nil, defaultLocalIdleTimeout)
 	if err != nil || got != defaultLocalIdleTimeout {
 		t.Fatalf("expected default %v, got %v err=%v", defaultLocalIdleTimeout, got, err)
 	}
-	got, err = parseIdleTimeoutFlag("codex-bridge local", []string{"--idle-timeout", "0"}, defaultLocalIdleTimeout)
+	got, err = parseIdleTimeoutFlag("agents-bridge local", []string{"--idle-timeout", "0"}, defaultLocalIdleTimeout)
 	if err != nil || got != 0 {
 		t.Fatalf("0 should disable the idle timer, got %v err=%v", got, err)
 	}
-	if _, err := parseIdleTimeoutFlag("codex-bridge local", []string{"--idle-timeout", "-1s"}, defaultLocalIdleTimeout); err == nil {
+	if _, err := parseIdleTimeoutFlag("agents-bridge local", []string{"--idle-timeout", "-1s"}, defaultLocalIdleTimeout); err == nil {
 		t.Fatal("negative idle timeout should be rejected")
 	}
-	if _, err := parseIdleTimeoutFlag("codex-bridge local", []string{"--bogus"}, defaultLocalIdleTimeout); err == nil {
+	if _, err := parseIdleTimeoutFlag("agents-bridge local", []string{"--bogus"}, defaultLocalIdleTimeout); err == nil {
 		t.Fatal("unknown flag should be rejected")
 	}
 }
 
 // TestIdleTimeoutOrchestratorWatchKeepsInstanceAlive covers §7.1: an
-// observing TUI (the embedded one, or a standalone `codex-bridge tui`) holds
+// observing TUI (the embedded one, or a standalone `agents-bridge tui`) holds
 // its connection open with /v1/watch on the orchestrator endpoint, not
 // /v1/wait. That must count as presence exactly like an orchestrator wait
 // does, so --idle-timeout never closes a bridge someone is actively

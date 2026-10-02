@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // fgSequence is the truecolor SGR foreground a rendered span starts with.

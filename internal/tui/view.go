@@ -8,8 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // modeLabel names Capabilities.Mode for the status bar and window title.
@@ -74,7 +74,7 @@ func (m *Model) statusBar() string {
 	}
 	indicator := m.th.ConnIndicator(connState(m.state))
 	idle := formatIdle(m.now().Sub(m.lastActivity))
-	line := fmt.Sprintf("codex-bridge %s · %s · %s %s · inactivo %s", shortID, modeLabel(m.caps.Mode), indicator, roleName(peerRole(m.localRole)), idle)
+	line := fmt.Sprintf("agents-bridge %s · %s · %s %s · inactivo %s", shortID, modeLabel(m.caps.Mode), indicator, roleName(peerRole(m.localRole)), idle)
 	return m.th.StatusBarStyle().Width(m.width).Render(line)
 }
 
@@ -180,7 +180,7 @@ func (m *Model) View() tea.View {
 	}
 
 	content := composeScreen(m.th, m.width, m.height, backdrop, windows)
-	return newScreenView(content, m.th, "codex-bridge "+modeLabel(m.caps.Mode)+" "+m.transport.InstanceID())
+	return newScreenView(content, m.th, "agents-bridge "+modeLabel(m.caps.Mode)+" "+m.transport.InstanceID())
 }
 
 // composeScreen turns one screen's backdrop plus its floating windows into

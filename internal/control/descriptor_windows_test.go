@@ -12,7 +12,7 @@ import (
 )
 
 // TestNewDescriptorDirectoryIsOwnerOnly covers §5.1 on Windows: a directory
-// codex-bridge creates carries a protected DACL for the current user alone.
+// agents-bridge creates carries a protected DACL for the current user alone.
 func TestNewDescriptorDirectoryIsOwnerOnly(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "instances")
 	if _, err := ListDescriptors(root); err != nil {

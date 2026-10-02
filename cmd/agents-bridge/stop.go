@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/control"
 )
 
 func runStop(ctx context.Context, args []string, env ctlEnv) int {
@@ -19,7 +19,7 @@ func runStop(ctx context.Context, args []string, env ctlEnv) int {
 }
 
 func dispatchStop(ctx context.Context, args []string, env ctlEnv) error {
-	flags := flag.NewFlagSet("codex-bridge stop", flag.ContinueOnError)
+	flags := flag.NewFlagSet("agents-bridge stop", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	instanceID := flags.String("instance-id", "", "instance_id to stop")
 	if err := flags.Parse(args); err != nil {

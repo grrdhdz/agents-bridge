@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // ctlPeek implements `ctl peek` (§3.2): a read-only look at the unread
@@ -51,7 +51,7 @@ func ctlPeek(ctx context.Context, env ctlEnv, d control.Descriptor, format strin
 	if latest == "" {
 		latest = "ninguna"
 	}
-	_, err = fmt.Fprintf(env.stdout, "--- codex-bridge instance=%s unread=%d urgent=%s latest=%s\n", record.InstanceID, record.Unread, urgent, latest)
+	_, err = fmt.Fprintf(env.stdout, "--- agents-bridge instance=%s unread=%d urgent=%s latest=%s\n", record.InstanceID, record.Unread, urgent, latest)
 	return err
 }
 
@@ -195,7 +195,7 @@ func renderExportJSONL(instanceID string, oldest uint64, messages []exportedMess
 
 func renderExportMarkdown(instanceID string, at time.Time, oldest uint64, messages []exportedMessage) string {
 	var b strings.Builder
-	b.WriteString("# Conversación codex-bridge\n\n")
+	b.WriteString("# Conversación agents-bridge\n\n")
 	if oldest > 0 {
 		fmt.Fprintf(&b, "> Aviso: %s.\n\n", evictedNotice(oldest))
 	}

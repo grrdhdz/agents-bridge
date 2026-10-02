@@ -10,11 +10,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // defaultLocalIdleTimeout matches §5.1: a local instance with nobody present
@@ -39,7 +39,7 @@ const defaultLocalIdleTimeout = 30 * time.Minute
 // runEmbeddedTUI. isTerminal is a parameter (not a direct term.IsTerminal
 // call) so tests can exercise both paths without a real terminal. th is the
 // already-resolved theme (flag/env/auto-detected, per --theme and
-// CODEX_BRIDGE_THEME — see resolveTheme in main.go) the embedded TUI draws
+// AGENTS_BRIDGE_THEME — see resolveTheme in main.go) the embedded TUI draws
 // with.
 func runLocal(ctx context.Context, stdout io.Writer, root, cwd string, idleTimeout time.Duration, readyFile string, headless bool, isTerminal func() bool, th theme.Theme) error {
 	var readyOut *control.ReadyFile
@@ -165,13 +165,13 @@ var runTeaProgram = func(p *tea.Program) error {
 }
 
 // runEmbeddedTUI implements §7.1's TUI-owns-the-process mode: local shows
-// its own observer TUI (over the control plane, exactly like `codex-bridge
+// its own observer TUI (over the control plane, exactly like `agents-bridge
 // tui`) attached to this instance's own orchestrator endpoint. Unlike a
-// separately launched `codex-bridge tui`, where /quit only closes the
+// separately launched `agents-bridge tui`, where /quit only closes the
 // window and the bridge lives on, here the TUI *is* the process: closing it
 // (Ctrl+C, /quit, or a confirmed /stop) closes the whole bridge. The
 // reverse also holds — an external stop (another terminal's
-// `codex-bridge stop`, or --idle-timeout firing) must close this TUI too,
+// `agents-bridge stop`, or --idle-timeout firing) must close this TUI too,
 // which watchExternalStop below wires up.
 func runEmbeddedTUI(ctx context.Context, stop *stopper, ownerEndpoint *control.Endpoint, th theme.Theme, run func(*tea.Program) error) error {
 	model := tui.New(buildEmbeddedObserverOptions(ownerEndpoint, th))
@@ -184,7 +184,7 @@ func runEmbeddedTUI(ctx context.Context, stop *stopper, ownerEndpoint *control.E
 
 // buildEmbeddedObserverOptions builds the embedded TUI's Options: it talks
 // to its own orchestrator endpoint purely over the control plane (the same
-// ControlTransport the standalone `codex-bridge tui` uses), and closing it
+// ControlTransport the standalone `agents-bridge tui` uses), and closing it
 // asks that very endpoint to stop, which — because CanStop is true for the
 // orchestrator in local mode — actually tears down the whole bridge.
 // OwnsBridge is what tells the model so; the standalone TUI never sets it.
@@ -204,7 +204,7 @@ func buildEmbeddedObserverOptions(ownerEndpoint *control.Endpoint, th theme.Them
 }
 
 // watchExternalStop calls quit once stop fires from outside the TUI itself
-// (another terminal's `codex-bridge stop`, or --idle-timeout), or once ctx
+// (another terminal's `agents-bridge stop`, or --idle-timeout), or once ctx
 // ends (process-level shutdown) — either way, the embedded TUI must not be
 // left running against a bridge that is already gone or going away.
 func watchExternalStop(ctx context.Context, stop *stopper, quit func()) {

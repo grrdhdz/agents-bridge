@@ -1,4 +1,4 @@
-// home.go is the home screen (spec §5, `codex-bridge tui` without
+// home.go is the home screen (spec §5, `agents-bridge tui` without
 // --instance-id): the list of this user's live bridges, refreshed every 2 s
 // through a tea.Cmd (never inside Update), with the same visual language as
 // the bridge view — status bar, bordered container, one-line shortcuts bar
@@ -20,9 +20,9 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/keys"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/tui/keys"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 const (
@@ -666,7 +666,7 @@ func (h *HomeModel) title() string {
 	if shown != total {
 		count = fmt.Sprintf("%d de %d", shown, total)
 	}
-	title := fmt.Sprintf("codex-bridge · %s %s", count, noun)
+	title := fmt.Sprintf("agents-bridge · %s %s", count, noun)
 	if h.listErr != nil {
 		title += " · sin actualizar"
 	}
@@ -693,7 +693,7 @@ func (h *HomeModel) View() tea.View {
 		windows = append(windows, w)
 	}
 	content := composeScreen(h.th, h.width, h.height, backdrop, windows)
-	return newScreenView(content, h.th, "codex-bridge inicio")
+	return newScreenView(content, h.th, "agents-bridge inicio")
 }
 
 func (h *HomeModel) backdrop() string {
@@ -897,7 +897,7 @@ func (h *HomeModel) emptyState(innerW, innerH int) []string {
 			"No hay puentes activos.",
 			"",
 			"n  crea uno nuevo (un puente local en segundo plano) y entra en él.",
-			"o lánzalo tú:  codex-bridge local",
+			"o lánzalo tú:  agents-bridge local",
 			"(los puentes de otros equipos no aparecen aquí: solo los de este usuario.)",
 		}
 	}

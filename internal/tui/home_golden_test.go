@@ -9,7 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // TestGoldenHomeScreens covers spec §10.2 for the home screen: empty and

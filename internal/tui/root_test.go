@@ -12,10 +12,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridges"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/bridges"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // trackedSession is a session whose transport and subscription record that
@@ -267,7 +267,7 @@ func TestAppExitNoticeListsOnlyCreatedBridgesStillAlive(t *testing.T) {
 	// Still listed => still alive.
 	src.set(append(threeBridges(), bridges.Info{InstanceID: "dddd4444-0000", Mode: "local"})...)
 	notice := a.ExitNotice(context.Background())
-	for _, want := range []string{"dddd4444-0000", "codex-bridge stop --instance-id dddd4444-0000"} {
+	for _, want := range []string{"dddd4444-0000", "agents-bridge stop --instance-id dddd4444-0000"} {
 		if !strings.Contains(notice, want) {
 			t.Fatalf("exit notice should contain %q:\n%s", want, notice)
 		}

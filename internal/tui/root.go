@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 // AppOptions configures the App shell.
@@ -20,7 +20,7 @@ type AppOptions struct {
 	Now func() time.Time
 }
 
-// App is the shell of `codex-bridge tui` without --instance-id (spec §3,
+// App is the shell of `agents-bridge tui` without --instance-id (spec §3,
 // §5): it owns the home screen and, while one is entered, one bridge view
 // (a Model with the observer capabilities), and moves between them:
 //
@@ -183,7 +183,7 @@ func (a *App) ExitNotice(ctx context.Context) string {
 	var b strings.Builder
 	b.WriteString("Puentes creados en esta sesión que siguen activos (no se cierran al salir):\n")
 	for _, id := range alive {
-		fmt.Fprintf(&b, "  %s   cierra con: codex-bridge stop --instance-id %s\n", id, id)
+		fmt.Fprintf(&b, "  %s   cierra con: agents-bridge stop --instance-id %s\n", id, id)
 	}
 	b.WriteString("También se cierran solos tras un rato sin actividad.\n")
 	return b.String()

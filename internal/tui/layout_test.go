@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // TestViewFillsExactlyTheTerminalHeightWithStatusBarFirst is a regression
@@ -30,7 +30,7 @@ func TestViewFillsExactlyTheTerminalHeightWithStatusBarFirst(t *testing.T) {
 				if len(lines) != height {
 					t.Fatalf("%dx%d: View() produced %d lines, want exactly %d:\n%s", width, height, len(lines), height, content)
 				}
-				if !strings.Contains(lines[0], "codex-bridge") {
+				if !strings.Contains(lines[0], "agents-bridge") {
 					t.Fatalf("%dx%d: the first line should be the status bar, got %q", width, height, lines[0])
 				}
 			})
@@ -44,7 +44,7 @@ func TestViewFillsExactlyTheTerminalHeightWithStatusBarFirst(t *testing.T) {
 // visible the real content was one row taller than resize() budgeted for.
 func TestViewFillsExactlyTheTerminalHeightWithOptionalFooterLines(t *testing.T) {
 	transport := &fakeTransport{instanceID: "abc"}
-	model := New(Options{Transport: transport, LocalRole: protocol.RoleOrchestrator, Capabilities: CapabilitiesForHost(), JoinCommand: "codex-bridge join --x", CopyCommand: func(string) error { return nil }})
+	model := New(Options{Transport: transport, LocalRole: protocol.RoleOrchestrator, Capabilities: CapabilitiesForHost(), JoinCommand: "agents-bridge join --x", CopyCommand: func(string) error { return nil }})
 	updated, _ := model.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	m := updated.(*Model)
 	m.Init() // copies the join command, populating copyInfo

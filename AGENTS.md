@@ -1,4 +1,4 @@
-# AGENTS.md — codex-agents-bridge
+# AGENTS.md — agents-bridge
 
 Instrucciones compartidas para todos los agentes (Codex, Claude Code y otros).
 Este archivo es la única fuente de instrucciones del proyecto. `CLAUDE.md` solo
@@ -6,7 +6,7 @@ importa este archivo; no agregues instrucciones allí.
 
 ## Propósito
 
-`codex-bridge` es un canal de texto efímero (solo RAM) entre dos agentes:
+`agents-bridge` es un canal de texto efímero (solo RAM) entre dos agentes:
 
 - Objetivo original: un orquestador en macOS y un ejecutor en Windows, conectados
   por Tailscale.
@@ -27,8 +27,8 @@ go build ./...
 go vet ./...
 go test ./...
 go test -race ./...
-go build -o codex-bridge ./cmd/codex-bridge
-GOOS=windows GOARCH=amd64 go build -o codex-bridge.exe ./cmd/codex-bridge
+go build -o agents-bridge ./cmd/agents-bridge
+GOOS=windows GOARCH=amd64 go build -o agents-bridge.exe ./cmd/agents-bridge
 ```
 
 Requiere Go 1.27+. Antes de declarar un cambio terminado: `gofmt -l .` vacío,
@@ -48,7 +48,7 @@ Requiere Go 1.27+. Antes de declarar un cambio terminado: `gofmt -l .` vacío,
 
 ## Mapa del código
 
-- `cmd/codex-bridge` — CLI: orquestador con TUI (por defecto), `join`,
+- `cmd/agents-bridge` — CLI: orquestador con TUI (por defecto), `join`,
   `local` (dos agentes en el mismo equipo) y `ctl` (control no gráfico).
 - `internal/protocol` — frames, envelopes y validación.
 - `internal/bridge` — `Server` (Mac), `Client`, `EventHub` (fan-out + journal).
@@ -75,7 +75,7 @@ Skills nuevas del proyecto se crean en `.agents/skills/`, no en directorios
 específicos de una herramienta (`.claude/`, `.codex/`). `.claude/skills` es un
 symlink a `.agents/skills` para que Claude Code las cargue.
 
-- `codex-bridge` (en este repo) — cómo dos agentes se comunican por el puente
+- `agents-bridge` (en este repo) — cómo dos agentes se comunican por el puente
   local como orquestador o ejecutor.
 
 ## Procesos y búsquedas
@@ -85,7 +85,7 @@ symlink a `.agents/skills` para que Claude Code las cargue.
   de módulos de Go: `$(go env GOMODCACHE)`. Para ubicar el código de una
   dependencia usa `go list -m -f '{{.Dir}}' <módulo>`.
 - No dejes procesos en segundo plano al terminar una tarea: cierra lo que
-  lances (puentes con `codex-bridge stop --instance-id`, esperas `ctl wait`,
+  lances (puentes con `agents-bridge stop --instance-id`, esperas `ctl wait`,
   servidores de prueba).
 
 ## Flujo de trabajo

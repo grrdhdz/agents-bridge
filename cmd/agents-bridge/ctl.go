@@ -17,8 +17,8 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // Exit codes from the 2026-09-13 spec (§6), extended by 2026-09-27 (§6).
@@ -104,7 +104,7 @@ func dispatchCtl(ctx context.Context, args []string, env ctlEnv) error {
 		return failure("USAGE", "ctl requires one of: list, read, watch, send, wait, peek, export")
 	}
 	operation, args := args[0], args[1:]
-	flags := flag.NewFlagSet("codex-bridge ctl "+operation, flag.ContinueOnError)
+	flags := flag.NewFlagSet("agents-bridge ctl "+operation, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	instanceID := flags.String("instance-id", "", "instance_id to control")
 	roleName := flags.String("role", "", "orchestrator or executor")
@@ -203,7 +203,7 @@ func request(ctx context.Context, d control.Descriptor, method, path string, bod
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, failure("CONTROL_UNREACHABLE", "control endpoint unreachable on loopback; if this runs inside a sandbox without network (e.g. Codex workspace-write), run codex-bridge ctl outside the sandbox")
+		return nil, failure("CONTROL_UNREACHABLE", "control endpoint unreachable on loopback; if this runs inside a sandbox without network (e.g. Codex workspace-write), run agents-bridge ctl outside the sandbox")
 	}
 	return response, nil
 }
@@ -370,14 +370,14 @@ func ctlWait(ctx context.Context, env ctlEnv, d control.Descriptor, timeout time
 		return failure("INTERNAL", "decode wait response: %v", err)
 	}
 	if record.Status != "message" || record.Message == nil {
-		_, err = fmt.Fprintf(env.stdout, "--- codex-bridge instance=%s timeout\n", record.InstanceID)
+		_, err = fmt.Fprintf(env.stdout, "--- agents-bridge instance=%s timeout\n", record.InstanceID)
 		return err
 	}
 	body := record.Message.Body
 	if !strings.HasSuffix(body, "\n") {
 		body += "\n"
 	}
-	_, err = fmt.Fprintf(env.stdout, "--- codex-bridge instance=%s message_id=%s from=%s event_seq=%d source=%s\n%s", record.InstanceID, record.Message.MessageID, roleAlias(record.Message.SenderRole), record.EventSeq, record.Message.Source, body)
+	_, err = fmt.Fprintf(env.stdout, "--- agents-bridge instance=%s message_id=%s from=%s event_seq=%d source=%s\n%s", record.InstanceID, record.Message.MessageID, roleAlias(record.Message.SenderRole), record.EventSeq, record.Message.Source, body)
 	return err
 }
 

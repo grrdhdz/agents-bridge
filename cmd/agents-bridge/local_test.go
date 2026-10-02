@@ -16,11 +16,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tui"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 type localRun struct {
@@ -128,7 +128,7 @@ func TestCtlSendAndWaitBetweenLocalRoles(t *testing.T) {
 		t.Fatalf("wait failed: %d %s", code, stderr)
 	}
 	header, body, found := strings.Cut(stdout, "\n")
-	if !found || !strings.HasPrefix(header, "--- codex-bridge instance="+instanceID+" message_id="+sent["message_id"].(string)) || !strings.Contains(header, "from=orchestrator") {
+	if !found || !strings.HasPrefix(header, "--- agents-bridge instance="+instanceID+" message_id="+sent["message_id"].(string)) || !strings.Contains(header, "from=orchestrator") {
 		t.Fatalf("unexpected text header: %q", header)
 	}
 	// ctl send leaves source unset, which the server defaults to
@@ -198,7 +198,7 @@ func TestCtlWaitTextTimeoutHeaderCarriesInstance(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("wait failed: %d %s", code, stderr)
 	}
-	want := "--- codex-bridge instance=" + instanceID + " timeout\n"
+	want := "--- agents-bridge instance=" + instanceID + " timeout\n"
 	if stdout != want {
 		t.Fatalf("timeout text output = %q, want %q", stdout, want)
 	}
@@ -263,7 +263,7 @@ func writeLiveDescriptor(t *testing.T, root, instanceID, controlURL string) {
 
 // TestCtlWaitControlUnreachableWhenLoopbackPortIsClosed covers the sandbox
 // case: a descriptor that still looks alive (ExpiresAt in the future), but
-// whose loopback port nobody is listening on anymore (e.g. codex-bridge ctl
+// whose loopback port nobody is listening on anymore (e.g. agents-bridge ctl
 // invoked from inside a network-less sandbox). ctl must not report
 // INSTANCE_NOT_FOUND/INSTANCE_CLOSED for this — those mean the instance
 // itself is gone — but a distinct, actionable CONTROL_UNREACHABLE at exit 8.
@@ -398,7 +398,7 @@ func TestShouldShowEmbeddedTUI(t *testing.T) {
 }
 
 // TestWatchExternalStopCallsQuitWhenStopFires covers §7.1: an external stop
-// (another terminal's `codex-bridge stop`, or --idle-timeout) must close the
+// (another terminal's `agents-bridge stop`, or --idle-timeout) must close the
 // embedded TUI, not just the headless select loop.
 func TestWatchExternalStopCallsQuitWhenStopFires(t *testing.T) {
 	stop := newStopper()
@@ -434,7 +434,7 @@ func TestWatchExternalStopCallsQuitWhenContextEnds(t *testing.T) {
 // TestBuildEmbeddedObserverOptionsClosingItStopsTheBridge covers §7.1's core
 // promise: the embedded TUI's OnStop actually reaches the orchestrator
 // endpoint's Stop callback — i.e. closing the TUI closes the whole bridge,
-// through the same POST /v1/stop path `codex-bridge tui` uses, not a
+// through the same POST /v1/stop path `agents-bridge tui` uses, not a
 // shortcut that only looks right.
 func TestBuildEmbeddedObserverOptionsClosingItStopsTheBridge(t *testing.T) {
 	h := newLocalHarnessForTUITest(t)

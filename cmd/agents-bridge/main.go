@@ -18,17 +18,17 @@ import (
 	tea "charm.land/bubbletea/v2"
 	term "github.com/charmbracelet/x/term"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/clipboard"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tailscale"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui"
-	"github.com/grrdhdz/codex-agents-bridge/internal/tui/theme"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/clipboard"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/tailscale"
+	"github.com/grrdhdz/agents-bridge/internal/tui"
+	"github.com/grrdhdz/agents-bridge/internal/tui/theme"
 )
 
 const (
-	commandName = "codex-bridge"
+	commandName = "agents-bridge"
 	appVersion  = "v0.4.0"
 )
 
@@ -139,7 +139,7 @@ func parseIdleTimeoutFlag(name string, args []string, def time.Duration) (time.D
 func isStdoutTerminal() bool { return term.IsTerminal(os.Stdout.Fd()) }
 
 // resolveTheme builds the Theme every mode's TUI draws with (spec §8):
-// --theme (flagValue) wins over CODEX_BRIDGE_THEME, which wins over "auto"
+// --theme (flagValue) wins over AGENTS_BRIDGE_THEME, which wins over "auto"
 // (dark/light picked from the terminal's own background); NO_COLOR (any
 // non-empty value, per no-color.org) degrades every mode to attributes and
 // symbols regardless of --theme.
@@ -150,7 +150,7 @@ func isStdoutTerminal() bool { return term.IsTerminal(os.Stdout.Fd()) }
 // redirected — a background `local --headless` then waited forever for a
 // reply from a hidden console (v0.3.0–v0.3.2).
 func resolveTheme(flagValue string, interactive bool) (theme.Theme, error) {
-	mode, err := theme.ResolveMode(flagValue, os.Getenv("CODEX_BRIDGE_THEME"))
+	mode, err := theme.ResolveMode(flagValue, os.Getenv("AGENTS_BRIDGE_THEME"))
 	if err != nil {
 		return theme.Theme{}, err
 	}
@@ -161,7 +161,7 @@ func resolveTheme(flagValue string, interactive bool) (theme.Theme, error) {
 	return theme.New(mode, theme.IsNoColor(os.Environ()), detectDark), nil
 }
 
-// localFlags holds `codex-bridge local`'s own flags (§5.1, §7.1).
+// localFlags holds `agents-bridge local`'s own flags (§5.1, §7.1).
 type localFlags struct {
 	idleTimeout time.Duration
 	readyFile   string
@@ -170,12 +170,12 @@ type localFlags struct {
 }
 
 func parseLocalFlags(args []string) (localFlags, error) {
-	flags := flag.NewFlagSet("codex-bridge local", flag.ContinueOnError)
+	flags := flag.NewFlagSet("agents-bridge local", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	idleTimeout := flags.Duration("idle-timeout", defaultLocalIdleTimeout, "cierra el proceso tras este tiempo sin actividad (0 desactiva)")
 	readyFile := flags.String("ready-file", "", "escribe la línea ready también en este archivo (0600, creación exclusiva)")
 	headless := flags.Bool("headless", false, "no muestra la TUI observadora aunque stdout sea una terminal")
-	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
+	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto AGENTS_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return localFlags{}, err
 	}
@@ -202,7 +202,7 @@ func parseHostFlags(args []string) (hostFlags, error) {
 	idleTimeout := flags.Duration("idle-timeout", 0, "cierra el proceso tras este tiempo sin actividad (0 desactiva; por defecto 0 en este modo)")
 	readyFile := flags.String("ready-file", "", "escribe la línea ready (con join_command en headless) en este archivo (0600, creación exclusiva)")
 	headless := flags.Bool("headless", false, "sin TUI; requiere --ready-file, donde va el comando de unión con su token")
-	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
+	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto AGENTS_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return hostFlags{}, err
 	}
@@ -239,7 +239,7 @@ func runOrchestrator(ctx context.Context, stdout io.Writer, root string, idleTim
 	port := server.Addr().(*net.TCPAddr).Port
 	joinCommand := formatPowerShellJoinCommand(fmt.Sprintf("%s join --host %s --port %d --instance %s --token %s", commandName, info.DNSName, port, server.InstanceID(), server.JoinToken()))
 	if !headless {
-		fmt.Fprintln(stdout, "Instancia codex-bridge creada en RAM.")
+		fmt.Fprintln(stdout, "Instancia agents-bridge creada en RAM.")
 		fmt.Fprintln(stdout, "Copia este comando al ejecutor Windows:")
 		fmt.Fprintln(stdout, joinCommand)
 	}
@@ -353,7 +353,7 @@ func runOrchestratorHeadless(ctx context.Context, client *bridge.Client, server 
 	return nil
 }
 
-// joinFlags holds `codex-bridge join`'s flags (§8): --headless and
+// joinFlags holds `agents-bridge join`'s flags (§8): --headless and
 // --ready-file are additive to the original pairing flags, so an existing
 // interactive join command keeps working unchanged.
 type joinFlags struct {
@@ -366,16 +366,16 @@ type joinFlags struct {
 }
 
 func parseJoinFlags(args []string) (joinFlags, error) {
-	flags := flag.NewFlagSet("codex-bridge join", flag.ContinueOnError)
+	flags := flag.NewFlagSet("agents-bridge join", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	host := flags.String("host", "", "MagicDNS host or Tailscale IP of the Mac")
-	port := flags.Int("port", 0, "ephemeral codex-bridge TCP port")
+	port := flags.Int("port", 0, "ephemeral agents-bridge TCP port")
 	instanceID := flags.String("instance", "", "instance_id printed by Mac")
 	token := flags.String("token", "", "one-use pairing token printed by Mac")
 	headless := flags.Bool("headless", false, "sin TUI: publica el descriptor tailscale-join y solo reconecta")
 	readyFile := flags.String("ready-file", "", "escribe la línea ready también en este archivo (0600, creación exclusiva)")
 	reconnectTimeout := flags.Duration("reconnect-timeout", 15*time.Minute, "solo --headless: termina si no logra reconectar durante este tiempo continuo (0 = reintentar siempre)")
-	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto CODEX_BRIDGE_THEME o auto)")
+	themeValue := flags.String("theme", "", "tema de la TUI: dark, light o auto (por defecto AGENTS_BRIDGE_THEME o auto)")
 	if err := flags.Parse(args); err != nil {
 		return joinFlags{}, err
 	}
@@ -388,7 +388,7 @@ func parseJoinFlags(args []string) (joinFlags, error) {
 	return joinFlags{reconnectTimeout: *reconnectTimeout, host: *host, port: *port, instanceID: *instanceID, token: *token, headless: *headless, readyFile: *readyFile, theme: *themeValue}, nil
 }
 
-// runJoin implements `codex-bridge join` (§8): the interactive path is
+// runJoin implements `agents-bridge join` (§8): the interactive path is
 // unchanged from before Phase 3; --headless skips the TUI entirely, publishes
 // a tailscale-join descriptor, and just keeps the connection alive for a
 // local ctl executor until ctx ends or the join process is stopped.
@@ -491,29 +491,29 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 }
 
 func printUsage() {
-	fmt.Println("codex-bridge [--idle-timeout D]   crea una instancia efímera y TUI de orquestador en Mac")
-	fmt.Println("codex-bridge --headless --ready-file FILE")
+	fmt.Println("agents-bridge [--idle-timeout D]   crea una instancia efímera y TUI de orquestador en Mac")
+	fmt.Println("agents-bridge --headless --ready-file FILE")
 	fmt.Println("                                   igual, sin TUI; el comando de unión (con su token) va solo en FILE")
-	fmt.Println("codex-bridge join ... [--headless] [--ready-file FILE] [--reconnect-timeout D]")
+	fmt.Println("agents-bridge join ... [--headless] [--ready-file FILE] [--reconnect-timeout D]")
 	fmt.Println("                                   une Windows usando el comando impreso por Mac; --headless sin TUI,")
 	fmt.Println("                                   termina solo si el host cierra o si pasa --reconnect-timeout (15m; 0 = sin límite) sin reconectar")
-	fmt.Println("codex-bridge local [--idle-timeout D] [--headless] [--ready-file FILE]")
+	fmt.Println("agents-bridge local [--idle-timeout D] [--headless] [--ready-file FILE]")
 	fmt.Println("                                   instancia local sin Tailscale para dos agentes; si stdout es una")
 	fmt.Println("                                   terminal muestra su propia TUI observadora (--headless la omite)")
 	fmt.Println("                                   (idle-timeout por defecto 30m; 0 desactiva el cierre por inactividad)")
-	fmt.Println("codex-bridge ps [--format table|jsonl]")
+	fmt.Println("agents-bridge ps [--format table|jsonl]")
 	fmt.Println("                                   lista los puentes vivos del usuario")
-	fmt.Println("codex-bridge stop --instance-id ID cierra un puente (equivale a Ctrl+C en su proceso)")
-	fmt.Println("codex-bridge tui                   inicio: lista de tus puentes vivos (entrar, cerrar, crear, filtrar)")
-	fmt.Println("codex-bridge tui --instance-id ID  TUI observadora directa: ve e interviene sin consumir mensajes")
-	fmt.Println("codex-bridge ctl list")
-	fmt.Println("codex-bridge ctl read|watch|send|wait|peek|export --instance-id ID [--role orchestrator|executor] ...")
+	fmt.Println("agents-bridge stop --instance-id ID cierra un puente (equivale a Ctrl+C en su proceso)")
+	fmt.Println("agents-bridge tui                   inicio: lista de tus puentes vivos (entrar, cerrar, crear, filtrar)")
+	fmt.Println("agents-bridge tui --instance-id ID  TUI observadora directa: ve e interviene sin consumir mensajes")
+	fmt.Println("agents-bridge ctl list")
+	fmt.Println("agents-bridge ctl read|watch|send|wait|peek|export --instance-id ID [--role orchestrator|executor] ...")
 	fmt.Println("                                   send bloquea con INBOX_NOT_EMPTY (salida 5) si hay mensajes sin leer; --force lo omite")
 	fmt.Println("                                   peek mira los mensajes sin leer sin consumirlos; export --output FILE [--format md|jsonl]")
-	fmt.Println("codex-bridge codex open --thread <deeplink|id> --instance-id ID [--prompt-file FILE|-]")
+	fmt.Println("agents-bridge codex open --thread <deeplink|id> --instance-id ID [--prompt-file FILE|-]")
 	fmt.Println("                                   abre el chat del ejecutor en la app de Codex con el prompt escrito")
-	fmt.Println("codex-bridge --version             muestra la versión")
-	fmt.Println("\n--theme dark|light|auto (o CODEX_BRIDGE_THEME) en host, join, local y tui; NO_COLOR degrada a símbolos.")
+	fmt.Println("agents-bridge --version             muestra la versión")
+	fmt.Println("\n--theme dark|light|auto (o AGENTS_BRIDGE_THEME) en host, join, local y tui; NO_COLOR degrada a símbolos.")
 	fmt.Println("La instancia, tokens, colas e historial solo viven en RAM.")
 }
 

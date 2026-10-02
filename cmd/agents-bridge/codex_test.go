@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/control"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/control"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 // writeSessionIndex creates CODEX_HOME/session_index.jsonl with one line per
@@ -37,7 +37,7 @@ const testThreadID = "01a0e3fd-1cdb-7ed2-89d1-6559c0a0b32a"
 
 // startExecutorDescriptor publishes one live executor descriptor in a fresh,
 // private descriptor root, so `codex open` can validate --instance-id
-// against a real (if minimal) codex-bridge instance. It returns the root and
+// against a real (if minimal) agents-bridge instance. It returns the root and
 // the instance_id to pass as --instance-id.
 func startExecutorDescriptor(t *testing.T) (root, instanceID string) {
 	t.Helper()
@@ -125,7 +125,7 @@ func TestCodexOpenValidDeeplink(t *testing.T) {
 	if !strings.HasPrefix(run.openedURL, "codex://threads/"+testThreadID+"?") {
 		t.Fatalf("opener url = %q", run.openedURL)
 	}
-	want := "usa la skill codex-bridge como ejecutor con --instance-id " + instanceID
+	want := "usa la skill agents-bridge como ejecutor con --instance-id " + instanceID
 	if got := promptFromURL(t, run.openedURL); got != want {
 		t.Fatalf("default prompt = %q, want %q", got, want)
 	}
@@ -215,7 +215,7 @@ func TestCodexOpenMultilinePromptRoundTrips(t *testing.T) {
 	extra := "línea uno & dos ? tres # cuatro\nsegunda línea con ñ y acentos áéí"
 	run := runCodexTest(t, extra, home, root, nil, "open", "--thread", testThreadID, "--instance-id", instanceID, "--prompt-file", "-")
 	expectSuccess(t, run, testThreadID)
-	want := "usa la skill codex-bridge como ejecutor con --instance-id " + instanceID + "\n\n" + extra
+	want := "usa la skill agents-bridge como ejecutor con --instance-id " + instanceID + "\n\n" + extra
 	if got := promptFromURL(t, run.openedURL); got != want {
 		t.Fatalf("prompt round-trip mismatch:\n got=%q\nwant=%q", got, want)
 	}
@@ -231,7 +231,7 @@ func TestCodexOpenPromptFromFile(t *testing.T) {
 	}
 	run := runCodexTest(t, "", home, root, nil, "open", "--thread", testThreadID, "--instance-id", instanceID, "--prompt-file", path)
 	expectSuccess(t, run, testThreadID)
-	want := "usa la skill codex-bridge como ejecutor con --instance-id " + instanceID + "\n\nrevisa el módulo de control"
+	want := "usa la skill agents-bridge como ejecutor con --instance-id " + instanceID + "\n\nrevisa el módulo de control"
 	if got := promptFromURL(t, run.openedURL); got != want {
 		t.Fatalf("prompt from file = %q, want %q", got, want)
 	}

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grrdhdz/codex-agents-bridge/internal/bridge"
-	"github.com/grrdhdz/codex-agents-bridge/internal/protocol"
+	"github.com/grrdhdz/agents-bridge/internal/bridge"
+	"github.com/grrdhdz/agents-bridge/internal/protocol"
 )
 
 const controlContentType = "application/x-ndjson; charset=utf-8"
@@ -110,9 +110,9 @@ func (e *Endpoint) authorize(w http.ResponseWriter, r *http.Request) (string, bo
 		writeError(w, "", "UNAUTHORIZED", "control endpoint only accepts loopback clients", false, http.StatusUnauthorized, e.descriptor.InstanceID, 0)
 		return "", false
 	}
-	requestID := r.Header.Get("X-Codex-Bridge-Request-ID")
+	requestID := r.Header.Get("X-Agents-Bridge-Request-ID")
 	if !validRequestID(requestID) {
-		writeError(w, requestID, "INVALID_REQUEST_ID", "X-Codex-Bridge-Request-ID must be 1-128 ASCII characters", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
+		writeError(w, requestID, "INVALID_REQUEST_ID", "X-Agents-Bridge-Request-ID must be 1-128 ASCII characters", false, http.StatusBadRequest, e.descriptor.InstanceID, 0)
 		return "", false
 	}
 	authorization := r.Header.Get("Authorization")

@@ -1,5 +1,9 @@
 # Especificación de control no gráfico de Codex Bridge
 
+> Documento histórico anterior al renombre de 2026-10-01. Las referencias a
+> `codex-bridge` describen esa versión; para el uso actual consulta la sección
+> «Migración desde codex-bridge» del [README](../../../README.md).
+
 Estado: aprobado para diseño de v0.2.0
 
 Fecha: 2026-09-13

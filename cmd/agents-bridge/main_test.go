@@ -6,7 +6,7 @@ import (
 )
 
 func TestFormatPowerShellJoinCommandKeepsLongTokenVisible(t *testing.T) {
-	command := "codex-bridge join --host macbook-air.example.ts.net --port 61152 --instance " + strings.Repeat("i", 26) + " --token " + strings.Repeat("t", 32)
+	command := "agents-bridge join --host macbook-air.example.ts.net --port 61152 --instance " + strings.Repeat("i", 26) + " --token " + strings.Repeat("t", 32)
 	formatted := formatPowerShellJoinCommand(command)
 
 	if !strings.Contains(formatted, strings.Repeat("t", 32)) {

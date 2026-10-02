@@ -1,5 +1,9 @@
 # Especificación: visibilidad y control humano de los puentes
 
+> Documento histórico anterior al renombre de 2026-10-01. Las referencias a
+> `codex-bridge` describen esa versión; para el uso actual consulta la sección
+> «Migración desde codex-bridge» del [README](../../../README.md).
+
 Estado: aprobada e implementada (2026-09-27)
 
 Fecha: 2026-09-27
