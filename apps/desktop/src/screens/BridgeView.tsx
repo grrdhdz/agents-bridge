@@ -2,15 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '../api/client';
 import type { Instance, Event, Health, Role, Label, Message } from '../api/types';
 import SearchBar from '../components/SearchBar';
-import { shortInstance } from '../format';
-import { applyEvent, localRole, messageRole, type ChatState } from '../model';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
+import IconButton from '../components/IconButton';
+import type { PreviewNote } from '../components/BoardPreview';
+import { applyEvent, bodyParts, localRole, messageRole, type ChatState } from '../model';
 import MessageCard from '../components/MessageCard';
 import Composer from '../components/Composer';
 import Sidebar from '../components/Sidebar';
 
-export default function BridgeView({ client, instance, onBack, onClose, onToast, onCopy, onExport, searchRequest }: { client: ApiClient; instance: Instance; onBack(): void; onClose(): void; onToast(message:string):void; onCopy():void; onExport(format:'md'|'jsonl'):void; searchRequest:number }) {
+export default function BridgeView({client,instance,onToast,searchRequest,onPreview}:{client:ApiClient;instance:Instance;onToast(message:string):void;searchRequest:number;onPreview(id:string,notes:PreviewNote[]):void}) {
   const [chat, setChat] = useState<ChatState>({ messages: [], statuses: {} });
   const [health, setHealth] = useState<Health>(); const [role, setRole] = useState<Role>(localRole(instance)); const [error, setError] = useState(''); const [healthError, setHealthError] = useState(''); const [closed, setClosed] = useState(false);
+  const [panelOpen,setPanelOpen]=useState(true);
   const [searchOpen,setSearchOpen]=useState(false); const [query,setQuery]=useState(''); const [searchIndex,setSearchIndex]=useState(0);
   const toast=useRef(onToast); toast.current=onToast;
   const closedNotice=useRef(false);
@@ -51,6 +54,7 @@ export default function BridgeView({ client, instance, onBack, onClose, onToast,
   const selectedMatch=matches.length?matches[searchIndex % matches.length]:undefined;
   useEffect(()=>{if(selectedMatch)list.current?.querySelectorAll<HTMLElement>('[data-message-id]').forEach(el=>{if(el.dataset.messageId===selectedMatch)el.scrollIntoView({block:'center',behavior:'instant'});});},[selectedMatch,query]);
   function closeSearch(){setSearchOpen(false);setQuery('');list.current?.focus();}
+  useEffect(()=>{if(chat.messages.length)onPreview(instance.instance_id,chat.messages.slice(-4).map(m=>({role:messageRole(m),human:m.source==='human-operator',label:bodyParts(m.body).label})));},[chat.messages,instance.instance_id,onPreview]);
   async function send(body: string, label: Label) {
     const draftId = `draft-${crypto.randomUUID()}`;
     const draft: Message = { protocol_version: 1, instance_id: instance.instance_id, message_id: draftId, client_seq: 0, server_seq: 0, sender_id: 'human', sender_role: role === 'orchestrator' ? 'mac-orchestrator' : 'win-executor', kind: 'text', body: `${label}\n${body}`, body_sha256: '', source: 'human-operator', created_at: new Date().toISOString(), accepted_at: '' };
@@ -63,7 +67,8 @@ export default function BridgeView({ client, instance, onBack, onClose, onToast,
   const sent = chat.messages.filter(m => messageRole(m) === role);
   const pending = sent.filter(m => ['queued-ram', 'accepted'].includes(chat.statuses[m.message_id])).length;
   return <section className="bridge-view" aria-label="Conversación del puente">
-    <div className="bridge-heading"><button className="back" onClick={onBack} aria-label="Volver a inicio">← Puentes</button><div><h1>{instance.project || 'Puente sin proyecto'}</h1><span className="instance-id"><button className="copy-id" title="Copiar ID completo" aria-label="Copiar ID completo" onClick={onCopy}>{shortInstance(instance.instance_id)} ⧉</button> · {instance.mode}</span></div><div className="bridge-actions"><button className="text-button" onClick={()=>setSearchOpen(true)} aria-label="Buscar conversación">⌕ Buscar</button><label className="export-label">Exportar <select aria-label="Formato de exportación" defaultValue="" onChange={e=>{if(e.target.value)onExport(e.target.value as 'md'|'jsonl');e.target.value='';}}><option value="" disabled>Formato…</option><option value="md">Markdown</option><option value="jsonl">JSONL</option></select></label><button className="text-button" onClick={onClose}>Cerrar puente</button></div></div>
-    <div className="bridge-layout"><div className="chat-column">{searchOpen&&<SearchBar query={query} count={matches.length} index={matches.length?searchIndex%matches.length:0} onQuery={q=>{setQuery(q);setSearchIndex(0);}} onMove={direction=>setSearchIndex(n=>matches.length?(n+direction+matches.length)%matches.length:0)} onClose={closeSearch}/>}{(error || healthError || closed) && <p role="alert" className="view-error">{closed ? 'Este puente está cerrado.' : error || healthError}</p>}<div className="conversation" ref={list} tabIndex={0} role="log" aria-label="Mensajes" aria-live="polite" onScroll={e => { const el = e.currentTarget; follow.current = el.scrollHeight - el.clientHeight - el.scrollTop < 60; }}><p className="conversation-date">{new Date().toLocaleDateString('es', { day: 'numeric', month: 'long' })} · conversación entre agentes</p>{chat.messages.map(m => <MessageCard key={m.message_id} message={m} status={chat.statuses[m.message_id] || 'queued-ram'} local={role} query={searchOpen?query.trim():''} selected={m.message_id===selectedMatch} />)}{!chat.messages.length && <div className="empty"><h2>Esperando mensajes</h2><p>La conversación aparecerá aquí sin consumir la bandeja de los agentes.</p></div>}</div><Composer disabled={closed} onSend={send} /></div><Sidebar instance={instance} health={health} total={chat.messages.length} sent={sent.length} pending={pending} local={role} /></div>
+    <IconButton className={`panel-toggle ${panelOpen?'':'folded'}`} icon={panelOpen?PanelRightClose:PanelRightOpen} label={panelOpen?'Plegar panel lateral':'Mostrar panel lateral'} aria-controls="bridge-sidebar" aria-expanded={panelOpen} onClick={()=>setPanelOpen(!panelOpen)}/>
+
+    <div className={`bridge-layout ${panelOpen?'':'panel-folded'}`}><div className="chat-column">{searchOpen&&<SearchBar query={query} count={matches.length} index={matches.length?searchIndex%matches.length:0} onQuery={q=>{setQuery(q);setSearchIndex(0);}} onMove={direction=>setSearchIndex(n=>matches.length?(n+direction+matches.length)%matches.length:0)} onClose={closeSearch}/>}{(error || healthError || closed) && <p role="alert" className="view-error">{closed ? 'Este puente está cerrado.' : error || healthError}</p>}<div className="conversation" ref={list} tabIndex={0} role="log" aria-label="Mensajes" aria-live="polite" onScroll={e => { const el = e.currentTarget; follow.current = el.scrollHeight - el.clientHeight - el.scrollTop < 60; }}><p className="conversation-date">{new Date().toLocaleDateString('es', { day: 'numeric', month: 'long' })} · conversación entre agentes</p>{chat.messages.map(m => <MessageCard key={m.message_id} message={m} status={chat.statuses[m.message_id] || 'queued-ram'} local={role} query={searchOpen?query.trim():''} selected={m.message_id===selectedMatch} />)}{!chat.messages.length && <div className="empty"><h2>Esperando mensajes</h2><p>La conversación aparecerá aquí sin consumir la bandeja de los agentes.</p></div>}</div><Composer disabled={closed} onSend={send} /></div>{panelOpen&&<Sidebar instance={instance} health={health} total={chat.messages.length} sent={sent.length} pending={pending} local={role} />}</div>
   </section>;
 }

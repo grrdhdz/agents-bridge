@@ -100,3 +100,33 @@ test('reconnection and peer changes generate readable notifications', async () =
   instances=[]; await act(async()=>vi.advanceTimersByTime(2000));
   expect(screen.getByText('Puente checkout-api cerrado')).toBeDefined();
 });
+
+test('gallery starts with create card and tools are named keyboard controls',async()=>{
+ render(<App client={createDemoClient()}/>);await screen.findByRole('button',{name:'Abrir checkout-api'});
+ expect(document.querySelector('.bridge-list')?.firstElementChild?.className).toContain('create-card');
+ expect(screen.getByRole('navigation',{name:'Herramientas del lienzo'})).toBeDefined();
+ fireEvent.click(screen.getByRole('button',{name:'Buscar puentes'}));expect(document.activeElement).toBe(screen.getByLabelText('Filtrar puentes'));
+});
+test('folding sidebar preserves subscription, conversation and draft',async()=>{
+ const api=createDemoClient(), subscribe=vi.spyOn(api,'subscribe');render(<App client={api}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Abrir checkout-api'}));await screen.findByText('Revisa el proxy y entrega las pruebas de integración.');
+ fireEvent.change(screen.getByLabelText('Mensaje'),{target:{value:'Borrador sin enviar'}});
+ fireEvent.click(screen.getByRole('button',{name:'Plegar panel lateral'}));
+ expect(screen.queryByLabelText('Estado del puente')).toBeNull();expect(subscribe).toHaveBeenCalledTimes(1);
+ expect((screen.getByLabelText('Mensaje') as HTMLTextAreaElement).value).toBe('Borrador sin enviar');
+ fireEvent.click(screen.getByRole('button',{name:'Mostrar panel lateral'}));expect(screen.getByLabelText('Estado del puente')).toBeDefined();
+ expect(subscribe).toHaveBeenCalledTimes(1);
+});
+
+test('gallery previews reuse observed messages without subscribing to other bridges',async()=>{
+ const api=createDemoClient(),subscribe=vi.spyOn(api,'subscribe'),unsubscribe=vi.spyOn(api,'unsubscribe');
+ render(<App client={api}/>);await screen.findByRole('button',{name:'Abrir checkout-api'});
+ expect(document.querySelectorAll('.mini-note.empty-note')).toHaveLength(12);
+ fireEvent.click(screen.getByRole('button',{name:'Abrir checkout-api'}));
+ await screen.findByText('Validación completa. Puedes cerrar esta tarea.');
+ fireEvent.click(screen.getByRole('button',{name:'Volver a inicio'}));
+ await waitFor(()=>expect(unsubscribe).toHaveBeenCalledTimes(1));
+ expect(subscribe).toHaveBeenCalledTimes(1);
+ expect(document.querySelectorAll('.mini-note.empty-note')).toHaveLength(8);
+ expect(screen.getByRole('button',{name:'Abrir checkout-api'}).querySelector('.mini-note.human-note')).not.toBeNull();
+});

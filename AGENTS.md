@@ -56,7 +56,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 cargo check --manifest-path src-tauri/Cargo.toml
 npm run tauri build         # macOS .app/.dmg; Windows MSI/NSIS en Windows
 npm run smoke:native -- --release
-npm run screenshots         # 16 PNG; cierra Vite y Playwright propios
+npm run screenshots         # 20 PNG; cierra Vite y Playwright propios
 npm audit
 ```
 

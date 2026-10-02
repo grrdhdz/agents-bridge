@@ -39,3 +39,5 @@ export function createDemoClient(): ApiClient {
     onStatus: async fn => { status.add(fn); return () => { status.delete(fn); }; },
   };
 }
+
+export function demoPreviews(){return Object.fromEntries(demoInstances().map(i=>[i.instance_id,i.latest_server_seq?demoMessages(i.instance_id).slice(-4).map(m=>({role:m.sender_role==='mac-orchestrator'?'orchestrator' as const:'executor' as const,human:m.source==='human-operator',label:m.body.split('\n')[0]})):[]]));}

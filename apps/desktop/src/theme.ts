@@ -1,8 +1,20 @@
 export type ThemeMode = 'auto' | 'light' | 'dark';
-// Paleta semántica alineada con la TUI; no depende de sus archivos en runtime.
+// Tokens de contraste compartidos por el lienzo, las superficies y las notas.
 export const palettes = {
-  light: { surface: '#dce3ee', panel: '#d0d9e7', card: '#e5ebf4', text: '#0f172a', muted: '#334155', border: '#64748b', orchestrator: '#1e40af', executor: '#166534', human: '#92400e', info: '#075985', warning: '#854d0e', danger: '#b91c1c', notice: '#5b21b6', codeKeyword: '#1e40af', codeString: '#166534', codeNumber: '#5b21b6', codeComment: '#334155', codeAttr: '#92400e', codeLiteral: '#075985', onAccent: '#ffffff' },
-  dark: { surface: '#0b1220', panel: '#16233a', card: '#101c2f', text: '#e2e8f0', muted: '#94a3b8', border: '#718198', orchestrator: '#93c5fd', executor: '#86efac', human: '#fbbf24', info: '#38bdf8', warning: '#facc15', danger: '#f87171', notice: '#c4b5fd', codeKeyword: '#93c5fd', codeString: '#86efac', codeNumber: '#c4b5fd', codeComment: '#94a3b8', codeAttr: '#fbbf24', codeLiteral: '#38bdf8', onAccent: '#0b1220' },
+  light: {
+    surface:'#f7f5ef', panel:'#ffffff', card:'#ffffff', text:'#202124', muted:'#4b4f58', border:'#747a85',
+    orchestrator:'#2548a8', executor:'#226143', human:'#75520c', info:'#214fc4', warning:'#795700', danger:'#a32632', notice:'#6b3f94',
+    noteOrchestrator:'#dfeaff', noteExecutor:'#e0f0df', noteHuman:'#fff1b7', noteEmpty:'#e6e5df', codeBg:'#f1eee6',
+    accent:'#f4c844', onAccent:'#272218', selection:'#3153bb', onSelection:'#ffffff', onDanger:'#ffffff', focus:'#2455d6', dot:'#dedbd2',
+    codeKeyword:'#2548a8', codeString:'#226143', codeNumber:'#6b3f94', codeComment:'#4b4f58', codeAttr:'#75520c', codeLiteral:'#214fc4',
+  },
+  dark: {
+    surface:'#191b20', panel:'#252830', card:'#2b2e37', text:'#f7f4ec', muted:'#c7c9d0', border:'#969ba8',
+    orchestrator:'#abc9ff', executor:'#b6e6b8', human:'#ffe493', info:'#abc2ff', warning:'#ffe493', danger:'#ffb2bb', notice:'#d4bafa',
+    noteOrchestrator:'#303f58', noteExecutor:'#304838', noteHuman:'#504727', noteEmpty:'#3b3d46', codeBg:'#22252c',
+    accent:'#f4c844', onAccent:'#272218', selection:'#3153bb', onSelection:'#ffffff', onDanger:'#202124', focus:'#99b4ff', dot:'#33363e',
+    codeKeyword:'#abc9ff', codeString:'#b6e6b8', codeNumber:'#d4bafa', codeComment:'#c7c9d0', codeAttr:'#ffe493', codeLiteral:'#abc2ff',
+  },
 };
 export function applyTheme(mode: ThemeMode) {
   const resolved = mode === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;

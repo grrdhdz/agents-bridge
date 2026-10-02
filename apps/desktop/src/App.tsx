@@ -10,8 +10,13 @@ import Confirm from './components/Confirm';
 import CommandPalette, { type CommandAction } from './components/CommandPalette';
 import ShortcutHelp from './components/ShortcutHelp';
 import { Toasts, useToasts } from './components/Toasts';
+import { ArrowLeftRight, Search, Download, X, SunMoon, Copy } from 'lucide-react';
+import ToolRail from './components/ToolRail';
+import IconButton from './components/IconButton';
+import type { BoardPreviews, PreviewNote } from './components/BoardPreview';
+import { shortInstance } from './format';
 
-export default function App({ client = realClient, demo = false }: { client?: ApiClient; demo?: boolean }) {
+export default function App({ client = realClient, demo = false, initialPreviews = {} }: { client?: ApiClient; demo?: boolean; initialPreviews?: BoardPreviews }) {
   const [engine, setEngine] = useState<HelloResult>();
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +32,8 @@ export default function App({ client = realClient, demo = false }: { client?: Ap
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const [searchRequest, setSearchRequest] = useState(0);
+  const [previews,setPreviews]=useState<BoardPreviews>(initialPreviews);
+  const recordPreview=useCallback((id:string,notes:PreviewNote[])=>setPreviews(p=>({...p,[id]:notes})),[]);
   const { toasts, notify, dismiss } = useToasts();
   const generation = useRef(0), active = useRef(true);
   const known = useRef<Instance[] | undefined>(undefined);
@@ -115,11 +122,18 @@ export default function App({ client = realClient, demo = false }: { client?: Ap
     { id: 'help', label: 'Ayuda de teclado', run: () => setHelp(true) },
   ];
   return <div className="app-shell">
-    <header className="app-header"><span className="brand-mark" aria-hidden>↔</span><strong className="brand">agents-bridge</strong><span className="app-name">Escritorio</span>{demo && <span className="demo-badge">Demostración</span>}
-      <div className="header-right"><span className="engine-state" role="status">{status?.status === 'restarting' ? '◌ Reconectando…' : engine ? `● Motor ${engine.engine_version}` : '◌ Conectando…'}</span><button className="text-button" onClick={() => setPalette(true)} aria-label="Abrir paleta de comandos">⌘K</button><button className="text-button" onClick={() => setHelp(true)} aria-label="Ayuda de teclado">?</button><label>Tema <select aria-label="Tema" value={theme} onChange={e => setTheme(e.target.value as ThemeMode)}><option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></label></div>
+    <header className="app-header">
+      <div className="identity-pill"><span className="brand-mark" aria-hidden="true"><ArrowLeftRight size={23} strokeWidth={2}/></span><strong className="brand">agents-bridge</strong><span className="identity-divider"/>
+        <div className="board-identity">{current?<><h1>{current.project||'Puente sin proyecto'}</h1><button className="copy-id instance-id" title="Copiar ID completo" aria-label="Copiar ID completo" onClick={()=>void copy(current)}>{shortInstance(current.instance_id)}<Copy size={10} aria-hidden="true"/> · {current.mode}</button></>:<><strong>Mi espacio</strong><span>Conversaciones entre agentes</span></>}</div>{demo&&<span className="demo-badge">Demo</span>}
+      </div>
+      <div className="actions-pill">{current&&<><button className="header-action" onClick={()=>setSearchRequest(n=>n+1)} aria-label="Buscar conversación"><Search size={16} aria-hidden="true"/><span>Buscar</span></button><label className="export-label"><Download size={16} aria-hidden="true"/><select aria-label="Formato de exportación" defaultValue="" onChange={e=>{if(e.target.value)void exportBridge(e.target.value as 'md'|'jsonl');e.target.value='';}}><option value="" disabled>Exportar</option><option value="md">Markdown</option><option value="jsonl">JSONL</option></select></label><IconButton icon={X} label="Cerrar puente" className="close-action" onClick={()=>askClose(current)}/><span className="identity-divider"/></>}
+        <span className="engine-state" role="status"><span className={`live-dot ${status?.status==='restarting'?'restarting':''}`}/>{status?.status==='restarting'?'Reconectando…':engine?`Motor ${engine.engine_version}`:'Conectando…'}</span><label className="theme-control"><SunMoon size={16} aria-hidden="true"/><select aria-label="Tema" value={theme} onChange={e=>setTheme(e.target.value as ThemeMode)}><option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></label>
+      </div>
     </header>
-    {(notice || loadError || (status && status.status !== 'connected')) && <div className="notice" role="alert"><span>{notice || loadError || status?.message}</span>{notice && <button aria-label="Descartar aviso" onClick={() => setNotice('')}>×</button>}</div>}
-    <main className={current ? 'main-bridge' : 'main-home'}>{current ? <BridgeView key={current.instance_id} client={client} instance={current} searchRequest={searchRequest} onToast={notify} onCopy={() => void copy(current)} onExport={format => void exportBridge(format)} onBack={() => { setSearchRequest(0); setSelected(undefined); }} onClose={() => askClose(current)} /> : <Home instances={instances} loading={loading} creating={creating} onOpen={setSelected} onCreate={() => void create()} onCopy={i => void copy(i)} onClose={askClose} />}</main>
+    <ToolRail inBridge={!!current} onHome={()=>{setSearchRequest(0);setSelected(undefined);}} onSearch={()=>{if(current)setSearchRequest(n=>n+1);else document.querySelector<HTMLInputElement>('input[aria-label="Filtrar puentes"]')?.focus();}} onPalette={()=>setPalette(true)} onExport={()=>document.querySelector<HTMLSelectElement>('select[aria-label="Formato de exportación"]')?.focus()} onTheme={()=>document.querySelector<HTMLSelectElement>('select[aria-label="Tema"]')?.focus()} onHelp={()=>setHelp(true)}/>
+
+    {(notice || loadError || (status && status.status !== 'connected')) && <div className="notice" role="alert"><span>{notice || loadError || status?.message}</span>{notice && <button aria-label="Descartar aviso" onClick={() => setNotice('')}><X size={14} aria-hidden="true"/></button>}</div>}
+    <main className={current ? 'main-bridge' : 'main-home'}>{current ? <BridgeView key={current.instance_id} client={client} instance={current} searchRequest={searchRequest} onToast={notify} onPreview={recordPreview} /> : <Home instances={instances} loading={loading} creating={creating} onOpen={setSelected} onCreate={() => void create()} onCopy={i => void copy(i)} onClose={askClose} previews={previews} />}</main>
     <CommandPalette open={palette} onOpenChange={setPalette} actions={actions}/>
     {help && <ShortcutHelp onClose={() => setHelp(false)}/>}
     {confirm && <Confirm name={confirm.instance_id} busy={stopping} error={closeError} onCancel={() => setConfirm(undefined)} onConfirm={() => void stop()}/>}
