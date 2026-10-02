@@ -29,7 +29,7 @@ import (
 
 const (
 	commandName = "agents-bridge"
-	appVersion  = "v0.4.0"
+	appVersion  = "v0.5.0"
 )
 
 func main() {

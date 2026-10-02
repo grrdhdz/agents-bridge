@@ -1,5 +1,6 @@
 # agents-bridge: app de escritorio
 
+Versión **0.5.0**, identificador **dev.grrdhdz.agents-bridge**.
 Cliente Tauri 2 + React + TypeScript + Vite. G2 mantiene un único proceso
 `agents-bridge api` por ventana. Los comandos Rust reflejan las nueve operaciones
 públicas; no leen archivos del motor ni contienen reglas de negocio.
@@ -43,7 +44,8 @@ cd apps/desktop
 npm ci
 npm run generate:types
 npm run sidecar
-npm run tauri dev
+npm run tauri dev           # ventana nativa + Vite + sidecar
+# Frontend solamente: npm run dev (sin Tauri, usa ?demo=1)
 ```
 
 `tauri dev` y `tauri build` compilan automáticamente el sidecar. El script usa
@@ -61,7 +63,8 @@ cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo check --manifest-path src-tauri/Cargo.toml
 npm run tauri build -- --debug
-npm run smoke:native         # paquete macOS → React → Rust → Go
+npm run smoke:native         # paquete debug macOS → React → Rust → Go
+npm run smoke:native -- --release # verificar el paquete release
 npm audit
 ```
 
@@ -190,7 +193,8 @@ la interfaz respeta movimiento reducido y los diálogos mantienen el foco.
   exportar Markdown/JSONL, búsqueda y temas. Las acciones de un puente se
   deshabilitan en Inicio. `?` abre la ayuda fuera de campos de texto.
 - Exportar elige la ruta en el diálogo de guardar de Tauri y llama a `export`;
-  cancelar no escribe. El permiso de WebView se limita a `dialog:allow-save`.
+  cancelar no escribe. El exportador del motor requiere un archivo nuevo y no
+  sobrescribe destinos existentes. El permiso de WebView se limita a `dialog:allow-save`.
 - Avisos de conexión, reconexión, rechazo, copia y cierre. Un rechazo conserva
   el borrador. Los diálogos atrapan el foco, Esc cancela y el foco se devuelve
   al control anterior. `prefers-reduced-motion` desactiva movimiento.
@@ -201,3 +205,59 @@ Las pruebas cubren cada pieza y el recorrido con un cliente falso. Playwright
 comprueba además teclado y el foco del diálogo HTML. Los tokens de código
 pasan contraste ≥4.5:1 y los bordes ≥3:1 en ambos temas. Las 16 capturas incluyen
 inicio, conversación, código y paleta en dos temas y dos tamaños.
+
+## G5: empaquetado
+
+```sh
+cd apps/desktop
+npm ci
+npm run tauri build          # release; compila motor, frontend y Rust
+# macOS: src-tauri/target/release/bundle/macos/agents-bridge.app
+# macOS: src-tauri/target/release/bundle/dmg/agents-bridge_0.5.0_aarch64.dmg
+# Windows (equipo Windows): .../bundle/msi/*.msi y .../bundle/nsis/*.exe
+npm run tauri icon -- src-tauri/icons/app.svg  # regenerar iconos desde SVG
+```
+
+La base configura `.app`/`.dmg`; `tauri.windows.conf.json` se mezcla automáticamente
+para generar MSI y NSIS (por usuario, selector español/inglés). Iconos de flechas
+azul/verde distinguen los roles y se incluyen en PNG, ICNS e ICO. El paquete
+se llama agents-bridge y los tres manifiestos coinciden en 0.5.0.
+
+No hay identidad de firma configurada, certificado Developer ID/Windows ni
+notarización. Un binario Mach-O puede tener la firma ad hoc del enlazador; eso
+no es una firma de distribución. Gatekeeper o SmartScreen pueden exigir la
+aprobación del usuario. No se ofrece actualización automática.
+
+El instalador Windows no se genera desde macOS. La comprobación cruzada Rust
+ya documentada falla por `NotAttempted("llvm-rc")`; hace falta la cadena nativa
+Windows para validar el instalador y los hooks (P6). El sidecar Go para Windows
+sí se verifica localmente.
+
+[Workflow](../../.github/workflows/desktop.yml): macos-latest/windows-latest,
+Node 22, Go 1.27 y Rust stable. Ejecuta tipos, tests, fmt/test/check y build,
+conservando paquetes como artefactos; no publica releases. YAML analizado con
+PyYAML y estructura/expresiones revisadas; actionlint no está disponible. No se
+ha ejecutado en GitHub porque no se hizo push. Las rutas de acciones son desde
+la raíz y los comandos npm/Cargo desde apps/desktop.
+
+El demo es exclusivo de Vite dev. Producción ejecuta un guard de ausencia de
+fixtures y los paquetes incluyen únicamente el cliente real. La paleta,
+Markdown y resaltado no requieren red. El bundle JS de G4 mide 601.15 kB
+(187.02 kB gzip); Vite avisa del umbral de 500 kB, sin impedir el build.
+Los tamaños del release comprobado quedan registrados en el informe de revisión.
+
+### Release verificado en macOS (2026-10-02)
+
+| Artefacto | Tamaño |
+|---|---:|
+| `src-tauri/target/release/bundle/macos/agents-bridge.app` | 34 777 340 bytes · 33.17 MiB |
+| `src-tauri/target/release/bundle/dmg/agents-bridge_0.5.0_aarch64.dmg` | 15 334 938 bytes · 14.62 MiB |
+
+SHA-256 del DMG: `8befaaf137941bddc9f22f15b9280930aeda5302eb8b1ce93056b31941f1b395`.
+Bundle `dev.grrdhdz.agents-bridge`, versión 0.5.0, sin `_CodeSignature` de bundle.
+Smoke del release: `Motor conectado: v0.5.0 · API v1`; procesos propios cerrados.
+Verificación final: 5 pruebas Node, 24 Vitest, 3 Rust, typecheck/build,
+fmt/test/check Cargo, release Tauri y audit (0 vulnerabilidades), todos OK.
+Motor: gofmt, vet nativo/Windows, race y builds Darwin/Windows OK al repetir;
+la primera corrida observó el fallo temporal de reconexión documentado en el
+informe de revisión, sin cambiar esa lógica.

@@ -1,10 +1,26 @@
 # Agents Bridge
 
-`agents-bridge` es una miniaplicación TUI de texto para mantener un canal redundante
-entre un orquestador en macOS y un ejecutor en Windows. El mensaje oficial se
-envía primero por Codex y después se copia y pega exactamente igual en la TUI.
-La primera versión no automatiza ni inspecciona Codex.
-La base funcional de este checkout es `v0.4.0`: además de lo siguiente, el tema `auto` ya no
+`agents-bridge` conecta un orquestador y un ejecutor mediante un canal de texto
+efímero, local o por Tailscale. Incluye CLI, TUI y app de escritorio; todo el
+historial vive en RAM. El humano puede observar e intervenir sin consumir la
+bandeja de los agentes.
+
+## Versión 0.5.0 (rama preparada; pendiente de publicación)
+
+- Renombre a `agents-bridge` y monorepo: motor Go en `engine/`, interfaces en `apps/`.
+- Hooks de Claude Code/Codex: vinculación automática, latidos, avisos URGENTE,
+  guardia de envío y bucle de espera hasta FIN, con falla abierta y protección
+  anti-bucle. Instalador que conserva otros hooks y no concede confianza.
+- API JSONL v1 observadora, sin secretos, para reutilizar el motor completo.
+- App Tauri 2 + React: chat, estados, intervención humana, temas accesibles,
+  Markdown/código offline, búsqueda, paleta, exportación y paquetes de macOS.
+- Configuración de MSI/NSIS y CI Windows/macOS; Windows nativo, firma y
+  publicación requieren la revisión/intervención descrita en
+  [REVIEW-2026-10-02](docs/REVIEW-2026-10-02.md).
+
+## Historial anterior
+
+La base funcional anterior era `v0.4.0`: además de lo siguiente, el tema `auto` ya no
 lee stdin fuera de Bubble Tea y el composer descarta caracteres de control
 (corrige texto de reportes de ratón en el composer y la barra de estado
 cortada en el panel xterm.js); coordinación entre agentes (ver «Coordinación
@@ -184,7 +200,7 @@ el binario `codex-bridge`. Compila este checkout para obtener el nombre nuevo.
   proceso Mac siga vivo. Una caída del proceso Mac no tiene recuperación.
 - El cuerpo canónico es texto UTF-8 intacto. No se admiten adjuntos.
 
-## App de escritorio (G2/G3)
+## App de escritorio (v0.5.0)
 
 El cliente Tauri 2 + React vive en [`apps/desktop`](apps/desktop/README.md).
 Compila su propio sidecar y genera los tipos desde el contrato público; no
@@ -193,11 +209,13 @@ importa código ni lee archivos internos del motor.
 ```sh
 cd apps/desktop
 npm ci
-npm run tauri build -- --debug
+npm run tauri build          # release: .app/.dmg; Windows: MSI/NSIS
 ```
 
 Incluye lista de puentes, conversación con replay, intervención humana,
-estado por rol y temas claro/oscuro/automático. Mantiene un sidecar por ventana,
+estado por rol, Markdown/código offline, búsqueda, paleta, exportación y temas
+claro/oscuro/automático. Cmd/Ctrl+K abre acciones, Cmd/Ctrl+F busca y `?` muestra
+la ayuda. Mantiene un sidecar por ventana,
 lo reinicia y restaura suscripciones; cerrar la app termina solo ese sidecar.
 Las [capturas del demo](docs/screenshots/desktop/README.md) se generan con
 Playwright; el cliente simulado solo existe en desarrollo.
@@ -216,14 +234,14 @@ Esquema generable desde cualquier plataforma: [engine/api/schema.json](engine/ap
 ## Estructura del monorepo
 
 - `engine/`: módulo Go del motor, núcleo, CLI y TUI; `engine/api/` contiene el
-  marcador del contrato de la futura API.
-- `apps/`: interfaces independientes (la app de escritorio irá en `apps/desktop/`).
+  contrato versionado JSONL v1.
+- `apps/`: interfaces independientes (Tauri/React en `apps/desktop/`).
 - `docs/` y `.agents/skills/`: documentación y skills compartidas.
 
 Las apps solo usan `agents-bridge api` o la CLI pública; nunca importan código
 Go del motor ni leen sus archivos internos. El núcleo no depende de la TUI ni
 de la API: una prueba de arquitectura comprueba las dependencias transitivas.
-`agents-bridge api` todavía no está implementado.
+`engine/internal/api` y la TUI son clientes independientes del núcleo.
 
 ## Compilar
 

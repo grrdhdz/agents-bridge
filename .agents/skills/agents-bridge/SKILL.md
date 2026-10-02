@@ -254,7 +254,8 @@ La cabecera de texto de `ctl wait` incluye `source=<origen>`
 (`--- agents-bridge instance=<id> message_id=… from=<rol> event_seq=<n> source=<origen>`).
 `source=agent-control` es el valor normal (el otro rol, agente). Si ves
 `source=human-operator`, ese mensaje concreto lo escribió el usuario en vivo
-desde `agents-bridge tui --instance-id <id>` (la TUI observadora), no el otro
+desde `agents-bridge tui --instance-id <id>` o la app de escritorio
+(observadoras de la API), no el otro
 agente: tiene prioridad sobre lo que diga el orquestador y puede cambiar el
 plan en curso; trátalo como si el usuario te hubiera hablado directamente.
 
@@ -275,3 +276,11 @@ plan en curso; trátalo como si el usuario te hubiera hablado directamente.
 Salida 3 sigue significando que la instancia ya no existe: detén el bucle e
 informa al usuario. Salida 8 significa lo contrario: la instancia sigue viva,
 solo el sandbox actual no llega a `127.0.0.1`.
+
+## App de escritorio (v0.5.0)
+
+La app en `apps/desktop/` observa por `agents-bridge api` sin consumir mensajes.
+Sus intervenciones llegan con `source=human-operator`, igual que las de la TUI.
+Cerrar la ventana termina solo su sidecar; los puentes siguen vivos hasta Stop
+explícito o inactividad. Los hooks se configuran en el harness, no en la app;
+la compatibilidad de hooks de Codex/Claude Desktop (P4) sigue pendiente.

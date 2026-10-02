@@ -7,7 +7,8 @@ import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 
 if (process.platform !== 'darwin') throw new Error('Esta prueba del paquete .app requiere macOS');
-const binary = new URL('../src-tauri/target/debug/bundle/macos/agents-bridge.app/Contents/MacOS/agents-bridge-desktop', import.meta.url);
+const profile = process.argv.includes('--release') ? 'release' : 'debug';
+const binary = new URL(`../src-tauri/target/${profile}/bundle/macos/agents-bridge.app/Contents/MacOS/agents-bridge-desktop`, import.meta.url);
 const root = await mkdtemp(join(tmpdir(), 'agents-bridge-native-smoke-'));
 const child = spawn(binary.pathname, [], { cwd: root, detached: true, env: { ...process.env, TMPDIR: root }, stdio: ['ignore', 'pipe', 'pipe'] });
 const exited = once(child, 'exit');
