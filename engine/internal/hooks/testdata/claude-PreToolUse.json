@@ -1,0 +1,17 @@
+{
+  "session_id": "b208be0e-1677-41e4-ba40-b7a4cacfaa2c",
+  "transcript_path": "/probe/transcript.jsonl",
+  "cwd": "/probe",
+  "prompt_id": "d171ac0f-02db-438f-8283-5a700aa0e37e",
+  "permission_mode": "default",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "echo CANARIO-P1",
+    "description": "Print canary string"
+  },
+  "tool_use_id": "toolu_01VCfDeAQeqkZyViULhrHaud"
+}

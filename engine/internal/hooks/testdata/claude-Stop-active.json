@@ -1,0 +1,15 @@
+{
+  "session_id": "09dc7a0e-0ee5-4b66-85cf-41269947f0b9",
+  "transcript_path": "/probe/transcript.jsonl",
+  "cwd": "/probe",
+  "prompt_id": "8e9139d0-86d9-4050-aaf2-62ccea0f85d4",
+  "permission_mode": "default",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "Stop",
+  "stop_hook_active": true,
+  "last_assistant_message": "Ejecuté el comando que pedía el hook y su salida fue `CANARIO-STOP`.",
+  "background_tasks": [],
+  "session_crons": []
+}

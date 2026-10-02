@@ -1,0 +1,11 @@
+{
+  "session_id": "01a0fad1-078a-7e83-9a61-7612b04dffaf",
+  "turn_id": "01a0fad1-0cef-7260-a1b2-ba5b4c87af17",
+  "transcript_path": null,
+  "cwd": "/probe",
+  "hook_event_name": "Stop",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "stop_hook_active": false,
+  "last_assistant_message": "LISTO\nCANARIO-P1"
+}

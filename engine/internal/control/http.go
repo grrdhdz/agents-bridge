@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/grrdhdz/agents-bridge/engine/internal/bridge"
 	"github.com/grrdhdz/agents-bridge/engine/internal/protocol"
@@ -55,17 +56,42 @@ type responseEnvelope struct {
 // peekResponse is GET /v1/peek's body. Unlike responseEnvelope its fields
 // have no omitempty: "unread":0 and "urgent":false are answers, not absences.
 type peekResponse struct {
-	V               int    `json:"v"`
-	Type            string `json:"type"`
-	RequestID       string `json:"request_id,omitempty"`
-	OK              bool   `json:"ok"`
-	Operation       string `json:"operation"`
-	InstanceID      string `json:"instance_id"`
-	Unread          int    `json:"unread"`
-	Urgent          bool   `json:"urgent"`
-	LatestLabel     string `json:"latest_label"`
-	LatestMessageID string `json:"latest_message_id"`
-	FinReceived     bool   `json:"fin_received"`
+	V               int           `json:"v"`
+	Type            string        `json:"type"`
+	RequestID       string        `json:"request_id,omitempty"`
+	OK              bool          `json:"ok"`
+	Operation       string        `json:"operation"`
+	InstanceID      string        `json:"instance_id"`
+	Unread          int           `json:"unread"`
+	Urgent          bool          `json:"urgent"`
+	LatestLabel     string        `json:"latest_label"`
+	LatestMessageID string        `json:"latest_message_id"`
+	FinReceived     bool          `json:"fin_received"`
+	Messages        []PeekMessage `json:"messages"`
+}
+
+// PeekMessage is a bounded preview, not a second consuming inbox.
+type PeekMessage struct {
+	EventSeq   uint64 `json:"event_seq"`
+	MessageID  string `json:"message_id"`
+	Label      string `json:"label"`
+	SenderRole string `json:"sender_role"`
+	Preview    string `json:"preview"`
+}
+
+func messagePreview(body, label string) string {
+	if label != "" {
+		_, body, _ = strings.Cut(body, "\n")
+	}
+	first, _, _ := strings.Cut(body, "\n")
+	first = strings.TrimSuffix(first, "\r")
+	if len(first) > 512 {
+		first = first[:512]
+		for !utf8.ValidString(first) {
+			first = first[:len(first)-1]
+		}
+	}
+	return first
 }
 
 // waitResponse is separate from responseEnvelope because there "message" is
@@ -642,6 +668,8 @@ type inbox struct {
 	urgent      bool
 	latestLabel string
 	latestID    string
+	messages    []PeekMessage
+	firstUrgent *PeekMessage
 }
 
 func (i inbox) message() string {
@@ -678,9 +706,20 @@ func (e *Endpoint) unreadAfter(cursor uint64) (inbox, error) {
 				sum.urgent = true
 			}
 			sum.latestLabel, sum.latestID = label, event.Envelope.MessageID
+			preview := PeekMessage{EventSeq: event.EventSeq, MessageID: event.MessageID, Label: label, SenderRole: RoleKey(event.Envelope.SenderRole), Preview: messagePreview(event.Envelope.Body, label)}
+			if label == "URGENTE" && sum.firstUrgent == nil {
+				sum.firstUrgent = &preview
+			}
+			sum.messages = append(sum.messages, preview)
+			if len(sum.messages) > 31 {
+				sum.messages = sum.messages[1:]
+			}
 		}
 		after = next
 		if !more {
+			if sum.firstUrgent != nil && len(sum.messages) > 0 && sum.firstUrgent.EventSeq < sum.messages[0].EventSeq {
+				sum.messages = append([]PeekMessage{*sum.firstUrgent}, sum.messages...)
+			}
 			return sum, nil
 		}
 	}
@@ -737,7 +776,7 @@ func (e *Endpoint) handlePeek(w http.ResponseWriter, r *http.Request) {
 		e.writeBridgeError(w, requestID, err)
 		return
 	}
-	_ = writeJSON(w, http.StatusOK, peekResponse{V: 1, Type: "response", RequestID: requestID, OK: true, Operation: "peek", InstanceID: e.descriptor.InstanceID, Unread: sum.unread, Urgent: sum.urgent, LatestLabel: sum.latestLabel, LatestMessageID: sum.latestID, FinReceived: e.hasReceivedFIN()})
+	_ = writeJSON(w, http.StatusOK, peekResponse{V: 1, Type: "response", RequestID: requestID, OK: true, Operation: "peek", InstanceID: e.descriptor.InstanceID, Unread: sum.unread, Urgent: sum.urgent, LatestLabel: sum.latestLabel, LatestMessageID: sum.latestID, FinReceived: e.hasReceivedFIN(), Messages: sum.messages})
 }
 
 // RoleSnapshots first replays new journal messages into the registry (so a

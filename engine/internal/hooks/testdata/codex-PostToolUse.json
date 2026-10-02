@@ -1,0 +1,15 @@
+{
+  "session_id": "01a0fad1-078a-7e83-9a61-7612b04dffaf",
+  "turn_id": "01a0fad1-0cef-7260-a1b2-ba5b4c87af17",
+  "transcript_path": null,
+  "cwd": "/probe",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "echo CANARIO-P1"
+  },
+  "tool_response": "CANARIO-P1\n",
+  "tool_use_id": "exec-0eb21719-6306-4606-8810-f9810c2ef767"
+}

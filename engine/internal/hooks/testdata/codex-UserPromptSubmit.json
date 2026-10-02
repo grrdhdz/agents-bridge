@@ -1,0 +1,10 @@
+{
+  "session_id": "01a0fad1-078a-7e83-9a61-7612b04dffaf",
+  "turn_id": "01a0fad1-0cef-7260-a1b2-ba5b4c87af17",
+  "transcript_path": null,
+  "cwd": "/probe",
+  "hook_event_name": "UserPromptSubmit",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "prompt": "Ejecuta exactamente echo CANARIO-P1 usando una herramienta de shell. No leas ni modifiques archivos, no uses skills ni otras herramientas. Después responde con LISTO y la salida del comando."
+}

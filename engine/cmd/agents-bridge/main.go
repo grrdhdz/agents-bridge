@@ -34,7 +34,12 @@ const (
 
 func main() {
 	var err error
-	if len(os.Args) > 1 && (os.Args[1] == "bind" || os.Args[1] == "unbind") {
+	if len(os.Args) > 1 && os.Args[1] == "hook" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		code := runHook(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr})
+		stop()
+		os.Exit(code)
+	} else if len(os.Args) > 1 && (os.Args[1] == "bind" || os.Args[1] == "unbind") {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		env := ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr}
 		code := 0
@@ -502,6 +507,7 @@ func runJoinHeadless(ctx context.Context, client *bridge.Client, stdout io.Write
 }
 
 func printUsage() {
+	fmt.Println("agents-bridge hook claude|codex Evento   hook de coordinación: JSON por stdin, presupuesto 2s, falla abierto")
 	fmt.Println("agents-bridge bind --instance-id ID --role orchestrator|executor   valida el vínculo que registra el hook")
 	fmt.Println("agents-bridge bind --list           lista vínculos de sesiones")
 	fmt.Println("agents-bridge unbind                el hook elimina el vínculo de esta sesión")

@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -127,5 +128,25 @@ func TestStoreConcurrentSessionsAndNoSecrets(t *testing.T) {
 	b, _ = h.store.Lookup(ctx, "codex", "one")
 	if !b.BoundAt.Equal(before) {
 		t.Fatal("idempotent bind reset session")
+	}
+}
+
+func TestStorePrunesExpiredDescriptorWithClosedEndpoint(t *testing.T) {
+	h := newHookBridge(t)
+	ctx := context.Background()
+	b := Binding{Harness: "codex", SessionID: "stale", InstanceID: h.owner.InstanceID(), Role: protocol.RoleExecutor}
+	if err := h.store.Bind(ctx, b); err != nil {
+		t.Fatal(err)
+	}
+	d := h.workerEndpoint.Descriptor()
+	d.ExpiresAt = time.Now().Add(-time.Hour)
+	d.ControlURL = "http://127.0.0.1:1"
+	data, _ := json.Marshal(d)
+	if err := os.WriteFile(filepath.Join(h.store.DescriptorRoot, d.InstanceID+"-"+string(d.LocalRole)+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	list, err := h.store.List(ctx)
+	if err != nil || len(list) != 0 {
+		t.Fatalf("dead binding retained: %+v %v", list, err)
 	}
 }

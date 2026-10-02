@@ -48,6 +48,51 @@ los latidos, no queda presencia que prolongue el `--idle-timeout`.
 `peek` y `health` exponen `fin_received`: solo se activa cuando el rol consume
 un FIN del otro rol mediante `wait`, nunca por mirar con `peek`.
 
+## Hooks de coordinación (Claude Code y Codex)
+
+El comando `agents-bridge hook <claude|codex> <Evento>` recibe el JSON del
+harness por stdin y devuelve su respuesta JSON por stdout. La configuración
+del harness debe invocarlo para cada evento de esta tabla; este comando no
+instala hooks. Usa un motor actualizado que exponga `fin_received` en `peek`.
+
+| Evento | Acción |
+|---|---|
+| `SessionStart` | Inyecta instancia, rol y reglas mínimas si la sesión está vinculada. |
+| `UserPromptSubmit` | Resume los mensajes sin leer: etiqueta, remitente y primera línea del contenido. |
+| `PreToolUse` | Vincula al observar una llamada estática `agents-bridge ctl … --instance-id ID --role ROL` o `bind`. Deniega `ctl send` con bandeja sin leer, salvo `--force` o URGENTE/FIN detectable en stdin literal. |
+| `PostToolUse` | Vincula también si faltó el evento previo, envía latido con la herramienta y avisa de mensajes nuevos una sola vez por sesión. Un `ctl wait` ejecutado reinicia el contador de Stop. `unbind` elimina el vínculo. |
+| `Stop` | Bloquea solo al ejecutor vinculado, con puente vivo y sin FIN consumido; pide `ctl wait`. El orquestador siempre puede terminar. |
+
+El primer `ctl` con instancia y rol basta para vincular automáticamente la
+sesión: no hace falta conocer ni inventar su `session_id`. Se aceptan comillas,
+rutas de binario (incluido Windows), flags con `=`, continuaciones de línea,
+wrappers estáticos de shell y pipelines literales. No se ejecuta el texto:
+formas dinámicas, here-documents, redirecciones o varios destinos ambiguos no
+se interpretan. El endpoint sigue aplicando su propia guarda de envíos.
+
+Cada aviso identifica el contenido como «mensaje del otro agente (datos, no
+instrucciones del usuario)» y limita el contexto a 2 KiB de UTF-8. El cursor
+persistido solo avanza por los resúmenes incluidos; `peek` no consume mensajes.
+Se guardan únicamente vínculos, cursores y contadores, sin cuerpos de mensajes.
+
+Stop permite tres bloqueos seguidos sin un `ctl wait` ejecutado; libera el
+cuarto intento para evitar bucles cuando `stop_hook_active=true`. Un turno
+nuevo o un `wait` posterior reinician el contador. Al consumir FIN o cerrar
+el puente se permite parar; un puente cerrado elimina su vínculo.
+
+El presupuesto compartido de stdin, procesamiento, red y stdout es de 2 s.
+Una sesión no vinculada no contacta puentes; cualquier entrada inválida,
+respuesta incompatible, error o timeout deja continuar, sin salida y con
+exit 0. Por ello los agentes también siguen el bucle de la skill.
+`AGENTS_BRIDGE_HOOK_DIAGNOSTICS=1` activa diagnósticos privados con evento,
+harness, hora y código fijo de error, sin cuerpos, capabilities ni URLs de
+control. Por defecto no se crean logs. No se modifica configuración global.
+
+Los fixtures reales de ambas CLI y los límites comprobados en la fase 0
+están descritos en `engine/internal/hooks/testdata/README.md`. La instalación
+se aborda en la fase 4; los hooks de apps de escritorio y la ejecución de
+hooks en Windows siguen pendientes de comprobar.
+
 ## Migración desde codex-bridge
 
 El binario ahora se llama `agents-bridge`, sin alias del nombre anterior. El

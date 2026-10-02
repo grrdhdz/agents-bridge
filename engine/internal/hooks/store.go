@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -21,11 +23,13 @@ import (
 var ErrNotBound = errors.New("session is not bound")
 
 type Binding struct {
-	Harness    string        `json:"harness"`
-	SessionID  string        `json:"session_id"`
-	InstanceID string        `json:"instance_id"`
-	Role       protocol.Role `json:"role"`
-	BoundAt    time.Time     `json:"bound_at"`
+	LastNotifiedEventSeq uint64        `json:"last_notified_event_seq,omitempty"`
+	StopBlocks           int           `json:"stop_blocks,omitempty"`
+	Harness              string        `json:"harness"`
+	SessionID            string        `json:"session_id"`
+	InstanceID           string        `json:"instance_id"`
+	Role                 protocol.Role `json:"role"`
+	BoundAt              time.Time     `json:"bound_at"`
 }
 
 type Store struct {
@@ -175,11 +179,15 @@ func (s Store) Lookup(ctx context.Context, harness, session string) (Binding, er
 	if err != nil {
 		return b, err
 	}
-	if _, err = control.FindDescriptor(s.DescriptorRoot, b.InstanceID, b.Role); errors.Is(err, control.ErrInstanceNotFound) {
+	alive, err := s.bridgeAlive(ctx, b)
+	if err != nil {
+		return b, err
+	}
+	if !alive {
 		_ = os.Remove(path)
 		return Binding{}, ErrNotBound
 	}
-	return b, err
+	return b, nil
 }
 func (s Store) Unbind(ctx context.Context, harness, session string) error {
 	path, err := s.path(harness, session)
@@ -254,4 +262,62 @@ func (s Store) List(ctx context.Context) ([]Binding, error) {
 		return out[i].SessionID < out[j].SessionID
 	})
 	return out, nil
+}
+
+// Update serializes session decisions across independent hook processes. Only
+// cursors and counters are stored; context-injected message text stays in RAM.
+func (s Store) Update(ctx context.Context, harness, session string, fn func(*Binding) error) error {
+	path, err := s.path(harness, session)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		return ErrNotBound
+	}
+	unlock, err := s.lock(ctx, path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	b, err := s.read(path, harness, session)
+	if err != nil {
+		return err
+	}
+	if err = fn(&b); err != nil {
+		return err
+	}
+	if err = ctx.Err(); err != nil {
+		return err
+	}
+	return s.write(path, b)
+}
+
+// A crashed process can leave an expired descriptor. Probe only that target,
+// under the caller's deadline; a timeout is uncertainty, not proof of closure.
+func (s Store) bridgeAlive(ctx context.Context, b Binding) (bool, error) {
+	d, err := control.FindDescriptor(s.DescriptorRoot, b.InstanceID, b.Role)
+	if errors.Is(err, control.ErrInstanceNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if time.Now().Before(d.ExpiresAt) {
+		return true, nil
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+	defer cancel()
+	res, err := control.Do(probeCtx, d, http.MethodGet, "/v1/health", nil)
+	if err != nil {
+		var op *net.OpError
+		if ctx.Err() == nil && errors.As(err, &op) && !op.Timeout() {
+			return false, nil
+		}
+		return false, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return false, errors.New("expired binding health rejected")
+	}
+	return true, nil
 }
