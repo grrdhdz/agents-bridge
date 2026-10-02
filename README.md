@@ -32,9 +32,9 @@ no gráfico `ctl`.
 ## Migración desde codex-bridge
 
 El binario ahora se llama `agents-bridge`, sin alias del nombre anterior. El
-módulo es `github.com/grrdhdz/agents-bridge` y el paquete del comando es
-`cmd/agents-bridge`. Actualiza los scripts y comandos que lo invocan; el
-subcomando específico de Codex sigue siendo `agents-bridge codex open`.
+módulo es `github.com/grrdhdz/agents-bridge/engine` y el paquete del comando es
+`engine/cmd/agents-bridge` en este monorepo. Actualiza los scripts y comandos
+que lo invocan; el subcomando específico de Codex sigue siendo `agents-bridge codex open`.
 
 - Añade para el nuevo binario la regla de Codex
   `prefix_rule(pattern=["agents-bridge", "ctl"], decision="allow")` en
@@ -73,6 +73,18 @@ el binario `codex-bridge`. Compila este checkout para obtener el nombre nuevo.
   proceso Mac siga vivo. Una caída del proceso Mac no tiene recuperación.
 - El cuerpo canónico es texto UTF-8 intacto. No se admiten adjuntos.
 
+## Estructura del monorepo
+
+- `engine/`: módulo Go del motor, núcleo, CLI y TUI; `engine/api/` contiene el
+  marcador del contrato de la futura API.
+- `apps/`: interfaces independientes (la app de escritorio irá en `apps/desktop/`).
+- `docs/` y `.agents/skills/`: documentación y skills compartidas.
+
+Las apps solo usan `agents-bridge api` o la CLI pública; nunca importan código
+Go del motor ni leen sus archivos internos. El núcleo no depende de la TUI ni
+de la API: una prueba de arquitectura comprueba las dependencias transitivas.
+`agents-bridge api` todavía no está implementado.
+
 ## Compilar
 
 Requiere Go 1.27 o posterior y Tailscale instalado en la Mac del
@@ -80,6 +92,7 @@ orquestador. El cliente Windows solo necesita la aplicación Tailscale activa;
 no necesita el CLI de Tailscale.
 
 ```sh
+cd engine
 go mod tidy
 go test ./...
 go build -o agents-bridge ./cmd/agents-bridge
@@ -93,7 +106,7 @@ Comprueba la versión del binario con `agents-bridge --version`.
 La opción reproducible desde código fuente es instalar el paquete del módulo:
 
 ```powershell
-go install github.com/grrdhdz/agents-bridge/cmd/agents-bridge@latest
+go install github.com/grrdhdz/agents-bridge/engine/cmd/agents-bridge@latest
 agents-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
 ```
 

@@ -1,7 +1,8 @@
 # Build outputs
-/agents-bridge
-/agents-bridge.exe
+/engine/agents-bridge
+/engine/agents-bridge.exe
 /bin/
+/engine/bin/
 /dist/
 /release/
 *.test
@@ -15,5 +16,5 @@ coverage.out
 .claude/settings.local.json
 
 # Builds locales de desarrollo
-/agents-bridge-dev
-/agents-bridge-dev.exe
+/engine/agents-bridge-dev
+/engine/agents-bridge-dev.exe

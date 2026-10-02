@@ -19,7 +19,7 @@ siguientes corresponden a las publicaciones con el nombre nuevo.
 Requiere Go 1.27 o posterior:
 
 ```powershell
-go install github.com/grrdhdz/agents-bridge/cmd/agents-bridge@latest
+go install github.com/grrdhdz/agents-bridge/engine/cmd/agents-bridge@latest
 agents-bridge.exe --version
 agents-bridge.exe join --host <magicdns-del-mac> --port <puerto> --instance <instance_id> --token <token>
 ```

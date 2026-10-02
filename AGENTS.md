@@ -22,17 +22,20 @@ importa este archivo; no agregues instrucciones allí.
 ## Comandos
 
 ```sh
+cd engine
 gofmt -l .        # debe quedar vacío; corrige con gofmt -w
 go build ./...
 go vet ./...
+GOOS=windows go vet ./...
 go test ./...
-go test -race ./...
+go test -race -count=1 ./...
 go build -o agents-bridge ./cmd/agents-bridge
 GOOS=windows GOARCH=amd64 go build -o agents-bridge.exe ./cmd/agents-bridge
 ```
 
 Requiere Go 1.27+. Antes de declarar un cambio terminado: `gofmt -l .` vacío,
-`go vet`, `go test -race ./...` y ambos builds (darwin/arm64 y windows/amd64).
+`go vet ./...`, `GOOS=windows go vet ./...`, `go test -race -count=1 ./...` y
+ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 
 ## Invariantes del proyecto
 
@@ -40,22 +43,39 @@ Requiere Go 1.27+. Antes de declarar un cambio terminado: `gofmt -l .` vacío,
   cuerpos. El descriptor de control es metadata efímera, no historial.
 - Cada invocación crea una instancia aislada (`instance_id`, puerto y tokens
   propios). Instancias concurrentes no comparten nada.
-- El protocolo TCP v1 (`internal/protocol`) no cambia de forma incompatible sin
-  una spec aprobada que suba la versión.
+- El protocolo TCP v1 (`engine/internal/protocol`) no cambia de forma
+  incompatible sin una spec aprobada que suba la versión.
 - Nunca imprimir ni registrar pairing tokens, reconnect tokens ni capabilities
   fuera de los canales ya definidos.
-- El plano de control local (`internal/control`) solo escucha en loopback.
+- El plano de control local (`engine/internal/control`) solo escucha en loopback.
 
-## Mapa del código
+## Mapa del código (monorepo)
 
-- `cmd/agents-bridge` — CLI: orquestador con TUI (por defecto), `join`,
-  `local` (dos agentes en el mismo equipo) y `ctl` (control no gráfico).
-- `internal/protocol` — frames, envelopes y validación.
-- `internal/bridge` — `Server` (Mac), `Client`, `EventHub` (fan-out + journal).
-- `internal/control` — endpoint HTTP loopback y descriptores (`ctl`, v0.2.0).
-- `internal/tui` — TUI Bubble Tea.
-- `internal/tailscale`, `internal/clipboard` — integración de plataforma.
-- `docs/superpowers/specs/` — especificaciones aprobadas.
+- `engine/` — módulo Go `github.com/grrdhdz/agents-bridge/engine`.
+- `engine/cmd/agents-bridge` — CLI: host, `join`, `local`, `ctl`, `ps`, `stop`,
+  `tui` y `codex open`.
+- `engine/internal/protocol` — frames, envelopes y validación.
+- `engine/internal/bridge` — `Server`, `Client`, `EventHub` (fan-out + journal).
+- `engine/internal/control` — endpoint HTTP loopback y descriptores.
+- `engine/internal/bridges` — registro y listado de puentes.
+- `engine/internal/tui` — TUI Bubble Tea, cliente del núcleo.
+- `engine/internal/tailscale`, `engine/internal/clipboard` — integración de
+  plataforma.
+- `engine/api/` — contrato de la API del motor (marcador; API aún sin implementar).
+- `engine/architecture_test.go` — verifica la separación de dependencias con
+  `go list -deps`.
+- `apps/` — interfaces independientes; la app de escritorio irá en `apps/desktop/`.
+- `docs/`, `.agents/skills/` — documentación y skills compartidas en la raíz.
+
+## Separación del motor y las apps
+
+- Las apps solo usan `agents-bridge api` o los comandos públicos de la CLI.
+  Nunca importan código Go del motor ni leen sus descriptores o archivos internos.
+- El núcleo (`protocol`, `bridge`, `control`, `bridges` y futuros paquetes de
+  hooks) no depende de la TUI ni de la API, ni siquiera de forma transitiva.
+  La TUI y la API son clientes del núcleo.
+- Todo código Go y su módulo viven en `engine/`; las apps pueden generar tipos
+  desde el contrato versionado de `engine/api/`, sin duplicar lógica del motor.
 
 ## Skills
 
