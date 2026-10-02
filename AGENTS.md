@@ -39,15 +39,35 @@ ambos builds (darwin/arm64 y windows/amd64), desde `engine/`.
 
 ## App de escritorio
 
-Desde `apps/desktop/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`,
-`npm run check:types`, `cargo check --manifest-path src-tauri/Cargo.toml` y
-`npm run tauri build -- --debug`. CLI Tauri local, sin instalaciones globales.
-`npm run screenshots` genera evidencia con fixtures solo de desarrollo y cierra
-Vite/Playwright. Los tokens de tema pasan contraste WCAG por prueba.
-Los tipos se regeneran con `npm run generate:types`; solo se permite leer el
-contrato público para generarlos y compilar el motor como sidecar. El runtime
-nunca accede a archivos internos del motor. La prueba de separación de la app
-vive en `apps/desktop/scripts/separation.test.mjs`.
+Desde `apps/desktop/` (Node 20.19+/22.12+, Rust, Go 1.27, herramientas nativas):
+
+```sh
+npm ci
+npm run sidecar             # binario propio por target, sin instalar en PATH
+npm run dev                 # frontend; ?demo=1 solo en desarrollo
+npm run tauri dev           # ventana nativa con Vite y sidecar
+npm run generate:types      # desde el contrato público engine/api/schema.json
+npm run check:types
+npm run typecheck
+npm test                    # Node + Vitest/Testing Library
+npm run build               # incluye guard: demo excluido de producción
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo test --manifest-path src-tauri/Cargo.toml
+cargo check --manifest-path src-tauri/Cargo.toml
+npm run tauri build         # macOS .app/.dmg; Windows MSI/NSIS en Windows
+npm run smoke:native -- --release
+npm run screenshots         # 16 PNG; cierra Vite y Playwright propios
+npm audit
+```
+
+CLI Tauri local, sin instalaciones globales. Antes de cerrar cambios en la app,
+verificar tipos/tests/build, fmt/test/check Cargo y build de Tauri. Capturas
+solo de desarrollo en `docs/screenshots/desktop/`. Los tokens, incluidos código
+y búsqueda, pasan contraste WCAG; los diálogos y atajos tienen pruebas de teclado.
+Solo se permite leer el contrato público para generar tipos y compilar el motor
+como sidecar; el runtime nunca accede a archivos internos del motor. La prueba
+de separación vive en `apps/desktop/scripts/separation.test.mjs`.
+
 
 ## Invariantes del proyecto
 
@@ -83,6 +103,15 @@ vive en `apps/desktop/scripts/separation.test.mjs`.
 - `engine/architecture_test.go` — verifica la separación de dependencias con
   `go list -deps`.
 - `apps/` — interfaces independientes; la app Tauri 2 + React vive en `apps/desktop/`.
+- `apps/desktop/src/api/` — tipos públicos generados y cliente Tauri tipado.
+- `apps/desktop/src/screens/`, `components/` — inicio, chat, panel, Markdown,
+  búsqueda, paleta, composer, diálogos accesibles y avisos; estado en React.
+- `apps/desktop/src/demo/` — fixtures exclusivos de dev; guard de producción.
+- `apps/desktop/src-tauri/src/` — proxy stdio, timeouts y recuperación; sin negocio.
+- `apps/desktop/src-tauri/tauri*.conf.json`, `icons/` — bundles por plataforma,
+  metadatos 0.5.0 e iconos propios. Sin firma de distribución/notarización.
+- `.github/workflows/desktop.yml` — builds macOS/Windows y artefactos; sin release.
+- `docs/REVIEW-2026-10-02.md` — entrega, cómo probar y pendientes de publicación.
 - `docs/`, `.agents/skills/` — documentación y skills compartidas en la raíz.
 
 ## Separación del motor y las apps

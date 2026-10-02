@@ -4,12 +4,12 @@ Estado: aprobado por el usuario (Tauri + React, 2026-10-01). Ejecución autónom
 nocturna por el orquestador con Luna (Codex) en Herdr. Base: rama
 `feat/agents-bridge-v0.5` una vez cerrado el plan de hooks.
 
-## Avance G1 y G0 (2026-10-01)
+## Avance G0–G5 (2026-10-02)
 
 - G1 completada primero: `e4752d5d6f4e65f881fd023c7dc5634e957f7eb5`.
   API JSONL v1, contrato público, exportador y observador compartidos, pruebas
   con puentes reales, red/green y verificación completa del motor.
-- G0 completada en el commit `Add desktop skeleton with engine sidecar handshake`.
+- G0 completada: `908aab066cc74b6135a92886c059e64d31a7b56e`.
   Tauri 2 + React + TypeScript + Vite, sidecars por target, tipos generados,
   lockfiles npm/Cargo y handshake real desde la app empaquetada. Evidencia y
   comandos en [`apps/desktop/README.md`](../../../apps/desktop/README.md).
@@ -21,12 +21,27 @@ nocturna por el orquestador con Luna (Codex) en Herdr. Base: rama
   Proxy persistente por ventana, correlación, eventos, timeout, recuperación de
   suscripciones e intención de unsubscribe durante una caída. Pruebas con un
   proceso falso, cargo/npm/build y smoke nativo OK.
-- G3 completada en `feat: add desktop bridge screens and development screenshots`.
+- G3 completada: `078f90c09ef27ae14ab21450cf646fbee6efc9ba`.
   Inicio, conversación, panel, composer/historial, temas con contraste comprobado,
-  demo excluido de producción y [ocho capturas](../../screenshots/desktop/README.md).
+  demo excluido de producción y [capturas](../../screenshots/desktop/README.md).
   `health.unread` es un campo opcional/aditivo, obtenido por peek sin consumo.
   Motor completo, npm, Rust, build macOS y Playwright verificados.
-- G4/G5 pendientes.
+- G4 completada: `0a52846f9d18fe1ee753767ff0e91cda7dd8fb6f`.
+  Markdown/código offline, plegado, búsqueda, cmdk, avisos, foco modal,
+  atajos, exportación nativa y correcciones de latido/pendientes/ID.
+  24 pruebas Vitest + 4 Node + 3 Rust, build debug y smoke nativo OK.
+  Las capturas de G3 fueron regeneradas; hay 16 con código/paleta.
+- G5 completada: `f1399dc34701c7f6b909a607843ba890747d96b1`.
+  Motor/app 0.5.0, icono, metadatos, release .app (33.17 MiB) y .dmg
+  (14.62 MiB), sin firma de bundle ni notarización. Smoke release v0.5.0 OK.
+  MSI/NSIS configurados y workflow macOS/Windows validado como YAML y revisado;
+  no ejecutado en GitHub. 5 Node, 24 Vitest y 3 Rust; verificación del motor OK
+  en la repetición completa. La primera corrida encontró ROLE_ALREADY_BOUND en
+  una prueba de reconexión existente; no se cambió la lógica.
+- Cierre documental: `docs: summarize 0.5.0 delivery and review steps`
+  (el hash del propio commit se consulta con `git log -1`). Informe en
+  [REVIEW-2026-10-02](../../REVIEW-2026-10-02.md), mapa/comandos en AGENTS.md.
+  No push, tags, instalación global ni procesos propios vivos.
 
 ## 1. Objetivo
 
@@ -151,14 +166,14 @@ app, sección en el README principal y nota en la skill.
 | Riesgo | Mitigación / decisión |
 |---|---|
 | "Tauri y React Native" no se combinan | Confirmado por el usuario: Tauri + React (web en WebView). React Native queda fuera. |
-| Mezclar motor e interfaz | Monorepo con  y  separados; las apps solo usan el contrato; prueba de dependencias del núcleo. |
+| Mezclar motor e interfaz | Monorepo con `engine/` y `apps/` separados; las apps solo usan el contrato; prueba de dependencias del núcleo. |
 | Duplicar lógica del núcleo en Rust | Prohibido por diseño: sidecar Go + stdio. Rust solo hace de proxy. |
 | Exponer la capability a la WebView | El contrato nunca la incluye; prueba de que ninguna salida de `api` contiene capability, tokens ni `control_url`. |
 | Puertos de red nuevos | Ninguno: stdio. El plano de control sigue en loopback dentro de cada puente. |
 | Compilar Windows desde macOS | Tauri no soporta oficialmente compilar el instalador de Windows en macOS. Se compila y prueba el sidecar Go para Windows, se deja `cargo check --target x86_64-pc-windows-msvc` del lado Rust si es posible, y el instalador queda para CI o un equipo Windows. Se documenta como pendiente verificado. |
 | Firma y notarización | Requieren cuentas del usuario (Apple Developer ID, certificado Windows). Fuera de esta entrega; builds sin firmar marcados como tales. |
 | Tamaño y arranque | Sidecar Go ~25 MB + WebView del sistema. Se mide y se documenta. |
-| Alcance de una noche | G0–G3 son el mínimo para revisión; G4–G5 se completan en lo posible y lo que falte queda listado. |
+| Alcance de una noche | G0–G5 completadas. Publicación, firma, P4 y P6 quedan explícitamente pendientes. |
 | Procesos huérfanos | La app solo termina su sidecar; los puentes creados con `create_local` siguen la regla de inactividad y se listan al salir, como en la TUI. |
 | Convivencia con codex-bridge v0.4 | El sidecar es `agents-bridge` con su propio directorio de descriptores: no ve ni toca puentes v0.4. |
 | Dependencias npm | Solo paquetes conocidos y mantenidos; `npm audit` en el informe; lockfile en el repo. |
