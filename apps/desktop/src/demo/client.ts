@@ -2,12 +2,12 @@ import type { ApiClient, EngineStatus } from '../api/client';
 import type { Instance, Message, Event, Health, Label } from '../api/types';
 
 const marker = 'DEMO_DATA_ONLY';
-const beat = '2026-10-02T00:00:08-06:00';
+const beat = () => new Date(Date.now() - 8000).toISOString();
 export function demoInstances(): Instance[] {
   return [
-    { instance_id: 'demo-checkout-001', project: 'checkout-api', mode: 'local', roles: ['orchestrator', 'executor'], pid: 4812, started_at: beat, idle_seconds: 3, peer_connected: true, latest_server_seq: 7, role_states: { orchestrator: { state: 'esperando', hook_bound: true, last_heartbeat_at: beat }, executor: { state: 'trabajando', tool: 'Bash', hook_bound: true, last_heartbeat_at: beat } } },
-    { instance_id: 'demo-docs-002', project: 'docs-site', mode: 'local', roles: ['orchestrator', 'executor'], pid: 4910, started_at: beat, idle_seconds: 18, peer_connected: true, latest_server_seq: 12, role_states: { orchestrator: { state: 'trabajando', tool: 'Read', hook_bound: true, last_heartbeat_at: beat }, executor: { state: 'esperando', hook_bound: true, last_heartbeat_at: beat } } },
-    { instance_id: 'demo-desktop-003', project: 'desktop-client', mode: 'host', roles: ['orchestrator'], pid: 5201, started_at: beat, idle_seconds: 42, peer_connected: false, latest_server_seq: 4, role_states: { orchestrator: { state: 'callado', hook_bound: false }, executor: { state: '—', hook_bound: false } } },
+    { instance_id: 'demo-checkout-001', project: 'checkout-api', mode: 'local', roles: ['orchestrator', 'executor'], pid: 4812, started_at: beat(), idle_seconds: 3, peer_connected: true, latest_server_seq: 7, role_states: { orchestrator: { state: 'esperando', hook_bound: true, last_heartbeat_at: beat() }, executor: { state: 'trabajando', tool: 'Bash', hook_bound: true, last_heartbeat_at: beat() } } },
+    { instance_id: 'demo-docs-002', project: 'docs-site', mode: 'local', roles: ['orchestrator', 'executor'], pid: 4910, started_at: beat(), idle_seconds: 18, peer_connected: true, latest_server_seq: 12, role_states: { orchestrator: { state: 'trabajando', tool: 'Read', hook_bound: true, last_heartbeat_at: beat() }, executor: { state: 'esperando', hook_bound: true, last_heartbeat_at: beat() } } },
+    { instance_id: 'demo-desktop-003', project: 'desktop-client', mode: 'host', roles: ['orchestrator'], pid: 5201, started_at: beat(), idle_seconds: 42, peer_connected: false, latest_server_seq: 4, role_states: { orchestrator: { state: 'callado', hook_bound: false }, executor: { state: '—', hook_bound: false } } },
   ];
 }
 export function demoMessages(id = 'demo-checkout-001'): Message[] {
@@ -17,7 +17,7 @@ export function demoMessages(id = 'demo-checkout-001'): Message[] {
     ['RESPUESTA', 'Sí. Conserva el historial y evita mensajes duplicados.', true, false],
     ['PROGRESO', 'Correlación y timeouts listos. Comprobando el reinicio.', false, false],
     ['URGENTE', 'Incluye la prueba de cierre sin detener los puentes.', true, true],
-    ['RESULTADO', 'Pruebas en verde. Proxy recuperado y suscripción restaurada.', false, false],
+    ['RESULTADO', 'Pruebas en verde. **Proxy recuperado** y suscripción restaurada.\n\n```go\nfunc main() {\n    status := "conectado"\n    fmt.Println(status)\n}\n```', false, false],
     ['FIN', 'Validación completa. Puedes cerrar esta tarea.', true, false],
   ];
   return rows.map(([label, body, orq, human], n) => ({ protocol_version: 1, instance_id: id, message_id: `demo-message-${n}`, client_seq: n + 1, server_seq: n + 1, sender_id: orq ? 'claude' : 'codex', sender_role: orq ? 'mac-orchestrator' : 'win-executor', kind: 'text', body: `${label}\n${body}`, body_sha256: '0'.repeat(64), source: human ? 'human-operator' : 'agent-control', created_at: `2026-10-02T00:0${n}:00-06:00`, accepted_at: `2026-10-02T00:0${n}:00-06:00` }));

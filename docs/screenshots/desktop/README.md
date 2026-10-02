@@ -1,26 +1,15 @@
-# Capturas del escritorio (G3)
+# Capturas de escritorio
 
-Fixtures de desarrollo, no datos reales. Ocho PNG con escala 1, las dimensiones
-indicadas, paleta de la TUI y contraste comprobado. El demo tiene tres puentes;
-la conversación incluye todas las etiquetas y estados y un mensaje humano.
+Evidencia de desarrollo, con tres puentes y datos simulados; nunca se incluye
+el cliente demo en producción. Código offline y paleta de comandos añadidos en G4.
 
-| Tamaño | Tema | Inicio | Conversación |
-|---|---|---|---|
-| 1280 × 800 | Claro | [Inicio](home-light-1280x800.png) | [Puente](bridge-light-1280x800.png) |
-| 1280 × 800 | Oscuro | [Inicio](home-dark-1280x800.png) | [Puente](bridge-dark-1280x800.png) |
-| 900 × 700 | Claro | [Inicio](home-light-900x700.png) | [Puente](bridge-light-900x700.png) |
-| 900 × 700 | Oscuro | [Inicio](home-dark-900x700.png) | [Puente](bridge-dark-900x700.png) |
+| Tema y tamaño | Inicio | Conversación | Código | Paleta |
+|---|---|---|---|---|
+| Claro · 1280x800 | [home](home-light-1280x800.png) | [bridge](bridge-light-1280x800.png) | [code](code-light-1280x800.png) | [palette](palette-light-1280x800.png) |
+| Claro · 900x700 | [home](home-light-900x700.png) | [bridge](bridge-light-900x700.png) | [code](code-light-900x700.png) | [palette](palette-light-900x700.png) |
+| Oscuro · 1280x800 | [home](home-dark-1280x800.png) | [bridge](bridge-dark-1280x800.png) | [code](code-dark-1280x800.png) | [palette](palette-dark-1280x800.png) |
+| Oscuro · 900x700 | [home](home-dark-900x700.png) | [bridge](bridge-dark-900x700.png) | [code](code-dark-900x700.png) | [palette](palette-dark-900x700.png) |
 
-## Regenerar
-
-```sh
-cd apps/desktop
-npm ci
-npx playwright install chromium  # solo si falta el navegador
-npm run screenshots
-```
-
-El script arranca Vite en loopback con puerto propio, abre `?demo=1`, toma las
-capturas y termina navegador y servidor en `finally`. También verifica que
-Ctrl+Enter envía una intervención y que se puede volver a Inicio. El demo queda
-excluido del build de producción; `npm run build` lo comprueba.
+Para regenerar: `cd apps/desktop && npm run screenshots` (Chromium de Playwright
+en caché; `npx playwright install chromium` si falta). El script cierra Vite y
+el navegador propios y comprueba teclado, foco modal y ausencia de overflow.

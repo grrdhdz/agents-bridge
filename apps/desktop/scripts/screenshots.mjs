@@ -31,7 +31,21 @@ try {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       if (overflow || errors.length) throw new Error(`Overflow o errores: ${errors.join(', ')}`);
       await page.screenshot({ path: `${output}bridge-${prefix}.png` });
-      console.log(`Capturas ${prefix}: inicio y conversación OK`);
+      await page.locator('.message pre').scrollIntoViewIfNeeded();
+      if (!await page.locator('.hljs-keyword').count()) throw new Error('Código sin resaltado offline');
+      await page.screenshot({ path: `${output}code-${prefix}.png` });
+      await page.keyboard.press('Control+k');
+      await page.getByRole('dialog', { name: 'Paleta de comandos' }).waitFor();
+      await page.screenshot({ path: `${output}palette-${prefix}.png` });
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Cerrar puente', exact: true }).click();
+      await page.getByRole('dialog', { name: '¿Cerrar este puente?' }).waitFor();
+      await page.getByRole('button', { name: 'Cancelar', exact: true }).focus();
+      await page.keyboard.press('Shift+Tab');
+      if (!await page.getByRole('button', { name: 'Cerrar puente', exact: true }).last().evaluate(el => el === document.activeElement)) throw new Error('Foco escapó del diálogo');
+      await page.keyboard.press('Escape');
+      if (await page.locator('dialog[open]').count()) throw new Error('Esc no canceló');
+      console.log(`Capturas ${prefix}: inicio, conversación, código y paleta OK`);
       // Comprueba teclado y vuelta a inicio antes de cerrar el contexto.
       await page.getByLabel('Mensaje', { exact: true }).fill('Intervención de prueba');
       await page.getByLabel('Mensaje', { exact: true }).press('Control+Enter');

@@ -122,8 +122,8 @@ con Cancelar como acción inicial. La conversación usa replay observador,
 alineación por el rol local, bordes por rol, etiquetas, origen y estados
 `·` / `✓` / `✓✓` / `✗`. El panel muestra hooks, herramientas, latido y métricas.
 
-`Sin leer (agente local)` viene del campo opcional `health.unread`, mediante
-peek sin consumo. Si no está disponible se muestra `—`. `Sin confirmar (local)`
+`Pendientes de leer por <rol>` viene del campo opcional `health.unread`, mediante
+peek sin consumo. Si no está disponible se muestra `—`. `Enviados sin entregar`
 cuenta mensajes locales enviados/aceptados sin confirmación de entrega en la
 vista; no se presenta como bandeja del otro agente.
 
@@ -149,7 +149,7 @@ Producción elimina su cliente y sus datos. El build ejecuta un guard que busca
 marcadores de los fixtures y falla si aparecen; una prueba verifica que el guard
 rechaza datos simulados. No existe un modo demo activable por URL en producción.
 
-Las [ocho capturas](../../docs/screenshots/desktop/README.md) muestran tres
+Las [capturas](../../docs/screenshots/desktop/README.md) muestran tres
 puentes y una conversación con las siete etiquetas, los cuatro estados de
 entrega, intervención humana y panel completo. Playwright crea y cierra su
 servidor Vite y navegador propios; el script también comprueba Ctrl+Enter,
@@ -167,3 +167,37 @@ ausencia de errores del frontend y de desbordamiento horizontal.
 - `tauri build --debug` macOS y smoke nativo OK; ruta `.app` indicada arriba.
 - Sin capturas nativas: esta fase usa las capturas Playwright solicitadas.
   La limitación de Windows por `llvm-rc` sigue siendo la documentada en G0.
+
+### Pulido de escritorio (G4)
+
+Markdown y código se renderizan offline, sin HTML ejecutable ni imágenes remotas.
+Los mensajes de más de 30 líneas se pliegan. Cmd/Ctrl+F busca por mensaje con
+resaltado y navegación; Cmd/Ctrl+K abre la paleta. `?` muestra la ayuda fuera
+de campos de texto. Exportar Markdown/JSONL usa el diálogo nativo de guardar
+y la API pública. Los temas incluyen contraste comprobado para el código;
+la interfaz respeta movimiento reducido y los diálogos mantienen el foco.
+
+## G4: herramientas de conversación
+
+- Markdown seguro (`react-markdown`) y código offline (`rehype-highlight`,
+  lenguajes comunes). HTML crudo se descarta; imágenes no se cargan y enlaces
+  se muestran como texto, sin navegación ni recursos remotos.
+- Mensajes largos: las primeras 30 líneas, con expansión accesible. Una búsqueda
+  revela automáticamente el contenido con coincidencias.
+- Cmd/Ctrl+F: búsqueda literal, sin distinguir mayúsculas. Las coincidencias se
+  agrupan por mensaje; Enter/Shift+Enter o flechas avanzan/retroceden.
+- Cmd/Ctrl+K: paleta accesible con inicio, crear/cerrar puente, copiar ID,
+  exportar Markdown/JSONL, búsqueda y temas. Las acciones de un puente se
+  deshabilitan en Inicio. `?` abre la ayuda fuera de campos de texto.
+- Exportar elige la ruta en el diálogo de guardar de Tauri y llama a `export`;
+  cancelar no escribe. El permiso de WebView se limita a `dialog:allow-save`.
+- Avisos de conexión, reconexión, rechazo, copia y cierre. Un rechazo conserva
+  el borrador. Los diálogos atrapan el foco, Esc cancela y el foco se devuelve
+  al control anterior. `prefers-reduced-motion` desactiva movimiento.
+- Latidos relativos legibles y ocho caracteres alfanuméricos para IDs cortos;
+  un clic copia siempre el ID completo.
+
+Las pruebas cubren cada pieza y el recorrido con un cliente falso. Playwright
+comprueba además teclado y el foco del diálogo HTML. Los tokens de código
+pasan contraste ≥4.5:1 y los bordes ≥3:1 en ambos temas. Las 16 capturas incluyen
+inicio, conversación, código y paleta en dos temas y dos tamaños.

@@ -82,6 +82,7 @@ operation!(engine_export, "export");
 
 pub fn run() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(Windows::default())
         .invoke_handler(tauri::generate_handler![
             engine_hello,
