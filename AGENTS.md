@@ -60,7 +60,7 @@ npm run screenshots         # 24 PNG; cierra Vite y Playwright propios
 npm audit
 ```
 
-CLI Tauri de desarrollo local. Abrir la app v0.5.1 mantiene automáticamente
+CLI Tauri de desarrollo local. Abrir la app v0.5.2 mantiene automáticamente
 hooks globales y CLI estable: todos los tests/smoke deben lanzar procesos con
 HOME, LOCALAPPDATA, APPDATA/UserConfigDir/XDG y PATH temporales. Nunca usar
 `integration install|ensure` contra el usuario real para verificar cambios. Antes de cerrar cambios en la app,
@@ -112,7 +112,7 @@ de separación vive en `apps/desktop/scripts/separation.test.mjs`.
 - `apps/desktop/src/demo/` — fixtures exclusivos de dev; guard de producción.
 - `apps/desktop/src-tauri/src/` — proxy stdio, timeouts y recuperación; sin negocio.
 - `apps/desktop/src-tauri/tauri*.conf.json`, `icons/` — bundles por plataforma,
-  metadatos 0.5.1 e iconos propios. Sin firma de distribución/notarización.
+  metadatos 0.5.2 e iconos propios. Sin firma de distribución/notarización.
 - `.github/workflows/desktop.yml` — builds macOS/Windows y artefactos; sin release.
 - `docs/REVIEW-2026-10-02.md` — entrega, cómo probar y pendientes de publicación.
 - `docs/`, `.agents/skills/` — documentación y skills compartidas en la raíz.

@@ -143,10 +143,10 @@ test('startup ensures hooks once; indicator opens an accessible panel and toggle
   fireEvent.click(screen.getByRole('button', { name: 'Hooks: revisar' }));
   expect(screen.getByRole('dialog', { name: 'Hooks de usuario' })).toBeDefined();
   expect(screen.getByText(/acepta los hooks como confiables/)).toBeDefined();
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Mantener hooks instalados — Claude Code' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Mantener hooks instalados — Claude Code' }));
   await act(async () => {});
   expect(set).toHaveBeenCalledWith({ harness: 'claude', enabled: false });
-  expect((screen.getByRole('checkbox', { name: 'Mantener hooks instalados — Claude Code' }) as HTMLInputElement).checked).toBe(false);
+  expect(screen.getByRole('switch', { name: 'Mantener hooks instalados — Claude Code' }).getAttribute('aria-checked')).toBe('false');
   fireEvent.keyDown(screen.getByRole('button', { name: 'Cerrar panel de hooks' }), { key: 'Escape' });
   expect(screen.queryByRole('dialog')).toBeNull();
 });

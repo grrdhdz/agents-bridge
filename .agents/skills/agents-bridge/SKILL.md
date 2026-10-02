@@ -89,7 +89,7 @@ $OutputEncoding = $utf8; [Console]::InputEncoding = $utf8; [Console]::OutputEnco
 
 Cuando estén configurados en Claude Code o Codex, los hooks se invocan con
 `agents-bridge hook <claude|codex> <Evento>`.
-Desde v0.5.1, abrir la app mantiene automáticamente hooks de usuario para
+Desde v0.5.2, abrir la app mantiene automáticamente hooks de usuario para
 Claude Code y Codex, en todos los proyectos, usando una copia estable de la CLI.
 No pide confirmación. **Hooks ✓ / Hooks: revisar** abre el estado y el control
 **Mantener hooks instalados** por harness. Desactivarlo o `integration uninstall`
@@ -287,7 +287,7 @@ Salida 3 sigue significando que la instancia ya no existe: detén el bucle e
 informa al usuario. Salida 8 significa lo contrario: la instancia sigue viva,
 solo el sandbox actual no llega a `127.0.0.1`.
 
-## App de escritorio (v0.5.1)
+## App de escritorio (v0.5.2)
 
 La app en `apps/desktop/` observa por `agents-bridge api` sin consumir mensajes.
 Sus intervenciones llegan con `source=human-operator`, igual que las de la TUI.

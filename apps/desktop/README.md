@@ -1,6 +1,6 @@
 # agents-bridge: app de escritorio
 
-Versión **0.5.1**, identificador **dev.grrdhdz.agents-bridge**.
+Versión **0.5.2**, identificador **dev.grrdhdz.agents-bridge**.
 Cliente Tauri 2 + React + TypeScript + Vite. G2 mantiene un único proceso
 `agents-bridge api` por ventana. Los comandos Rust reflejan las operaciones
 públicas; no leen archivos del motor ni contienen reglas de negocio.
@@ -214,7 +214,7 @@ cd apps/desktop
 npm ci
 npm run tauri build          # release; compila motor, frontend y Rust
 # macOS: src-tauri/target/release/bundle/macos/agents-bridge.app
-# macOS: src-tauri/target/release/bundle/dmg/agents-bridge_0.5.1_aarch64.dmg
+# macOS: src-tauri/target/release/bundle/dmg/agents-bridge_0.5.2_aarch64.dmg
 # Windows (equipo Windows): .../bundle/msi/*.msi y .../bundle/nsis/*.exe
 npm run tauri icon -- src-tauri/icons/app.svg  # regenerar iconos desde SVG
 ```
@@ -222,7 +222,7 @@ npm run tauri icon -- src-tauri/icons/app.svg  # regenerar iconos desde SVG
 La base configura `.app`/`.dmg`; `tauri.windows.conf.json` se mezcla automáticamente
 para generar MSI y NSIS (por usuario, selector español/inglés). Iconos de flechas
 azul/verde distinguen los roles y se incluyen en PNG, ICNS e ICO. El paquete
-se llama agents-bridge y los tres manifiestos coinciden en 0.5.1.
+se llama agents-bridge y los tres manifiestos coinciden en 0.5.2.
 
 No hay identidad de firma configurada, certificado Developer ID/Windows ni
 notarización. Un binario Mach-O puede tener la firma ad hoc del enlazador; eso
@@ -252,11 +252,11 @@ Los tamaños del release comprobado quedan registrados en el informe de revisió
 | Artefacto | Tamaño |
 |---|---:|
 | `src-tauri/target/release/bundle/macos/agents-bridge.app` | 34 887 836 bytes · 33.27 MiB |
-| `src-tauri/target/release/bundle/dmg/agents-bridge_0.5.1_aarch64.dmg` | 15 387 130 bytes · 14.67 MiB |
+| `src-tauri/target/release/bundle/dmg/agents-bridge_0.5.2_aarch64.dmg` | 15 387 130 bytes · 14.67 MiB |
 
 SHA-256 del DMG: `b40c4adb4f0a8c1bcc82ab122d2ecd353126ec9be1eeb3582e2241a254c98a1c`.
-Bundle `dev.grrdhdz.agents-bridge`, versión 0.5.1, sin `_CodeSignature` de bundle.
-Smoke del release: `Motor conectado: v0.5.1 · API v1`; procesos propios cerrados.
+Bundle `dev.grrdhdz.agents-bridge`, versión 0.5.2, sin `_CodeSignature` de bundle.
+Smoke del release: `Motor conectado: v0.5.2 · API v1`; procesos propios cerrados.
 Verificación del rediseño: 6 pruebas Node, 36 Vitest, 4 Rust, typecheck/build,
 fmt/test/check Cargo, release Tauri y audit (0 vulnerabilidades), todos OK.
 Motor: gofmt, vet nativo/Windows, race y builds Darwin/Windows OK; con pruebas nuevas de mantenimiento automático. La intermitencia histórica de reconexión sigue documentada
@@ -278,7 +278,7 @@ chips y código ≥4.5:1 sobre cada relleno y el fondo de chat en ambos temas;
 bordes/foco ≥3:1.
 Hover discreto y transiciones desactivadas con `prefers-reduced-motion`.
 
-## Hooks automáticos (0.5.1)
+## Hooks automáticos (0.5.2)
 
 Al arrancar, la app pide `integration_ensure` una vez, sin confirmación previa.
 Rust solo reenvía la operación; Go mantiene CLI, hooks y elecciones de usuario.
@@ -296,7 +296,7 @@ hooks usan rutas absolutas y no se modifican perfiles de shell.
 
 `smoke:native -- --release` crea HOME, LOCALAPPDATA, APPDATA/UserConfigDir,
 XDG y PATH temporales antes de lanzar la app. Espera hello e integration_ensure,
-comprueba la CLI v0.5.1 y los cinco hooks de ambos harnesses, y cierra únicamente
+comprueba la CLI v0.5.2 y los cinco hooks de ambos harnesses, y cierra únicamente
 su grupo de procesos. La app nunca lee archivos internos del motor: el smoke
 comprueba exclusivamente el ejecutable y configuración pública de los harnesses.
 No usar un HOME real al hacer smoke o pruebas manuales de instalación.

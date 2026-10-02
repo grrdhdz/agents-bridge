@@ -1,6 +1,6 @@
 [package]
 name = "agents-bridge-desktop"
-version = "0.5.1"
+version = "0.5.2"
 description = "Interfaz de escritorio de agents-bridge"
 edition = "2021"
 

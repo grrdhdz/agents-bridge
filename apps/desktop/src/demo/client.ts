@@ -40,7 +40,7 @@ export function createDemoClient(): ApiClient {
       integration = { ...integration, harnesses: { ...integration.harnesses, [harness]: { ...integration.harnesses[harness], installed: enabled, opted_out: !enabled } } };
       return { ...integration, changed: true };
     },
-    hello: async () => { void marker; return { engine_version: 'v0.5.1-demo', contract_version: 1 }; },
+    hello: async () => { void marker; return { engine_version: 'v0.5.2-demo', contract_version: 1 }; },
     list: async () => ({ instances: [...instances] }), health: async a => health(a.instance_id),
     subscribe: async a => { const sub = `demo-sub-${++counter}`; subs.set(sub, a.instance_id); (history.get(a.instance_id) || []).forEach((message, n) => { events.forEach(fn => fn({ v: 1, sub, event: 'message', data: { instance_id: a.instance_id, event_seq: n * 2 + 1, message, status: ['delivered', 'received', 'accepted', 'received', 'rejected', 'delivered', 'queued-ram'][n] } })); }); return { sub }; },
     unsubscribe: async a => { subs.delete(a.sub); return { unsubscribed: a.sub }; },

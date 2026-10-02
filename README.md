@@ -5,7 +5,7 @@ efímero, local o por Tailscale. Incluye CLI, TUI y app de escritorio; todo el
 historial vive en RAM. El humano puede observar e intervenir sin consumir la
 bandeja de los agentes.
 
-## Versión 0.5.1 (rama preparada; pendiente de publicación)
+## Versión 0.5.2 (rama preparada; pendiente de publicación)
 
 - Renombre a `agents-bridge` y monorepo: motor Go en `engine/`, interfaces en `apps/`.
 - Hooks de Claude Code/Codex: vinculación automática, latidos, avisos URGENTE,
@@ -104,7 +104,7 @@ exit 0. Por ello los agentes también siguen el bucle de la skill.
 harness, hora y código fijo de error, sin cuerpos, capabilities ni URLs de
 control. Por defecto no se crean logs. `hook` no modifica configuración global.
 
-### Instalación automática desde la app (v0.5.1)
+### Instalación automática desde la app (v0.5.2)
 
 Cada arranque mantiene automáticamente los hooks **de usuario**, válidos para
 todos los proyectos, sin aviso previo. El motor copia la CLI a una ruta estable:
@@ -221,7 +221,7 @@ el binario `codex-bridge`. Compila este checkout para obtener el nombre nuevo.
   proceso Mac siga vivo. Una caída del proceso Mac no tiene recuperación.
 - El cuerpo canónico es texto UTF-8 intacto. No se admiten adjuntos.
 
-## App de escritorio (v0.5.1)
+## App de escritorio (v0.5.2)
 
 El cliente Tauri 2 + React vive en [`apps/desktop`](apps/desktop/README.md).
 Compila su propio sidecar y genera los tipos desde el contrato público; no

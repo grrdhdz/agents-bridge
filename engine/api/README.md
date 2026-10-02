@@ -24,7 +24,7 @@ Petición (id no vacío, máximo 128 caracteres, args siempre objeto):
 Respuesta (id correlaciona con la petición; id vacío si no se pudo decodificar):
 
 ```json
-{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.5.1","contract_version":1}}
+{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.5.2","contract_version":1}}
 ```
 
 ```json
@@ -116,7 +116,7 @@ keywords desconocidos y valida los paquetes de los tests sin dependencias nuevas
 la bandeja del rol local sin consumirla. Es opcional para mantener compatibilidad
 con motores v1 anteriores y omitir un dato desconocido si peek falla.
 
-## Integración automática (motor v0.5.1)
+## Integración automática (motor v0.5.2)
 
 La app llama a `integration_ensure` una vez al arrancar; el motor es el único
 que copia su ejecutable, edita hooks y guarda las exclusiones. No requiere un
