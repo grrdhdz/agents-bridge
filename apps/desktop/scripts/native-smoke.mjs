@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 // Prueba del paquete nativo: no automatiza controles ni captura la pantalla.
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -10,7 +11,7 @@ if (process.platform !== 'darwin') throw new Error('Esta prueba del paquete .app
 const profile = process.argv.includes('--release') ? 'release' : 'debug';
 const binary = new URL(`../src-tauri/target/${profile}/bundle/macos/agents-bridge.app/Contents/MacOS/agents-bridge-desktop`, import.meta.url);
 const root = await mkdtemp(join(tmpdir(), 'agents-bridge-native-smoke-'));
-const child = spawn(binary.pathname, [], { cwd: root, detached: true, env: { ...process.env, TMPDIR: root }, stdio: ['ignore', 'pipe', 'pipe'] });
+const child = spawn(fileURLToPath(binary), [], { cwd: root, detached: true, env: { ...process.env, TMPDIR: root }, stdio: ['ignore', 'pipe', 'pipe'] });
 const exited = once(child, 'exit');
 let ended = false;
 exited.then(() => { ended = true; });

@@ -4,6 +4,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import { targetConfig } from './sidecar.mjs';
@@ -12,7 +13,7 @@ test('the packaged sidecar answers public hello and exits on EOF', { timeout: 10
   const target = execFileSync('rustc', ['-vV'], { encoding: 'utf8' }).match(/^host: (.+)$/m)[1];
   const binary = new URL(`../src-tauri/binaries/${targetConfig(target).filename}`, import.meta.url);
   const root = await mkdtemp(join(tmpdir(), 'agents-bridge-desktop-'));
-  const child = spawn(binary.pathname, ['api'], { env: { ...process.env, TMPDIR: root, LOCALAPPDATA: root }, stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(fileURLToPath(binary), ['api'], { env: { ...process.env, TMPDIR: root, LOCALAPPDATA: root }, stdio: ['pipe', 'pipe', 'pipe'] });
   const exited = once(child, 'exit');
   let ended = false;
   exited.then(() => { ended = true; });
