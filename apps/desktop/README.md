@@ -1,6 +1,6 @@
 # agents-bridge: app de escritorio
 
-Versión **0.5.2**, identificador **dev.grrdhdz.agents-bridge**.
+Versión **0.5.3**, identificador **dev.grrdhdz.agents-bridge**.
 Cliente Tauri 2 + React + TypeScript + Vite. G2 mantiene un único proceso
 `agents-bridge api` por ventana. Los comandos Rust reflejan las operaciones
 públicas; no leen archivos del motor ni contienen reglas de negocio.
@@ -214,7 +214,7 @@ cd apps/desktop
 npm ci
 npm run tauri build          # release; compila motor, frontend y Rust
 # macOS: src-tauri/target/release/bundle/macos/agents-bridge.app
-# macOS: src-tauri/target/release/bundle/dmg/agents-bridge_0.5.2_aarch64.dmg
+# macOS: src-tauri/target/release/bundle/dmg/agents-bridge_0.5.3_aarch64.dmg
 # Windows (equipo Windows): .../bundle/msi/*.msi y .../bundle/nsis/*.exe
 npm run tauri icon -- src-tauri/icons/app.svg  # regenerar iconos desde SVG
 ```
@@ -222,7 +222,7 @@ npm run tauri icon -- src-tauri/icons/app.svg  # regenerar iconos desde SVG
 La base configura `.app`/`.dmg`; `tauri.windows.conf.json` se mezcla automáticamente
 para generar MSI y NSIS (por usuario, selector español/inglés). Iconos de flechas
 azul/verde distinguen los roles y se incluyen en PNG, ICNS e ICO. El paquete
-se llama agents-bridge y los tres manifiestos coinciden en 0.5.2.
+se llama agents-bridge y los tres manifiestos coinciden en 0.5.3.
 
 No hay identidad de firma configurada, certificado Developer ID/Windows ni
 notarización. Un binario Mach-O puede tener la firma ad hoc del enlazador; eso
@@ -296,7 +296,7 @@ hooks usan rutas absolutas y no se modifican perfiles de shell.
 
 `smoke:native -- --release` crea HOME, LOCALAPPDATA, APPDATA/UserConfigDir,
 XDG y PATH temporales antes de lanzar la app. Espera hello e integration_ensure,
-comprueba la CLI v0.5.2 y los cinco hooks de ambos harnesses, y cierra únicamente
+comprueba la CLI v0.5.3 y los cinco hooks de ambos harnesses, y cierra únicamente
 su grupo de procesos. La app nunca lee archivos internos del motor: el smoke
 comprueba exclusivamente el ejecutable y configuración pública de los harnesses.
 No usar un HOME real al hacer smoke o pruebas manuales de instalación.

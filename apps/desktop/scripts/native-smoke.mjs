@@ -35,7 +35,7 @@ try {
   console.log(await connected);
   const cli = join(env.HOME, '.local', 'bin', 'agents-bridge');
   assert.ok((await stat(cli)).mode & 0o111);
-  assert.equal(execFileSync(cli, ['--version'], { env, encoding: 'utf8' }).trim(), 'agents-bridge v0.5.2');
+  assert.equal(execFileSync(cli, ['--version'], { env, encoding: 'utf8' }).trim(), 'agents-bridge v0.5.3');
   for (const [harness, file] of [['claude', 'settings.json'], ['codex', 'hooks.json']]) {
     const config = JSON.parse(await readFile(join(env.HOME, `.${harness}`, file), 'utf8'));
     for (const event of ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'Stop']) {
@@ -45,7 +45,11 @@ try {
       assert.ok(entries[0].command.endsWith(`hook ${harness} ${event}`));
     }
   }
-  console.log('CLI v0.5.2 y hooks de Claude/Codex instalados solo en HOME temporal: OK');
+  for (const dir of ['.agents', '.claude']) {
+    const skill = await readFile(join(env.HOME, dir, 'skills', 'agents-bridge', 'SKILL.md'), 'utf8');
+    assert.ok(skill.startsWith('---\nname: agents-bridge\n'));
+  }
+  console.log('CLI v0.5.3, skill y hooks de Claude/Codex instalados solo en HOME temporal: OK');
   console.log('Paquete .app → React invoke → Rust → sidecar Go → hello v1: OK');
 } finally {
   clearTimeout(timeout);

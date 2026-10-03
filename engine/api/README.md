@@ -24,7 +24,7 @@ Petición (id no vacío, máximo 128 caracteres, args siempre objeto):
 Respuesta (id correlaciona con la petición; id vacío si no se pudo decodificar):
 
 ```json
-{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.5.2","contract_version":1}}
+{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.5.3","contract_version":1}}
 ```
 
 ```json
@@ -50,8 +50,8 @@ Evento independiente de cualquier petición:
 | create_local | `{idle_timeout?}` | instance_id, state=running, una vez publicado el ready. |
 | health | `{instance_id}` | state, pid, peer_connected, fin_received, latest_server_seq y role_states. |
 | export | `{instance_id, format, output}` | instance_id, format, output absoluto. |
-| integration_status | `{}` | harnesses (claude/codex): installed, opted_out, path, trust_note/error opcionales; cli_path, cli_on_path, cli_current, cli_error/path_note opcionales. Solo lectura. |
-| integration_ensure | `{}` | Estado anterior más changed: copia CLI y mantiene hooks globales, respetando exclusiones. |
+| integration_status | `{}` | harnesses (claude/codex): installed, opted_out, path, trust_note/error opcionales; cli_path, cli_on_path, cli_current, cli_error/path_note opcionales; skill opcional (installed, paths, error). Solo lectura. |
+| integration_ensure | `{}` | Estado anterior más changed: copia CLI, instala la skill y mantiene hooks globales, respetando exclusiones. |
 | integration_set | `{harness, enabled}` | Mismo resultado que ensure; guarda la elección e instala/desinstala el harness. |
 
 Ejemplos de peticiones independientes:

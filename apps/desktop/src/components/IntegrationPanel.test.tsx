@@ -68,3 +68,14 @@ test('state badges and callout backgrounds keep WCAG contrast in both themes', (
     }
   }
 });
+test('skill status is shown and a failed skill install needs review', async () => {
+  const client = createDemoClient(), status = await client.integrationStatus();
+  status.harnesses.codex.trust_note = undefined;
+  expect(hooksNeedReview(status)).toBe(false);
+  render(<IntegrationPanel client={client} status={status} onUpdate={()=>{}} onClose={()=>{}}/>);
+  expect(screen.getByText('Skill agents-bridge')).toBeDefined();
+  expect(screen.getByText('Instalada')).toBeDefined();
+  expect(screen.getByText('/Users/demo/.claude/skills/agents-bridge')).toBeDefined();
+  status.skill = { installed: false, paths: status.skill!.paths, error: 'skill ajena; no se reemplazó' };
+  expect(hooksNeedReview(status)).toBe(true);
+});

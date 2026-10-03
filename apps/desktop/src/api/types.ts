@@ -1,5 +1,5 @@
 /* Generado desde engine/api/schema.json. No editar.
- * SHA256: 49e94fd3ab56ff4b6068ba126640f9f9221ecac0eb65a489d791c5ed754a8b56
+ * SHA256: 6475cc69072347e4d3e10fa6550ba735f2a9420c8b70c45352f118d38ad7e59a
  * npm run generate:types
  */
 
@@ -220,12 +220,18 @@ export interface IntegrationStatusResult {
   cli_current: boolean;
   cli_error?: string;
   path_note?: string;
+  skill?: SkillIntegration;
 }
 export interface HarnessIntegration {
   installed: boolean;
   opted_out: boolean;
   path: string;
   trust_note?: string;
+  error?: string;
+}
+export interface SkillIntegration {
+  installed: boolean;
+  paths: string[];
   error?: string;
 }
 export interface IntegrationEnsureResult {
@@ -239,6 +245,7 @@ export interface IntegrationEnsureResult {
   cli_error?: string;
   path_note?: string;
   changed: boolean;
+  skill?: SkillIntegration;
 }
 export interface Failure {
   v: 1;

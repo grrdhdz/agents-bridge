@@ -5,7 +5,14 @@ efímero, local o por Tailscale. Incluye CLI, TUI y app de escritorio; todo el
 historial vive en RAM. El humano puede observar e intervenir sin consumir la
 bandeja de los agentes.
 
-## Versión 0.5.2 (rama preparada; pendiente de publicación)
+## Versión 0.5.3
+
+- La app instala y actualiza la skill `agents-bridge` en `~/.agents/skills` (Codex)
+  y `~/.claude/skills` (Claude Code), sustituyendo un enlace previo propio; nunca
+  reemplaza otra skill con el mismo nombre de carpeta.
+- La conversación de la app respeta el orden de envío de ambos roles.
+
+## Versión 0.5.2
 
 - Renombre a `agents-bridge` y monorepo: motor Go en `engine/`, interfaces en `apps/`.
 - Hooks de Claude Code/Codex: vinculación automática, latidos, avisos URGENTE,

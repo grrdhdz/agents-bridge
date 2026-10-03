@@ -112,7 +112,7 @@ de separación vive en `apps/desktop/scripts/separation.test.mjs`.
 - `apps/desktop/src/demo/` — fixtures exclusivos de dev; guard de producción.
 - `apps/desktop/src-tauri/src/` — proxy stdio, timeouts y recuperación; sin negocio.
 - `apps/desktop/src-tauri/tauri*.conf.json`, `icons/` — bundles por plataforma,
-  metadatos 0.5.2 e iconos propios. Sin firma de distribución/notarización.
+  metadatos 0.5.3 e iconos propios. Sin firma de distribución/notarización.
 - `.github/workflows/desktop.yml` — builds macOS/Windows y artefactos; sin release.
 - `docs/REVIEW-2026-10-02.md` — entrega, cómo probar y pendientes de publicación.
 - `docs/`, `.agents/skills/` — documentación y skills compartidas en la raíz.

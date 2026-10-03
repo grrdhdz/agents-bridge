@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Bot, CircleAlert, Code2, Info, Plug, Terminal } from 'lucide-react';
+import { BookOpen, Bot, CircleAlert, Code2, Info, Plug, Terminal } from 'lucide-react';
 import type { ApiClient } from '../api/client';
 import type { IntegrationStatusResult, Harness } from '../api/types';
 import IconButton from './IconButton';
 import Modal from './Modal';
 
 export function hooksNeedReview(status?: IntegrationStatusResult): boolean {
-  return !status || !status.cli_current || !!status.cli_error || Object.values(status.harnesses).some(h => !!h.error || (!h.opted_out && (!h.installed || !!h.trust_note)));
+  return !status || !status.cli_current || !!status.cli_error || (!!status.skill && (!status.skill.installed || !!status.skill.error)) || Object.values(status.harnesses).some(h => !!h.error || (!h.opted_out && (!h.installed || !!h.trust_note)));
 }
 
 type HarnessStatus = IntegrationStatusResult['harnesses'][Harness];
@@ -49,6 +49,14 @@ export default function IntegrationPanel({ client, status, error, onUpdate, onCl
           {status.cli_error && <div role="alert" className="integration-callout integration-callout-error"><CircleAlert size={16} aria-hidden="true"/><p>{status.cli_error}</p></div>}
           {status.path_note && <div className="integration-callout integration-callout-info"><Info size={16} aria-hidden="true"/><p>{status.path_note}</p></div>}
         </section>
+        {status.skill && <section className="integration-section" aria-labelledby="integration-skill-heading">
+          <h3 id="integration-skill-heading"><BookOpen size={14} aria-hidden="true"/>Skill agents-bridge</h3>
+          <dl className="integration-rows">
+            <div><dt>Estado</dt><dd>{status.skill.installed ? 'Instalada' : 'Revisar instalación'}</dd></div>
+            {status.skill.paths.map(path => <div key={path}><dt>Ruta</dt><dd><code>{path}</code></dd></div>)}
+          </dl>
+          {status.skill.error && <div role="alert" className="integration-callout integration-callout-error"><CircleAlert size={16} aria-hidden="true"/><p>{status.skill.error}</p></div>}
+        </section>}
         <section className="integration-section" aria-labelledby="integration-harness-heading">
           <h3 id="integration-harness-heading"><Plug size={14} aria-hidden="true"/>Harnesses</h3>
           {(['claude', 'codex'] as const).map(harness => {

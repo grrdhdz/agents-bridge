@@ -53,6 +53,7 @@ type StatusResult struct {
 	CLICurrent bool                     `json:"cli_current"`
 	CLIError   string                   `json:"cli_error,omitempty"`
 	PathNote   string                   `json:"path_note,omitempty"`
+	Skill      SkillStatus              `json:"skill"`
 }
 type EnsureResult struct {
 	StatusResult
@@ -222,7 +223,7 @@ func configured(r Result, path string) bool {
 	return true
 }
 func status(o EnsureOptions, s State) StatusResult {
-	r := StatusResult{CLIPath: o.cliPath(), Harnesses: map[string]HarnessStatus{}}
+	r := StatusResult{CLIPath: o.cliPath(), Harnesses: map[string]HarnessStatus{}, Skill: skillStatus(o)}
 	source, se := os.ReadFile(o.Executable)
 	dest, de := os.ReadFile(r.CLIPath)
 	info, ie := os.Lstat(r.CLIPath)
@@ -287,8 +288,11 @@ func Ensure(ctx context.Context, o EnsureOptions) (EnsureResult, error) {
 }
 func ensure(ctx context.Context, o EnsureOptions, s *State) (EnsureResult, error) {
 	r := EnsureResult{StatusResult: status(o, *s)}
+	// The skill does not depend on the CLI copy, so a busy CLI cannot block it.
+	skill, skillChanged := ensureSkill(o)
+	r.Skill = skill
 	changed, e := installCLI(ctx, o)
-	r.Changed = changed
+	r.Changed = changed || skillChanged
 	if e != nil {
 		r.CLIError = e.Error()
 		return r, nil
@@ -315,6 +319,7 @@ func ensure(ctx context.Context, o EnsureOptions, s *State) (EnsureResult, error
 	}
 	refreshed := status(o, *s)
 	refreshed.CLIError = r.CLIError
+	refreshed.Skill = skill
 	r.StatusResult = refreshed
 	for h, e := range failures {
 		hs := r.Harnesses[h]

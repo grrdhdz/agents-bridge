@@ -1282,6 +1282,9 @@
         },
         "path_note": {
           "type": "string"
+        },
+        "skill": {
+          "$ref": "#/$defs/SkillIntegration"
         }
       },
       "required": [
@@ -1328,6 +1331,9 @@
         },
         "changed": {
           "type": "boolean"
+        },
+        "skill": {
+          "$ref": "#/$defs/SkillIntegration"
         }
       },
       "required": [
@@ -1442,6 +1448,28 @@
         "id",
         "op",
         "args"
+      ],
+      "additionalProperties": false
+    },
+    "SkillIntegration": {
+      "type": "object",
+      "properties": {
+        "installed": {
+          "type": "boolean"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "installed",
+        "paths"
       ],
       "additionalProperties": false
     }

@@ -28,6 +28,7 @@ export function createDemoClient(): ApiClient {
   const health = (id: string): Health => { const i = instances.find(i => i.instance_id === id); if (!i) throw new Error('Puente cerrado'); return { instance_id: id, state: 'running', pid: i.pid, peer_connected: i.peer_connected, fin_received: false, latest_server_seq: i.latest_server_seq, role_states: i.role_states, unread: id.startsWith('demo-new') ? 0 : 2 }; };
   let integration: IntegrationStatusResult = {
     cli_path: '/Users/demo/.local/bin/agents-bridge', cli_on_path: true, cli_current: true,
+    skill: { installed: true, paths: ['/Users/demo/.agents/skills/agents-bridge', '/Users/demo/.claude/skills/agents-bridge'] },
     harnesses: {
       claude: { installed: true, opted_out: false, path: '/Users/demo/.claude/settings.json' },
       codex: { installed: true, opted_out: false, path: '/Users/demo/.codex/hooks.json', trust_note: 'Codex: acepta los hooks como confiables y marca cada proyecto como trusted.' },
@@ -40,7 +41,7 @@ export function createDemoClient(): ApiClient {
       integration = { ...integration, harnesses: { ...integration.harnesses, [harness]: { ...integration.harnesses[harness], installed: enabled, opted_out: !enabled } } };
       return { ...integration, changed: true };
     },
-    hello: async () => { void marker; return { engine_version: 'v0.5.2-demo', contract_version: 1 }; },
+    hello: async () => { void marker; return { engine_version: 'v0.5.3-demo', contract_version: 1 }; },
     list: async () => ({ instances: [...instances] }), health: async a => health(a.instance_id),
     subscribe: async a => { const sub = `demo-sub-${++counter}`; subs.set(sub, a.instance_id); (history.get(a.instance_id) || []).forEach((message, n) => { events.forEach(fn => fn({ v: 1, sub, event: 'message', data: { instance_id: a.instance_id, event_seq: n * 2 + 1, message, status: ['delivered', 'received', 'accepted', 'received', 'rejected', 'delivered', 'queued-ram'][n] } })); }); return { sub }; },
     unsubscribe: async a => { subs.delete(a.sub); return { unsubscribed: a.sub }; },

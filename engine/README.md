@@ -1,4 +1,4 @@
-# Motor agents-bridge v0.5.2
+# Motor agents-bridge v0.5.3
 
 CLI, núcleo Go y TUI reutilizables por cualquier app. Compilar y verificar desde
 este directorio según [AGENTS.md](../AGENTS.md); no se instala nada al compilar.

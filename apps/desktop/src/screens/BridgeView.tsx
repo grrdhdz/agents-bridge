@@ -58,10 +58,10 @@ export default function BridgeView({client,instance,onToast,searchRequest,onPrev
   async function send(body: string, label: Label) {
     const draftId = `draft-${crypto.randomUUID()}`;
     const draft: Message = { protocol_version: 1, instance_id: instance.instance_id, message_id: draftId, client_seq: 0, server_seq: 0, sender_id: 'human', sender_role: role === 'orchestrator' ? 'mac-orchestrator' : 'win-executor', kind: 'text', body: `${label}\n${body}`, body_sha256: '', source: 'human-operator', created_at: new Date().toISOString(), accepted_at: '' };
-    setChat(s => ({ messages: [...s.messages, draft], statuses: { ...s.statuses, [draftId]: 'queued-ram' } }));
+    setChat(s => ({ ...s, messages: [...s.messages, draft], statuses: { ...s.statuses, [draftId]: 'queued-ram' } }));
     try {
       const result = await client.send({ instance_id: instance.instance_id, body, label }); setRole(result.role);
-      setChat(s => { const messages = s.messages.filter(m => m.message_id !== draftId); if (!messages.some(m => m.message_id === result.message_id)) messages.push({ ...draft, message_id: result.message_id, sender_role: result.role === 'orchestrator' ? 'mac-orchestrator' : 'win-executor' }); return { messages, statuses: { ...s.statuses, [result.message_id]: s.statuses[result.message_id] || 'accepted' } }; });
+      setChat(s => { const messages = s.messages.filter(m => m.message_id !== draftId); if (!messages.some(m => m.message_id === result.message_id)) messages.push({ ...draft, message_id: result.message_id, sender_role: result.role === 'orchestrator' ? 'mac-orchestrator' : 'win-executor' }); return { ...s, messages, statuses: { ...s.statuses, [result.message_id]: s.statuses[result.message_id] || 'accepted' } }; });
     } catch (e) { setChat(s => ({ ...s, statuses: { ...s.statuses, [draftId]: 'rejected' } })); toast.current('Mensaje rechazado. Se conserva el borrador.'); throw e; }
   }
   const sent = chat.messages.filter(m => messageRole(m) === role);
