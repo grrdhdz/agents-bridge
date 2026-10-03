@@ -24,7 +24,7 @@ Petición (id no vacío, máximo 128 caracteres, args siempre objeto):
 Respuesta (id correlaciona con la petición; id vacío si no se pudo decodificar):
 
 ```json
-{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.5.3","contract_version":1}}
+{"v":1,"id":"hello-1","ok":true,"result":{"engine_version":"v0.5.4","contract_version":1}}
 ```
 
 ```json
@@ -47,6 +47,7 @@ Evento independiente de cualquier petición:
 | unsubscribe | `{sub}` | unsubscribed. Cancela y espera los observadores; ningún evento de esa sub sale después de esta respuesta. |
 | send | `{instance_id, body, label?}` | instance_id, message_id, source=human-operator y role=orchestrator/executor. |
 | stop | `{instance_id}` | instance_id, state=stopping. Es la misma operación pública que stop. |
+| rename | `{instance_id, name}` | instance_id, name normalizado (recortado, ≤64 caracteres, sin control). `""` quita el nombre. El nombre vive solo mientras el puente existe; `list` lo devuelve como `name` opcional. |
 | create_local | `{idle_timeout?}` | instance_id, state=running, una vez publicado el ready. |
 | health | `{instance_id}` | state, pid, peer_connected, fin_received, latest_server_seq y role_states. |
 | export | `{instance_id, format, output}` | instance_id, format, output absoluto. |

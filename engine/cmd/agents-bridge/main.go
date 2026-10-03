@@ -29,7 +29,7 @@ import (
 
 const (
 	commandName = "agents-bridge"
-	appVersion  = "v0.5.3"
+	appVersion  = "v0.5.4"
 )
 
 func main() {
@@ -70,6 +70,11 @@ func main() {
 	} else if len(os.Args) > 1 && os.Args[1] == "stop" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		code := runStop(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr})
+		stop()
+		os.Exit(code)
+	} else if len(os.Args) > 1 && os.Args[1] == "rename" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		code := runRename(ctx, os.Args[2:], ctlEnv{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr})
 		stop()
 		os.Exit(code)
 	} else if len(os.Args) > 1 && os.Args[1] == "local" {
@@ -534,6 +539,7 @@ func printUsage() {
 	fmt.Println("agents-bridge ps [--format table|jsonl]")
 	fmt.Println("                                   lista los puentes vivos del usuario")
 	fmt.Println("agents-bridge stop --instance-id ID cierra un puente (equivale a Ctrl+C en su proceso)")
+	fmt.Println("agents-bridge rename --instance-id ID NOMBRE pone nombre a un puente (\"\" lo quita)")
 	fmt.Println("agents-bridge tui                   inicio: lista de tus puentes vivos (entrar, cerrar, crear, filtrar)")
 	fmt.Println("agents-bridge tui --instance-id ID  TUI observadora directa: ve e interviene sin consumir mensajes")
 	fmt.Println("agents-bridge ctl list")

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import type { HelloResult, ListResult, SubscribeArgs, SubscribeResult, UnsubscribeArgs, UnsubscribeResult, SendArgs, SendResult, StopArgs, StopResult, CreateLocalArgs, CreateLocalResult, HealthArgs, Health, ExportArgs, ExportResult, Event, IntegrationStatusResult, IntegrationEnsureResult, IntegrationSetArgs } from './types';
+import type { HelloResult, ListResult, SubscribeArgs, SubscribeResult, UnsubscribeArgs, UnsubscribeResult, SendArgs, SendResult, StopArgs, StopResult, RenameArgs, RenameResult, CreateLocalArgs, CreateLocalResult, HealthArgs, Health, ExportArgs, ExportResult, Event, IntegrationStatusResult, IntegrationEnsureResult, IntegrationSetArgs } from './types';
 
 export type EngineStatus = { status: 'connected' | 'restarting' | 'subscription-error'; message?: string };
 export type Off = () => void;
@@ -14,6 +14,7 @@ export interface ApiClient {
   unsubscribe(args: UnsubscribeArgs): Promise<UnsubscribeResult>;
   send(args: SendArgs): Promise<SendResult>;
   stop(args: StopArgs): Promise<StopResult>;
+  rename(args: RenameArgs): Promise<RenameResult>;
   createLocal(args: CreateLocalArgs): Promise<CreateLocalResult>;
   health(args: HealthArgs): Promise<Health>;
   export(args: ExportArgs): Promise<ExportResult>;
@@ -25,7 +26,7 @@ export const realClient: ApiClient = {
   integrationStatus: () => call('integration_status'), integrationEnsure: () => call('integration_ensure'), integrationSet: args => call('integration_set', args),
   hello: () => call('hello'), list: () => call('list'),
   subscribe: args => call('subscribe', args), unsubscribe: args => call('unsubscribe', args),
-  send: args => call('send', args), stop: args => call('stop', args),
+  send: args => call('send', args), stop: args => call('stop', args), rename: args => call('rename', args),
   createLocal: args => call('create_local', args), health: args => call('health', args), export: args => call('export', args),
   onEvent: async fn => getCurrentWebviewWindow().listen<Event>('agents-bridge-event', event => fn(event.payload)),
   onStatus: async fn => getCurrentWebviewWindow().listen<EngineStatus>('agents-bridge-status', event => fn(event.payload)),

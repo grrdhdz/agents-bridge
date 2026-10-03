@@ -17,6 +17,8 @@ import (
 // (§4.1), never exposing control_url, capability or cwd.
 type psRow struct {
 	InstanceID string   `json:"instance_id"`
+	Name       string   `json:"name,omitempty"`
+	Project    string   `json:"project,omitempty"`
 	Mode       string   `json:"mode,omitempty"`
 	Roles      []string `json:"roles"`
 	PID        int      `json:"pid"`
@@ -103,6 +105,8 @@ func buildPSRows(ctx context.Context, descriptors []control.Descriptor) []psRow 
 		rows = append(rows, psRow{
 			RoleStates:      roleStates,
 			InstanceID:      info.InstanceID,
+			Name:            info.Name,
+			Project:         info.Project,
 			Mode:            info.Mode,
 			Roles:           info.Roles,
 			PID:             info.PID,
@@ -126,7 +130,7 @@ func writePSJSONL(w io.Writer, rows []psRow) error {
 
 func writePSTable(w io.Writer, rows []psRow) error {
 	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "INSTANCE\tMODE\tROLES\tPID\tSTARTED\tIDLE\tPEER\tMSGS\tORQ\tEJEC")
+	fmt.Fprintln(tw, "INSTANCE\tNOMBRE\tMODE\tROLES\tPID\tSTARTED\tIDLE\tPEER\tMSGS\tORQ\tEJEC")
 	for _, row := range rows {
 		peer := "no"
 		if row.PeerConnected {
@@ -154,7 +158,14 @@ func writePSTable(w io.Writer, rows []psRow) error {
 		}
 		orq := row.RoleStates["orchestrator"]
 		ejec := row.RoleStates["executor"]
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\n", row.InstanceID, mode, roles, row.PID, startedDisplay, idle, peer, row.LatestServerSeq, formatHeartbeatRole(orq), formatHeartbeatRole(ejec))
+		name := row.Name
+		if name == "" {
+			name = row.Project
+		}
+		if name == "" {
+			name = "-"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\n", row.InstanceID, name, mode, roles, row.PID, startedDisplay, idle, peer, row.LatestServerSeq, formatHeartbeatRole(orq), formatHeartbeatRole(ejec))
 	}
 	return tw.Flush()
 }

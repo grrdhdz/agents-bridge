@@ -51,6 +51,9 @@ type Descriptor struct {
 	// instead of the zero time — ps (and any other reader) can then tell
 	// "never recorded" apart from "recorded at the zero instant".
 	LastActivityAt *time.Time `json:"last_activity_at,omitempty"`
+	// Name is the human label given to the bridge; empty falls back to the
+	// cwd's base name. It lives only as long as the bridge.
+	Name string `json:"name,omitempty"`
 
 	// path is where the descriptor was read from; it is never serialized.
 	path string
@@ -182,6 +185,7 @@ func Start(client *bridge.Client, opts Options) (*Endpoint, error) {
 	if roles == nil {
 		roles = NewRoles(nil, role)
 	}
+	descriptor.Name = roles.Name()
 	e := &Endpoint{
 		client:         client,
 		listener:       listener,
@@ -203,6 +207,9 @@ func Start(client *bridge.Client, opts Options) (*Endpoint, error) {
 		_ = listener.Close()
 		return nil, err
 	}
+	// local shares Roles between both endpoints: a rename on either one
+	// rewrites both descriptors at once instead of on the next heartbeat.
+	roles.OnRename(func() { _ = e.heartbeatOnce() })
 	go func() {
 		_ = e.server.Serve(listener)
 	}()
@@ -295,7 +302,10 @@ func (e *Endpoint) Close() {
 		if e.listener != nil {
 			_ = e.listener.Close()
 		}
+		// Under descriptorMu so a concurrent refresh cannot recreate the file.
+		e.descriptorMu.Lock()
 		_ = os.Remove(e.descriptorPath)
+		e.descriptorMu.Unlock()
 	})
 }
 
@@ -313,19 +323,29 @@ func (e *Endpoint) heartbeat() {
 		if e.server == nil {
 			return
 		}
-		e.descriptorMu.Lock()
-		e.descriptor.HeartbeatAt = time.Now().UTC()
-		e.descriptor.ExpiresAt = e.descriptor.HeartbeatAt.Add(15 * time.Second)
-		if e.activity != nil {
-			t := e.activity.LastActivity().UTC()
-			e.descriptor.LastActivityAt = &t
-		}
-		descriptor := e.descriptor
-		e.descriptorMu.Unlock()
-		if err := writeDescriptor(e.descriptorPath, descriptor); err != nil {
+		if err := e.heartbeatOnce(); err != nil {
 			return
 		}
 	}
+}
+
+// heartbeatOnce refreshes the descriptor; it never writes after Close.
+func (e *Endpoint) heartbeatOnce() error {
+	e.descriptorMu.Lock()
+	defer e.descriptorMu.Unlock()
+	select {
+	case <-e.done:
+		return nil
+	default:
+	}
+	e.descriptor.HeartbeatAt = time.Now().UTC()
+	e.descriptor.ExpiresAt = e.descriptor.HeartbeatAt.Add(15 * time.Second)
+	if e.activity != nil {
+		t := e.activity.LastActivity().UTC()
+		e.descriptor.LastActivityAt = &t
+	}
+	e.descriptor.Name = e.roles.Name()
+	return writeDescriptor(e.descriptorPath, e.descriptor)
 }
 
 type ListedInstance struct {

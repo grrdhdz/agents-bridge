@@ -132,6 +132,7 @@ func (e *Endpoint) registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/wait", e.handleWait)
 	mux.HandleFunc("/v1/peek", e.handlePeek)
 	mux.HandleFunc("/v1/stop", e.handleStop)
+	mux.HandleFunc("/v1/name", e.handleName)
 }
 
 func (e *Endpoint) authorize(w http.ResponseWriter, r *http.Request) (string, bool) {

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { realClient, type ApiClient, type EngineStatus } from './api/client';
 import type { HelloResult, Instance, IntegrationStatusResult } from './api/types';
 import { applyTheme, type ThemeMode } from './theme';
-import { localRole, roleName } from './model';
+import { bridgeName, localRole, roleName } from './model';
+import EditableName from './components/EditableName';
 import { exportConversation } from './export';
 import Home from './screens/Home';
 import BridgeView from './screens/BridgeView';
@@ -49,8 +50,8 @@ export default function App({ client = realClient, demo = false, initialPreviews
       if (active.current && n === generation.current) {
         for (const previous of known.current || []) {
           const next = result.instances.find(i => i.instance_id === previous.instance_id);
-          if (!next) notify(`Puente ${previous.project || previous.instance_id} cerrado`);
-          else if (next.peer_connected !== previous.peer_connected) notify(`${roleName(localRole(next) === 'orchestrator' ? 'executor' : 'orchestrator')} ${next.peer_connected ? 'conectado' : 'desconectado'} · ${next.project || next.instance_id}`);
+          if (!next) notify(`Puente ${bridgeName(previous) || previous.instance_id} cerrado`);
+          else if (next.peer_connected !== previous.peer_connected) notify(`${roleName(localRole(next) === 'orchestrator' ? 'executor' : 'orchestrator')} ${next.peer_connected ? 'conectado' : 'desconectado'} · ${bridgeName(next) || next.instance_id}`);
         }
         known.current = result.instances;
         setInstances(result.instances); setLoadError('');
@@ -58,6 +59,13 @@ export default function App({ client = realClient, demo = false, initialPreviews
       return result.instances;
     } catch (e) { if (active.current) setLoadError(String(e)); return []; }
     finally { if (active.current) setLoading(false); }
+  }, [client, notify]);
+  const rename = useCallback(async (i: Instance, name: string) => {
+    try {
+      const result = await client.rename({ instance_id: i.instance_id, name });
+      setInstances(list => list.map(x => x.instance_id === i.instance_id ? { ...x, name: result.name || undefined } : x));
+      known.current = known.current?.map(x => x.instance_id === i.instance_id ? { ...x, name: result.name || undefined } : x);
+    } catch (e) { notify('No se pudo renombrar el puente'); throw e; }
   }, [client, notify]);
   useEffect(() => {
     active.current = true; known.current = undefined;
@@ -143,7 +151,7 @@ export default function App({ client = realClient, demo = false, initialPreviews
   return <div className={`app-shell ${current?'chat-background':''}`}>
     <header className="app-header">
       <div className="identity-pill"><span className="brand-mark" aria-hidden="true"><ArrowLeftRight size={23} strokeWidth={2}/></span><strong className="brand">agents-bridge</strong><span className="identity-divider"/>
-        <div className="board-identity">{current?<><h1>{current.project||'Puente sin proyecto'}</h1><button className="copy-id instance-id" title="Copiar ID completo" aria-label="Copiar ID completo" onClick={()=>void copy(current)}>{shortInstance(current.instance_id)}<Copy size={10} aria-hidden="true"/> · {current.mode}</button></>:<><strong>Mi espacio</strong><span>Conversaciones entre agentes</span></>}</div>{demo&&<span className="demo-badge">Demo</span>}
+        <div className="board-identity">{current?<><EditableName as="h1" value={bridgeName(current)} placeholder="Puente sin proyecto" onRename={name=>rename(current,name)}/><button className="copy-id instance-id" title="Copiar ID completo" aria-label="Copiar ID completo" onClick={()=>void copy(current)}>{shortInstance(current.instance_id)}<Copy size={10} aria-hidden="true"/> · {current.mode}</button></>:<><strong>Mi espacio</strong><span>Conversaciones entre agentes</span></>}</div>{demo&&<span className="demo-badge">Demo</span>}
       </div>
       <div className="actions-pill">{current&&<><button className="header-action" onClick={()=>setSearchRequest(n=>n+1)} aria-label="Buscar conversación"><Search size={16} aria-hidden="true"/><span>Buscar</span></button><label className="export-label"><Download size={16} aria-hidden="true"/><select aria-label="Formato de exportación" defaultValue="" onChange={e=>{if(e.target.value)void exportBridge(e.target.value as 'md'|'jsonl');e.target.value='';}}><option value="" disabled>Exportar</option><option value="md">Markdown</option><option value="jsonl">JSONL</option></select></label><IconButton icon={X} label="Cerrar puente" className="close-action" onClick={()=>askClose(current)}/><span className="identity-divider"/></>}
         <button className="engine-state hooks-indicator" onClick={() => setHooksOpen(true)} aria-label={hooksNeedReview(integration) || integrationError ? 'Hooks: revisar' : 'Hooks ✓'}><span className={`live-dot ${hooksNeedReview(integration) || integrationError ? 'restarting' : ''}`} aria-hidden="true"/><span className="hook-indicator-label">Hooks {hooksNeedReview(integration) || integrationError ? '· revisar' : '✓'}</span></button>
@@ -153,7 +161,7 @@ export default function App({ client = realClient, demo = false, initialPreviews
     <ToolRail inBridge={!!current} onHome={()=>{setSearchRequest(0);setSelected(undefined);}} onSearch={()=>{if(current)setSearchRequest(n=>n+1);else document.querySelector<HTMLInputElement>('input[aria-label="Filtrar puentes"]')?.focus();}} onPalette={()=>setPalette(true)} onExport={()=>document.querySelector<HTMLSelectElement>('select[aria-label="Formato de exportación"]')?.focus()} onTheme={()=>document.querySelector<HTMLSelectElement>('select[aria-label="Tema"]')?.focus()} onHelp={()=>setHelp(true)}/>
 
     {(notice || loadError || (status && status.status !== 'connected')) && <div className="notice" role="alert"><span>{notice || loadError || status?.message}</span>{notice && <button aria-label="Descartar aviso" onClick={() => setNotice('')}><X size={14} aria-hidden="true"/></button>}</div>}
-    <main className={current ? 'main-bridge' : 'main-home'}>{current ? <BridgeView key={current.instance_id} client={client} instance={current} searchRequest={searchRequest} onToast={notify} onPreview={recordPreview} /> : <Home instances={instances} loading={loading} creating={creating} onOpen={setSelected} onCreate={() => void create()} onCopy={i => void copy(i)} onClose={askClose} previews={previews} />}</main>
+    <main className={current ? 'main-bridge' : 'main-home'}>{current ? <BridgeView key={current.instance_id} client={client} instance={current} searchRequest={searchRequest} onToast={notify} onPreview={recordPreview} /> : <Home instances={instances} loading={loading} creating={creating} onOpen={setSelected} onCreate={() => void create()} onCopy={i => void copy(i)} onClose={askClose} onRename={rename} previews={previews} />}</main>
     <CommandPalette open={palette} onOpenChange={setPalette} actions={actions}/>
     {hooksOpen && <IntegrationPanel client={client} status={integration} error={integrationError} onUpdate={s => { setIntegration(s); setIntegrationError(''); }} onClose={() => setHooksOpen(false)}/>}
     {help && <ShortcutHelp onClose={() => setHelp(false)}/>}

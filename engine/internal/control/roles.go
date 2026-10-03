@@ -77,6 +77,36 @@ type Roles struct {
 	now     func() time.Time
 	since   time.Time
 	tracked map[protocol.Role]*roleRecord
+	// name is the bridge's human label. Roles is the one object `local` shares
+	// between both endpoints, so the label lives here.
+	name     string
+	onRename []func()
+}
+
+// Name returns the bridge's label ("" when unnamed).
+func (r *Roles) Name() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.name
+}
+
+// SetName stores an already normalized label and refreshes every endpoint's
+// descriptor. Listeners run outside the lock: they read Name themselves.
+func (r *Roles) SetName(name string) {
+	r.mu.Lock()
+	r.name = name
+	listeners := append([]func(){}, r.onRename...)
+	r.mu.Unlock()
+	for _, f := range listeners {
+		f()
+	}
+}
+
+// OnRename registers f to run after each SetName.
+func (r *Roles) OnRename(f func()) {
+	r.mu.Lock()
+	r.onRename = append(r.onRename, f)
+	r.mu.Unlock()
 }
 
 // NewRoles tracks the given roles. A nil now uses time.Now. The tracking

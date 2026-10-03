@@ -15,6 +15,7 @@ type Instance struct {
 	PID             int                             `json:"pid"`
 	StartedAt       time.Time                       `json:"started_at"`
 	Project         string                          `json:"project"`
+	Name            string                          `json:"name,omitempty"`
 	IdleSeconds     *int64                          `json:"idle_seconds,omitempty"`
 	PeerConnected   bool                            `json:"peer_connected"`
 	LatestServerSeq uint64                          `json:"latest_server_seq"`
@@ -26,7 +27,7 @@ func instance(i bridges.Info) Instance {
 	for key, role := range i.RoleStates {
 		states[key] = control.RoleSnapshot{State: control.RoleState(role.State), HookBound: role.HookBound, Tool: role.Tool, LastHeartbeatAt: role.LastHeartbeatAt, LastMessageAt: role.LastMessageAt}
 	}
-	return Instance{i.InstanceID, i.Mode, i.Roles, i.PID, i.StartedAt, i.Project, i.IdleSeconds, i.PeerConnected, i.LatestServerSeq, states}
+	return Instance{i.InstanceID, i.Mode, i.Roles, i.PID, i.StartedAt, i.Project, i.Name, i.IdleSeconds, i.PeerConnected, i.LatestServerSeq, states}
 }
 
 type Health struct {

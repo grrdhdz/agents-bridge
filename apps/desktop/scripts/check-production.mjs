@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 export function assertDemoExcluded(text) {
-  for (const marker of ['DEMO_DATA_ONLY', 'demo-checkout-001', 'demo-sub-', 'v0.5.3-demo', 'Revisa el proxy y entrega las pruebas de integración.']) {
+  for (const marker of ['DEMO_DATA_ONLY', 'demo-checkout-001', 'demo-sub-', 'v0.5.4-demo', 'Revisa el proxy y entrega las pruebas de integración.']) {
     if (text.includes(marker)) throw new Error(`El demo apareció en producción: ${marker}`);
   }
 }

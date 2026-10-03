@@ -88,7 +88,7 @@ de separación vive en `apps/desktop/scripts/separation.test.mjs`.
 ## Mapa del código (monorepo)
 
 - `engine/` — módulo Go `github.com/grrdhdz/agents-bridge/engine`.
-- `engine/cmd/agents-bridge` — CLI: host, `join`, `local`, `ctl`, `ps`, `stop`,
+- `engine/cmd/agents-bridge` — CLI: host, `join`, `local`, `ctl`, `ps`, `stop`, `rename`,
   `tui`, `bind`, `unbind`, `hook`, `integration`, `api` y `codex open`.
 - `engine/internal/protocol` — frames, envelopes y validación.
 - `engine/internal/bridge` — `Server`, `Client`, `EventHub` (fan-out + journal).
@@ -112,7 +112,7 @@ de separación vive en `apps/desktop/scripts/separation.test.mjs`.
 - `apps/desktop/src/demo/` — fixtures exclusivos de dev; guard de producción.
 - `apps/desktop/src-tauri/src/` — proxy stdio, timeouts y recuperación; sin negocio.
 - `apps/desktop/src-tauri/tauri*.conf.json`, `icons/` — bundles por plataforma,
-  metadatos 0.5.3 e iconos propios. Sin firma de distribución/notarización.
+  metadatos 0.5.4 e iconos propios. Sin firma de distribución/notarización.
 - `.github/workflows/desktop.yml` — builds macOS/Windows y artefactos; sin release.
 - `docs/REVIEW-2026-10-02.md` — entrega, cómo probar y pendientes de publicación.
 - `docs/`, `.agents/skills/` — documentación y skills compartidas en la raíz.

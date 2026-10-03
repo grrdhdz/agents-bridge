@@ -118,6 +118,10 @@
         },
         "role_states": {
           "$ref": "#/$defs/RoleStates"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 256
         }
       },
       "required": [
@@ -626,6 +630,9 @@
         },
         {
           "$ref": "#/$defs/IntegrationSetRequest"
+        },
+        {
+          "$ref": "#/$defs/RenameRequest"
         }
       ]
     },
@@ -810,6 +817,9 @@
             },
             {
               "$ref": "#/$defs/IntegrationEnsureResult"
+            },
+            {
+              "$ref": "#/$defs/RenameResult"
             }
           ]
         }
@@ -1470,6 +1480,65 @@
       "required": [
         "installed",
         "paths"
+      ],
+      "additionalProperties": false
+    },
+    "RenameArgs": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "instance_id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "RenameRequest": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "op": {
+          "const": "rename"
+        },
+        "args": {
+          "$ref": "#/$defs/RenameArgs"
+        }
+      },
+      "required": [
+        "v",
+        "id",
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "RenameResult": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "instance_id",
+        "name"
       ],
       "additionalProperties": false
     }

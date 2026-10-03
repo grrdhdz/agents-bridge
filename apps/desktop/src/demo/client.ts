@@ -41,12 +41,13 @@ export function createDemoClient(): ApiClient {
       integration = { ...integration, harnesses: { ...integration.harnesses, [harness]: { ...integration.harnesses[harness], installed: enabled, opted_out: !enabled } } };
       return { ...integration, changed: true };
     },
-    hello: async () => { void marker; return { engine_version: 'v0.5.3-demo', contract_version: 1 }; },
+    hello: async () => { void marker; return { engine_version: 'v0.5.4-demo', contract_version: 1 }; },
     list: async () => ({ instances: [...instances] }), health: async a => health(a.instance_id),
     subscribe: async a => { const sub = `demo-sub-${++counter}`; subs.set(sub, a.instance_id); (history.get(a.instance_id) || []).forEach((message, n) => { events.forEach(fn => fn({ v: 1, sub, event: 'message', data: { instance_id: a.instance_id, event_seq: n * 2 + 1, message, status: ['delivered', 'received', 'accepted', 'received', 'rejected', 'delivered', 'queued-ram'][n] } })); }); return { sub }; },
     unsubscribe: async a => { subs.delete(a.sub); return { unsubscribed: a.sub }; },
     send: async a => { const id = `demo-sent-${++counter}`; const i = instances.find(i => i.instance_id === a.instance_id); if (!i) throw new Error('Puente cerrado'); i.latest_server_seq += 1; const message = { ...demoMessages(a.instance_id)[0], message_id: id, server_seq: i.latest_server_seq, source: 'human-operator', body: `${a.label || 'RESPUESTA'}\n${a.body}`, created_at: new Date().toISOString(), accepted_at: new Date().toISOString() }; history.set(a.instance_id, [...(history.get(a.instance_id) || []), message]); subs.forEach((instance, sub) => { if (instance === a.instance_id) events.forEach(fn => fn({ v: 1, sub, event: 'message', data: { instance_id: instance, event_seq: counter + 20, message, status: 'accepted' } })); }); return { instance_id: a.instance_id, message_id: id, role: 'orchestrator', source: 'human-operator' }; },
     stop: async a => { instances = instances.filter(i => i.instance_id !== a.instance_id); return { instance_id: a.instance_id, state: 'stopping' }; },
+    rename: async a => { const name = a.name.trim(); instances = instances.map(i => i.instance_id === a.instance_id ? { ...i, name: name || undefined } : i); return { instance_id: a.instance_id, name }; },
     createLocal: async () => { const id = `demo-new-${++counter}`; instances = [{ ...demoInstances()[0], instance_id: id, project: 'nuevo-puente', latest_server_seq: 0, role_states: { orchestrator: { state: '—', hook_bound: false }, executor: { state: '—', hook_bound: false } } }, ...instances]; history.set(id, []); return { instance_id: id, state: 'running' }; },
     export: async a => a,
     onEvent: async fn => { events.add(fn); return () => { events.delete(fn); }; },

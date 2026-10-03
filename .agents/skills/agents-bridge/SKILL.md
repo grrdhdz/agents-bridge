@@ -15,7 +15,8 @@ actualice; no reemplaces binarios instalados por tu cuenta.
 
 El usuario dispone además de tres comandos directos, fuera de `ctl`, para ver
 y controlar sus puentes sin pasar por un agente: `agents-bridge ps` (lista
-todos), `agents-bridge stop --instance-id <id>` (cierra uno) y
+todos), `agents-bridge stop --instance-id <id>` (cierra uno),
+`agents-bridge rename --instance-id <id> "nombre"` (le pone nombre; `""` lo quita) y
 `agents-bridge tui --instance-id <id>` (TUI observadora: ve la conversación en
 vivo y puede intervenir; nunca confirma mensajes por el agente, así que tu
 `ctl wait` los sigue recibiendo igual). Desde v0.3.0, `agents-bridge tui` sin
@@ -297,5 +298,8 @@ La app en `apps/desktop/` observa por `agents-bridge api` sin consumir mensajes.
 Sus intervenciones llegan con `source=human-operator`, igual que las de la TUI.
 Cerrar la ventana termina solo su sidecar; los puentes siguen vivos hasta Stop
 explícito o inactividad. Al abrirse, la app pide al motor mantener hooks globales
-en el harness; el panel permite desactivar esa instalación por harness;
-la compatibilidad de hooks de Codex/Claude Desktop (P4) sigue pendiente.
+en el harness; el panel permite desactivar esa instalación por harness.
+Los hooks están comprobados en Claude Code y la app Codex de escritorio.
+Desde v0.5.4 el usuario renombra cada puente con doble clic (o F2) sobre su
+nombre; ese nombre aparece en `ps` y la TUI. No lo cambies tú salvo que el
+usuario lo pida.

@@ -52,6 +52,16 @@ type Info struct {
 	RoleStates map[string]RoleInfo
 	// Project is the base name of the descriptor's cwd ("" when unknown).
 	Project string
+	// Name is the label given with rename ("" when unnamed).
+	Name string
+}
+
+// DisplayName is the label readers show: the given name, else the project.
+func (i Info) DisplayName() string {
+	if i.Name != "" {
+		return i.Name
+	}
+	return i.Project
 }
 
 // RoleInfo is one role's derived state and when it last sent a message.
@@ -123,6 +133,9 @@ func describe(ctx context.Context, ds []control.Descriptor) Info {
 		}
 		if info.Mode == "" {
 			info.Mode = string(d.Mode)
+		}
+		if info.Name == "" {
+			info.Name = d.Name
 		}
 		if info.Project == "" && d.CWD != "" {
 			info.Project = filepath.Base(d.CWD)

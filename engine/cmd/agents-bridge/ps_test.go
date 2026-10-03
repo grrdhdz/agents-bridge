@@ -167,10 +167,10 @@ func TestPSShowsDashForLegacyDescriptorWithoutModeOrActivity(t *testing.T) {
 		t.Fatalf("instance row missing from table output: %s", stdoutTable.String())
 	}
 	fields := strings.Fields(row)
-	if len(fields) < 6 {
+	if len(fields) < 7 {
 		t.Fatalf("unexpected row shape: %q", row)
 	}
-	mode, idle := fields[1], fields[5]
+	mode, idle := fields[2], fields[6]
 	if mode != "-" {
 		t.Fatalf("legacy descriptor should show MODE \"-\", got %q (row=%q)", mode, row)
 	}

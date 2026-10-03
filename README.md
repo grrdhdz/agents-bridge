@@ -5,6 +5,12 @@ efímero, local o por Tailscale. Incluye CLI, TUI y app de escritorio; todo el
 historial vive en RAM. El humano puede observar e intervenir sin consumir la
 bandeja de los agentes.
 
+## Versión 0.5.4
+
+- Renombrar puentes: doble clic (o F2) sobre el nombre en el dashboard o en la
+  conversación; `agents-bridge rename --instance-id <id> "nombre"` desde la CLI.
+  El nombre vive mientras el puente existe y aparece en `ps`, la TUI y la API.
+
 ## Versión 0.5.3
 
 - La app instala y actualiza la skill `agents-bridge` en `~/.agents/skills` (Codex)
@@ -612,6 +618,7 @@ Para ver y cerrar los puentes del usuario, sin depender de `ctl`:
 agents-bridge ps                       # tabla: instancia, modo, roles, pid, inicio, inactividad, peer, mensajes, estado ORQ/EJEC
 agents-bridge ps --format jsonl
 agents-bridge stop --instance-id <id>  # cierre limpio, equivalente a Ctrl+C en ese proceso
+agents-bridge rename --instance-id <id> "Pagos"  # nombre visible en ps, TUI y app ("" lo quita)
 ```
 
 `ps` agrupa por `instance_id` (un puente `local` aporta una sola fila con

@@ -228,7 +228,7 @@ func (s *Server) clean(v any, key string) any {
 				x = strings.ReplaceAll(x, p, "[dato privado omitido]")
 			}
 		}
-		if key == "body" || key == "message" || key == "detail" || key == "tool" || key == "project" {
+		if key == "body" || key == "message" || key == "detail" || key == "tool" || key == "project" || key == "name" {
 			x = control.RedactText(x)
 		}
 		return x
@@ -369,6 +369,17 @@ func (s *Server) dispatch(ctx, sessionctx context.Context, r Request, subs map[s
 		}
 		err = s.call(ctx, d, http.MethodPost, "/v1/send", map[string]any{"v": 1, "message_id": messageID, "body": body, "source": "human-operator"}, nil)
 		return map[string]any{"instance_id": id, "message_id": messageID, "source": "human-operator", "role": control.RoleKey(d.LocalRole)}, nil, err
+	case "rename":
+		raw, ok := r.Args["name"].(string)
+		if !ok {
+			return nil, nil, fail("INVALID_ARGS", "name es obligatorio; usa \"\" para quitar el nombre.")
+		}
+		name, err := control.NormalizeName(raw)
+		if err != nil {
+			return nil, nil, fail("INVALID_ARGS", err.Error())
+		}
+		err = s.call(ctx, d, http.MethodPost, "/v1/name", map[string]string{"name": name}, nil)
+		return map[string]any{"instance_id": id, "name": name}, nil, err
 	case "stop":
 		err = bridges.Stop(ctx, s.options.Root, id)
 		return map[string]any{"instance_id": id, "state": "stopping"}, nil, err

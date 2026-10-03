@@ -82,6 +82,7 @@ operation!(engine_subscribe, "subscribe");
 operation!(engine_unsubscribe, "unsubscribe");
 operation!(engine_send, "send");
 operation!(engine_stop, "stop");
+operation!(engine_rename, "rename");
 operation!(engine_create_local, "create_local");
 operation!(engine_health, "health");
 operation!(engine_export, "export");
@@ -100,6 +101,7 @@ pub fn run() {
             engine_unsubscribe,
             engine_send,
             engine_stop,
+            engine_rename,
             engine_create_local,
             engine_health,
             engine_export

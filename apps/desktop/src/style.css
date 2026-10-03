@@ -71,6 +71,12 @@ main { flex:1; min-height:0; margin-left:88px; margin-right:24px; }
 .board-overlay { position:absolute; top:11px; left:12px; right:12px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); }
 .mode { padding:3px 7px; font-size:9px; font-weight:600; border-radius:5px; background:var(--card); border:1px solid var(--dot); }
 .project-title { display:block; font-size:17px; letter-spacing:-.025em; font-weight:600; padding:14px 15px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.editable-name { cursor:text; border-radius:6px; }
+.editable-name:focus-visible { outline-offset:-2px; }
+.editable-name:hover { text-decoration:underline dotted var(--muted); text-underline-offset:4px; }
+.name-input { font:inherit; color:var(--text); background:var(--panel); border:1.5px solid var(--focus); border-radius:7px; padding:2px 6px; width:100%; min-width:0; box-sizing:border-box; outline:none; }
+.bridge-card .name-input.project-title { margin:12px 9px 0; padding:2px 6px; width:calc(100% - 18px); font-size:17px; font-weight:600; }
+.board-identity .name-input { font-size:13px; font-weight:600; }
 .card-details { padding:0 15px 12px; }
 .card-id { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:4px; }
 .copy-id { display:inline-flex; align-items:center; gap:5px; padding:0; border:0; background:none; color:var(--muted); font:inherit; }

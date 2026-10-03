@@ -2,6 +2,7 @@ import type { Event, Message, Role, RoleState, Instance } from './api/types';
 export const labels = ['TAREA', 'PREGUNTA', 'RESPUESTA', 'RESULTADO', 'FIN', 'URGENTE', 'PROGRESO'] as const;
 export const roleName = (role: Role) => role === 'orchestrator' ? 'Orquestador' : 'Ejecutor';
 export const messageRole = (m: Message): Role => m.sender_role === 'mac-orchestrator' ? 'orchestrator' : 'executor';
+export const bridgeName = (i: Instance) => i.name || i.project;
 export const localRole = (i: Instance): Role => i.roles.includes('orchestrator') ? 'orchestrator' : 'executor';
 export const roleState = (i: Instance, r: Role): RoleState | undefined => i.role_states[r] || (r === 'orchestrator' ? i.role_states.orq : undefined);
 export function bodyParts(body: string) { const [first, ...rest] = body.split('\n'); return labels.some(l => l === first) ? { label: first, body: rest.join('\n') } : { label: 'Mensaje', body }; }

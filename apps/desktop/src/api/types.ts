@@ -1,5 +1,5 @@
 /* Generado desde engine/api/schema.json. No editar.
- * SHA256: 6475cc69072347e4d3e10fa6550ba735f2a9420c8b70c45352f118d38ad7e59a
+ * SHA256: 8a71da709149ed0e97f7113b462ea37687f42976ea8b437ced00cb0e6a634cc8
  * npm run generate:types
  */
 
@@ -16,7 +16,8 @@ export type Request =
   | ExportRequest
   | IntegrationStatusRequest
   | IntegrationEnsureRequest
-  | IntegrationSetRequest;
+  | IntegrationSetRequest
+  | RenameRequest;
 export type Label = 'TAREA' | 'PREGUNTA' | 'RESPUESTA' | 'RESULTADO' | 'FIN' | 'URGENTE' | 'PROGRESO';
 export type Harness = 'claude' | 'codex';
 export type Role = 'orchestrator' | 'executor';
@@ -127,6 +128,16 @@ export interface IntegrationSetArgs {
   harness: Harness;
   enabled: boolean;
 }
+export interface RenameRequest {
+  v: 1;
+  id: string;
+  op: 'rename';
+  args: RenameArgs;
+}
+export interface RenameArgs {
+  instance_id: string;
+  name: string;
+}
 export interface Success {
   v: 1;
   id: string;
@@ -142,7 +153,8 @@ export interface Success {
     | ExportResult
     | Health
     | IntegrationStatusResult
-    | IntegrationEnsureResult;
+    | IntegrationEnsureResult
+    | RenameResult;
 }
 export interface HelloResult {
   engine_version: string;
@@ -162,6 +174,7 @@ export interface Instance {
   peer_connected: boolean;
   latest_server_seq: number;
   role_states: RoleStates;
+  name?: string;
 }
 export interface RoleStates {
   [k: string]: RoleState;
@@ -246,6 +259,10 @@ export interface IntegrationEnsureResult {
   path_note?: string;
   changed: boolean;
   skill?: SkillIntegration;
+}
+export interface RenameResult {
+  instance_id: string;
+  name: string;
 }
 export interface Failure {
   v: 1;

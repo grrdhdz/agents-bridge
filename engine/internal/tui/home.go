@@ -197,7 +197,7 @@ func (h *HomeModel) visible() []bridges.Info {
 	q := strings.ToLower(h.filter)
 	var out []bridges.Info
 	for _, info := range h.infos {
-		hay := strings.ToLower(info.InstanceID + " " + info.Project + " " + info.Mode)
+		hay := strings.ToLower(info.InstanceID + " " + info.Name + " " + info.Project + " " + info.Mode)
 		if strings.Contains(hay, q) {
 			out = append(out, info)
 		}
@@ -734,7 +734,7 @@ type homeColumn struct {
 func homeColumns() []homeColumn {
 	return []homeColumn{
 		{title: "INSTANCIA", width: 9, prio: 0, cell: func(i bridges.Info) string { return shortInstance(i.InstanceID) }},
-		{title: "PROYECTO", width: 8, prio: 2, flex: true, cell: func(i bridges.Info) string { return dashIfEmpty(i.Project) }},
+		{title: "PROYECTO", width: 8, prio: 2, flex: true, cell: func(i bridges.Info) string { return dashIfEmpty(i.DisplayName()) }},
 		{title: "MODO", width: 6, prio: 5, cell: func(i bridges.Info) string { return homeMode(i.Mode) }},
 		{title: "ROLES", width: 8, prio: 6, cell: func(i bridges.Info) string { return homeRoles(i.Roles) }},
 		{title: "CON", width: 3, prio: 1, cell: func(i bridges.Info) string {
